@@ -24,6 +24,9 @@ impl GuardCtx {
     pub fn tru(&mut self) -> Guard {
         self.bdd.constant(true)
     }
+    pub fn fals(&mut self) -> Guard {
+        self.bdd.constant(false)
+    }
 
     pub fn and(&mut self, a: Guard, b: Guard) -> Guard {
         self.bdd.and(a, b)
@@ -46,7 +49,7 @@ impl GuardCtx {
         matches!(e, boolean_expression::BDD_ONE)
     }
 
-    pub fn expr_to_guard(&mut self, ec: &mut Context, expr: ExprRef) -> Guard {
+    pub fn expr_to_guard(&mut self, ec: &Context, expr: ExprRef) -> Guard {
         debug_assert!(expr.is_bool(ec));
         traversal::bottom_up_multi_pat(
             ec,
@@ -237,7 +240,10 @@ impl<V: Value + ToGuard> ValueSummary<V> {
         }
 
         // lift condition values into a single guard
-        let tru_cond = cond.to_guard(ec, gc);
+        let (tru_cond, entries) = cond.to_guard(ec, gc);
+        if !entries.is_empty() {
+            todo!("deal with special value entries!")
+        }
         let fals_cond = gc.not(tru_cond);
         if gc.is_true(tru_cond) {
             return tru;
@@ -266,33 +272,34 @@ impl<V: Value + ToGuard> ValueSummary<V> {
     }
 
     /// Converts the value summary into a guard.
-    fn to_guard(&self, ec: &mut V::Context, gc: &mut GuardCtx) -> Guard {
-        match self.entries.as_slice() {
-            [] => unreachable!("value summaries should always have at least one entry"),
-            [one] => {
-                debug_assert!(
-                    gc.is_true(one.guard),
-                    "with a single entry, guard needs to be true"
-                );
-                one.value.to_guard(ec, gc).expect("should be bool")
+    fn to_guard(&self, ec: &mut V::Context, gc: &mut GuardCtx) -> (Guard, Vec<Entry<V>>) {
+        let mut results = vec![];
+        let mut guard = gc.fals();
+        for e in self.entries.iter() {
+            match e.value.to_guard(ec, gc) {
+                GuardResult::Guard(value_as_guard) => {
+                    let combined = gc.and(e.guard, value_as_guard);
+                    // add to global guard
+                    guard = gc.or(guard, combined);
+                }
+                GuardResult::IteResult(value) => {
+                    // we get a special value which will appear in the output under this condition
+                    results.push(Entry {
+                        guard: e.guard,
+                        value,
+                    });
+                }
+                GuardResult::CannotConvert => unreachable!("failed to convert"),
             }
-            entries => entries
-                .iter()
-                .map(|e| {
-                    let value_as_guard = e.value.to_guard(ec, gc).expect("should be bool");
-                    gc.and(e.guard, value_as_guard)
-                })
-                .collect::<Vec<_>>()
-                .into_iter()
-                .reduce(|a, b| gc.or(a, b))
-                .unwrap(),
         }
+        (guard, results)
     }
 
     /// Canonicalizes a boolean value summary such that it only contains two or fewer entries.
     pub fn import_into_guard(&mut self, ec: &mut V::Context, gc: &mut GuardCtx) {
-        let value_as_guard = self.to_guard(ec, gc);
+        let (value_as_guard, others) = self.to_guard(ec, gc);
         if gc.is_true(value_as_guard) {
+            debug_assert!(others.is_empty());
             self.entries = vec![Entry {
                 guard: gc.tru(),
                 value: V::true_value(ec),
@@ -300,11 +307,15 @@ impl<V: Value + ToGuard> ValueSummary<V> {
             return;
         }
         if gc.is_false(value_as_guard) {
+            debug_assert!(others.is_empty());
             self.entries = vec![Entry {
                 guard: gc.tru(),
                 value: V::false_value(ec),
             }];
             return;
+        }
+        if !others.is_empty() {
+            todo!("deal with other values!")
         }
         self.entries = vec![
             Entry {
@@ -342,9 +353,18 @@ pub trait ToGuard: Value {
     fn can_be_guard(&self, ec: &Self::Context) -> bool;
 
     /// Turns the value into a guard.
-    fn to_guard(&self, ec: &Self::Context, gc: &mut GuardCtx) -> Option<Guard>;
+    fn to_guard(&self, ec: &Self::Context, gc: &mut GuardCtx) -> GuardResult<Self>;
     fn true_value(ec: &mut Self::Context) -> Self;
     fn false_value(ec: &mut Self::Context) -> Self;
+}
+
+pub enum GuardResult<V: Value> {
+    /// Value converted to a guard.
+    Guard(Guard),
+    /// Cannot convert to a guard. Generally only happens if the program logic is faulty.
+    CannotConvert,
+    /// The result of the ITE under this condition will always be the value provided.
+    IteResult(V),
 }
 
 impl Value for ExprRef {
@@ -364,11 +384,12 @@ impl ToGuard for ExprRef {
         ec.get(*self).is_bool(ec)
     }
 
-    fn to_guard(&self, ec: &Context, gc: &mut GuardCtx) -> Option<Guard> {
+    fn to_guard(&self, ec: &Context, gc: &mut GuardCtx) -> GuardResult<Self> {
         if !self.can_be_guard(ec) {
-            return None;
+            return GuardResult::CannotConvert;
         }
-        todo!()
+        let guard = gc.expr_to_guard(ec, *self);
+        GuardResult::Guard(guard)
     }
     fn true_value(ec: &mut Self::Context) -> Self {
         ec.tru()
