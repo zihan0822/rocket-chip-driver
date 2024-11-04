@@ -2,11 +2,6 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
-// web sources on expression tree evaluation:
-// https://www.geeksforgeeks.org/evaluation-of-expression-tree/ (recursive, C++)
-// https://medium.com/javarevisited/evaluation-of-binary-expression-tree-6768db3be82f (recursive, Java)
-//
-
 use crate::expr::{Context, Expr, ExprRef, ForEachChild, TypeCheck};
 use baa::{
     ArrayMutOps, ArrayOps, ArrayValue, BitVecMutOps, BitVecOps, BitVecValue, BitVecValueIndex,

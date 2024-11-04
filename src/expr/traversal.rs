@@ -2,6 +2,10 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
+//! # Expression Traversals
+//!
+//! Contains functions to simplify non-recursive implementations of expression traversals.
+
 use crate::expr::{Context, Expr, ExprRef, ForEachChild};
 
 /// Visits expression nodes bottom up while propagating values

@@ -2,6 +2,10 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 
+//! # Expression Types
+//! Contains functions to check that an expression has consistent type information as
+//! well as functions to access the type of correctly types expressions.
+
 use super::{ArrayType, Context, Expr, ExprRef, Type};
 use crate::expr::expr::WidthInt;
 
