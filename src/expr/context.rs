@@ -14,8 +14,8 @@
 //! are no checks to ensure that a [`ExprRef`] or [`StringRef`] from different contexts are
 //! not matched. Thus working with more than one [`Context`] object can be dangerous.
 
-use crate::ir::expr::*;
-use crate::ir::TypeCheck;
+use crate::expr::expr::*;
+use crate::expr::TypeCheck;
 use baa::{BitVecValue, BitVecValueIndex, BitVecValueRef, IndexToRef};
 use std::borrow::Borrow;
 use std::cell::RefCell;
@@ -489,7 +489,7 @@ impl<'a> Builder<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ir::SerializableIrNode;
+    use crate::expr::SerializableIrNode;
 
     #[test]
     fn ir_type_size() {

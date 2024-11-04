@@ -3,7 +3,7 @@
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 
 use patronus::btor2;
-use patronus::ir::*;
+use patronus::expr::*;
 use patronus::system::transform::{replace_anonymous_inputs_with_zero, simplify_expressions};
 
 const COUNT_2: &str = r#"

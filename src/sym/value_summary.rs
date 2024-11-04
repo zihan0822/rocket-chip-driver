@@ -2,7 +2,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
-use crate::ir::*;
+use crate::expr::*;
 use boolean_expression::{BDDFunc, BDD};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;

@@ -3,7 +3,7 @@
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 
 use clap::{Parser, ValueEnum};
-use patronus::ir::*;
+use patronus::expr::*;
 use patronus::*;
 
 #[derive(Parser, Debug)]

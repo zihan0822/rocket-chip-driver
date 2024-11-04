@@ -2,7 +2,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 
-use crate::ir::*;
+use crate::expr::*;
 use crate::system::TransitionSystem;
 use std::io::Write;
 

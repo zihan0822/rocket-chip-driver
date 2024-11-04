@@ -4,7 +4,7 @@
 
 use baa::{BitVecOps, BitVecValue, WidthInt};
 use clap::{arg, Parser, ValueEnum};
-use patronus::ir::*;
+use patronus::expr::*;
 use patronus::mc::Simulator;
 use patronus::sim::interpreter::Interpreter;
 use patronus::system::*;

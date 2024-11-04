@@ -7,7 +7,7 @@
 // https://medium.com/javarevisited/evaluation-of-binary-expression-tree-6768db3be82f (recursive, Java)
 //
 
-use crate::ir::{Context, Expr, ExprRef, ForEachChild, TypeCheck};
+use crate::expr::{Context, Expr, ExprRef, ForEachChild, TypeCheck};
 use baa::{
     ArrayMutOps, ArrayOps, ArrayValue, BitVecMutOps, BitVecOps, BitVecValue, BitVecValueIndex,
     BitVecValueRef, IndexToMutRef, IndexToRef, Value, Word,
@@ -388,7 +388,7 @@ fn eval_expr_internal(
 #[cfg(test)]
 mod tests {
     use super::{eval_array_expr, eval_bv_expr, SymbolValueStore};
-    use crate::ir::*;
+    use crate::expr::*;
     use baa::*;
 
     #[test]

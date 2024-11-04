@@ -4,7 +4,7 @@
 
 use baa::BitVecOps;
 use patronus::btor2;
-use patronus::ir::Context;
+use patronus::expr::Context;
 use patronus::mc::Simulator;
 use patronus::sim::interpreter::Interpreter;
 

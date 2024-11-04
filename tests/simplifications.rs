@@ -2,7 +2,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
-use patronus::ir::*;
+use patronus::expr::*;
 
 #[test]
 fn test_simplify_and_or() {

@@ -3,7 +3,7 @@
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 
 use super::{ArrayType, Context, Expr, ExprRef, Type};
-use crate::ir::expr::WidthInt;
+use crate::expr::expr::WidthInt;
 
 #[derive(Debug, Clone)]
 pub struct TypeCheckError {

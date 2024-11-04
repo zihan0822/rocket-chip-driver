@@ -5,7 +5,7 @@
 
 use super::{SignalInfo, SignalKind, TransitionSystem};
 use crate::btor2::{DEFAULT_INPUT_PREFIX, DEFAULT_STATE_PREFIX};
-use crate::ir::*;
+use crate::expr::*;
 use std::collections::HashMap;
 
 /** Remove any inputs named `_input_[...]` and replace their use with a literal zero.

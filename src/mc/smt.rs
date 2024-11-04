@@ -3,7 +3,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
-use crate::ir::*;
+use crate::expr::*;
 use crate::mc::types::InitValue;
 use crate::mc::Witness;
 use crate::smt::*;

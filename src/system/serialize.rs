@@ -5,7 +5,7 @@
 
 use super::analysis::analyze_for_serialization;
 use super::{SignalInfo, SignalLabels, TransitionSystem};
-use crate::ir::{
+use crate::expr::{
     serialize_expr, serialize_expr_ref, Context, ExprRef, SerializableIrNode, TypeCheck,
 };
 use std::io::Write;

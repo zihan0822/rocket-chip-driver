@@ -4,7 +4,7 @@
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
 use super::{SignalInfo, SignalKind, State, TransitionSystem};
-use crate::ir::{Context, ExprMetaData, ExprRef, ForEachChild};
+use crate::expr::{Context, ExprMetaData, ExprRef, ForEachChild};
 
 pub type UseCountInt = u16;
 

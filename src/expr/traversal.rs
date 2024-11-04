@@ -2,7 +2,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
-use crate::ir::{Context, Expr, ExprRef, ForEachChild};
+use crate::expr::{Context, Expr, ExprRef, ForEachChild};
 
 /// Visits expression nodes bottom up while propagating values
 #[inline]
