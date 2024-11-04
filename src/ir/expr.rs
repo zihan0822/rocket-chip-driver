@@ -182,24 +182,6 @@ impl Expr {
     }
 }
 
-impl ExprRef {
-    pub fn is_symbol(&self, ctx: &Context) -> bool {
-        ctx.get(*self).is_symbol()
-    }
-
-    pub fn is_bv_lit(&self, ctx: &Context) -> bool {
-        ctx.get(*self).is_bv_lit()
-    }
-
-    pub fn get_symbol_name_ref(&self, ctx: &Context) -> Option<StringRef> {
-        ctx.get(*self).get_symbol_name_ref()
-    }
-
-    pub fn get_symbol_name<'a>(&self, ctx: &'a Context) -> Option<&'a str> {
-        ctx.get(*self).get_symbol_name(ctx)
-    }
-}
-
 #[derive(Debug, PartialEq, Eq, Clone, Hash, Copy)]
 pub struct BVType(WidthInt);
 #[derive(Debug, PartialEq, Eq, Clone, Hash, Copy)]

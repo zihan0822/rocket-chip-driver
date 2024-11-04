@@ -121,6 +121,10 @@ impl Context {
             .expect("Invalid ExprRef!")
     }
 
+    pub fn get_symbol_name(&self, reference: ExprRef) -> Option<&str> {
+        self.get(reference).get_symbol_name(self)
+    }
+
     pub(crate) fn add_expr(&mut self, value: Expr) -> ExprRef {
         let (index, _) = self.exprs.insert_full(value);
         ExprRef::from_index(index)

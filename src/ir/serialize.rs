@@ -443,9 +443,8 @@ fn serialize_transition_system<W: Write>(
         // - symbol name
         // - signal name
         // - %{id}
-        let name = root
-            .expr
-            .get_symbol_name(ctx)
+        let name = ctx
+            .get_symbol_name(root.expr)
             .map(|n| n.to_string())
             .unwrap_or_else(|| {
                 sys.get_signal(root.expr)
@@ -504,9 +503,8 @@ fn serialize_transition_system<W: Write>(
 
     // states
     for (_, state) in sys.states() {
-        let name = state
-            .symbol
-            .get_symbol_name(ctx)
+        let name = ctx
+            .get_symbol_name(state.symbol)
             .expect("all states are required to have a name!");
         let tpe = state.symbol.get_type(ctx);
         writeln!(writer, "state {name} : {tpe}")?;

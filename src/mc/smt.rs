@@ -209,7 +209,7 @@ impl SmtModelChecker {
             wit.init.push(wit_value);
             // also save state name
             wit.init_names
-                .push(Some(state.symbol.get_symbol_name(ctx).unwrap().to_string()))
+                .push(Some(ctx.get_symbol_name(state.symbol).unwrap().to_string()))
         }
 
         // collect all inputs
@@ -218,7 +218,7 @@ impl SmtModelChecker {
         // save input names
         for (input, _) in inputs.iter() {
             wit.input_names
-                .push(Some(input.get_symbol_name(ctx).unwrap().to_string()));
+                .push(Some(ctx.get_symbol_name(*input).unwrap().to_string()));
         }
 
         for k in 0..=k_max {
@@ -369,7 +369,7 @@ impl UnrollSmtEncoding {
             let id = (id.to_index() + signal_order.len()) as u16;
             let info = SmtSignalInfo {
                 id,
-                name: state.symbol.get_symbol_name_ref(ctx).unwrap(),
+                name: ctx.get(state.symbol).get_symbol_name_ref().unwrap(),
                 uses: Uses::default(), // irrelevant
                 is_state: true,
                 is_input: false,
@@ -407,7 +407,7 @@ impl UnrollSmtEncoding {
             if !skip {
                 let tpe = convert_tpe(smt_ctx, expr.get_type(ctx));
                 let name = name_at(ctx.get_str(info.name), step);
-                if expr.is_symbol(ctx) {
+                if ctx.get(*expr).is_symbol() {
                     smt_ctx.declare_const(escape_smt_identifier(&name), tpe)?;
                 } else {
                     let value = self.expr_in_step(ctx, smt_ctx, *expr, step);
@@ -494,7 +494,7 @@ impl TransitionSystemEncoding for UnrollSmtEncoding {
 
         // declare/define initial states
         for state in self.states.iter() {
-            let base_name = state.symbol.get_symbol_name(ctx).unwrap();
+            let base_name = ctx.get_symbol_name(state.symbol).unwrap();
             let name = if state.is_const() {
                 base_name.to_string()
             } else {
@@ -538,7 +538,7 @@ impl TransitionSystemEncoding for UnrollSmtEncoding {
 
         // define next state
         for state in self.states.iter() {
-            let name = name_at(state.symbol.get_symbol_name(ctx).unwrap(), next_step);
+            let name = name_at(ctx.get_symbol_name(state.symbol).unwrap(), next_step);
             let out = convert_tpe(smt_ctx, state.symbol.get_type(ctx));
             match state.next {
                 Some(value) => {

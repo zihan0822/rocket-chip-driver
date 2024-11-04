@@ -482,7 +482,7 @@ impl<'a> Parser<'a> {
         let state_ref = self.get_state_from_id(line, cont.tokens[3])?;
         let state_sym = self.sys.get_state(state_ref).symbol;
         let state_tpe = state_sym.type_check(self.ctx).unwrap();
-        let state_name = state_sym.get_symbol_name(self.ctx).unwrap().to_string();
+        let state_name = self.ctx.get_symbol_name(state_sym).unwrap().to_string();
         self.check_type(
             &state_tpe,
             &tpe,
@@ -787,7 +787,7 @@ fn improve_state_names(ctx: &mut Context, sys: &mut TransitionSystem) {
         // it will generate a signal info with the better name
         if let Some(signal) = sys.get_signal(state.symbol) {
             if let Some(name_ref) = signal.name {
-                let old_name_ref = state.symbol.get_symbol_name_ref(ctx).unwrap();
+                let old_name_ref = ctx.get(state.symbol).get_symbol_name_ref().unwrap();
                 if old_name_ref != name_ref {
                     renames.insert(state.symbol, name_ref);
                 }

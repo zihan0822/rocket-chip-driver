@@ -14,7 +14,7 @@ pub fn replace_anonymous_inputs_with_zero(ctx: &mut Context, sys: &mut Transitio
     // find and remove inputs
     let mut replace_map = HashMap::new();
     for (expr, signal_info) in sys.get_signals(|s| s.is_input()) {
-        let name = expr.get_symbol_name(ctx).unwrap();
+        let name = ctx.get_symbol_name(expr).unwrap();
         if name.starts_with(DEFAULT_INPUT_PREFIX) || name.starts_with(DEFAULT_STATE_PREFIX) {
             let replacement = match expr.get_type(ctx) {
                 Type::BV(width) => ctx.zero(width),

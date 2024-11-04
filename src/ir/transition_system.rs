@@ -229,15 +229,15 @@ impl TransitionSystem {
     }
 
     pub fn add_input(&mut self, ctx: &Context, symbol: ExprRef) {
-        assert!(symbol.is_symbol(ctx));
-        let name = symbol.get_symbol_name_ref(ctx);
+        assert!(ctx.get(symbol).is_symbol());
+        let name = ctx.get(symbol).get_symbol_name_ref();
         self.add_signal(symbol, SignalKind::Input, SignalLabels::default(), name);
     }
 
     pub fn add_state(&mut self, ctx: &Context, symbol: ExprRef) -> StateRef {
-        assert!(symbol.is_symbol(ctx));
+        assert!(ctx.get(symbol).is_symbol());
         // also add as a signal
-        let name = symbol.get_symbol_name_ref(ctx);
+        let name = ctx.get(symbol).get_symbol_name_ref();
         self.add_signal(symbol, SignalKind::State, SignalLabels::default(), name);
         let id = self.states.len();
         self.states.push(State {
@@ -251,7 +251,7 @@ impl TransitionSystem {
     pub fn get_state_by_name(&self, ctx: &Context, name: &str) -> Option<&State> {
         self.states
             .iter()
-            .find(|s| s.symbol.get_symbol_name(ctx).unwrap() == name)
+            .find(|s| ctx.get_symbol_name(s.symbol).unwrap() == name)
     }
 
     pub fn modify_state<F>(&mut self, reference: StateRef, modify: F)
@@ -312,7 +312,7 @@ impl TransitionSystem {
                         out.insert(name_str, expr_ref);
                     }
                     // sometimes symbols might have a different name than the signal, because of aliasing
-                    if let Some(name) = expr_ref.get_symbol_name(ctx) {
+                    if let Some(name) = ctx.get_symbol_name(expr_ref) {
                         out.insert(name.to_string(), expr_ref);
                     }
                 }
