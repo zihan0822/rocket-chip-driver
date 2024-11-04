@@ -26,6 +26,14 @@ impl BVLitValue {
     pub fn width(&self) -> WidthInt {
         self.0.width()
     }
+    pub fn is_true(&self) -> bool {
+        // this relies on the value interner always assigning index 1 to the number 1
+        self.width() == 1 && self.0.is_one()
+    }
+    pub fn is_false(&self) -> bool {
+        // this relies on the value interner always assigning index 0 to the number 0
+        self.width() == 1 && self.0.is_zero()
+    }
 }
 
 /// Represents a SMT bit-vector or array expression.
@@ -157,6 +165,20 @@ impl Expr {
 
     pub fn get_symbol_name<'a>(&self, ctx: &'a Context) -> Option<&'a str> {
         self.get_symbol_name_ref().map(|r| ctx.get_str(r))
+    }
+
+    pub fn is_true(&self) -> bool {
+        match self {
+            Expr::BVLiteral(v) => v.is_true(),
+            _ => false,
+        }
+    }
+
+    pub fn is_false(&self) -> bool {
+        match self {
+            Expr::BVLiteral(v) => v.is_false(),
+            _ => false,
+        }
     }
 }
 

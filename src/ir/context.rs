@@ -66,11 +66,31 @@ impl ExprRef {
 
 /// Context which is used to create all SMT expressions. Expressions are interned such that
 /// reference equivalence implies structural equivalence.
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct Context {
     strings: indexmap::IndexSet<String>,
     exprs: indexmap::IndexSet<Expr>,
     values: baa::ValueInterner,
+    // cached special values
+    tru_expr_ref: ExprRef,
+    fals_expr_ref: ExprRef,
+}
+
+impl Default for Context {
+    // TODO: should probably rename this to "new" at some point.
+    fn default() -> Self {
+        let mut out = Self {
+            strings: Default::default(),
+            exprs: Default::default(),
+            values: Default::default(),
+            tru_expr_ref: ExprRef::from_index(0),
+            fals_expr_ref: ExprRef::from_index(0),
+        };
+        // create valid cached expressions
+        out.fals_expr_ref = out.zero(1);
+        out.tru_expr_ref = out.one(1);
+        out
+    }
 }
 
 impl Context {
@@ -168,6 +188,14 @@ impl Context {
     pub fn zero_array(&mut self, tpe: ArrayType) -> ExprRef {
         let data = self.zero(tpe.data_width);
         self.array_const(data, tpe.index_width)
+    }
+
+    pub fn tru(&self) -> ExprRef {
+        self.tru_expr_ref
+    }
+
+    pub fn fals(&self) -> ExprRef {
+        self.fals_expr_ref
     }
 
     pub fn mask(&mut self, width: WidthInt) -> ExprRef {
