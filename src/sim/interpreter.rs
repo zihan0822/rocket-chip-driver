@@ -4,6 +4,7 @@
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
 use crate::ir::*;
+use crate::system::*;
 use baa::*;
 
 pub trait Simulator {

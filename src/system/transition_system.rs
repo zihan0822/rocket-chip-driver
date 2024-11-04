@@ -2,7 +2,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 
-use super::{Context, ExprRef, StringRef};
+use crate::ir::{Context, ExprRef, StringRef};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::iter::Enumerate;

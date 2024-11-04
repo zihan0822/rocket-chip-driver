@@ -3,6 +3,8 @@
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 
 use crate::ir::*;
+use crate::system::transform::do_transform;
+use crate::system::*;
 use baa::{BitVecValue, WidthInt};
 use fuzzy_matcher::FuzzyMatcher;
 use smallvec::SmallVec;

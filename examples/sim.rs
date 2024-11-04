@@ -7,6 +7,7 @@ use clap::{arg, Parser, ValueEnum};
 use patronus::ir::*;
 use patronus::mc::Simulator;
 use patronus::sim::interpreter::Interpreter;
+use patronus::system::*;
 use patronus::*;
 use std::collections::HashMap;
 use std::io::BufRead;

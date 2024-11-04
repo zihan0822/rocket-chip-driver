@@ -2,48 +2,9 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 
-use crate::btor2::{DEFAULT_INPUT_PREFIX, DEFAULT_STATE_PREFIX};
 use crate::ir::*;
 use baa::BitVecOps;
-use std::collections::HashMap;
-
-/** Remove any inputs named `_input_[...]` and replace their use with a literal zero.
- * This essentially gets rid of all undefined value modelling by yosys.
- */
-pub fn replace_anonymous_inputs_with_zero(ctx: &mut Context, sys: &mut TransitionSystem) {
-    // find and remove inputs
-    let mut replace_map = HashMap::new();
-    for (expr, signal_info) in sys.get_signals(|s| s.is_input()) {
-        let name = ctx.get_symbol_name(expr).unwrap();
-        if name.starts_with(DEFAULT_INPUT_PREFIX) || name.starts_with(DEFAULT_STATE_PREFIX) {
-            let replacement = match expr.get_type(ctx) {
-                Type::BV(width) => ctx.zero(width),
-                Type::Array(tpe) => ctx.zero_array(tpe),
-            };
-            replace_map.insert(expr, replacement);
-            sys.remove_signal(expr);
-            // re-insert signal info if the input has labels
-            if !signal_info.labels.is_none() {
-                sys.add_signal(
-                    replacement,
-                    SignalKind::Node,
-                    signal_info.labels,
-                    signal_info.name,
-                );
-            }
-        }
-    }
-
-    // replace any use of the input with zero
-    do_transform(ctx, sys, |_ctx, expr, _children| {
-        replace_map.get(&expr).cloned()
-    });
-}
-
-/// Applies simplifications to the expressions used in the system.
-pub fn simplify_expressions(ctx: &mut Context, sys: &mut TransitionSystem) {
-    do_transform(ctx, sys, simplify);
-}
+use std::ops::Index;
 
 /// Applies simplifications to a single expression.
 pub fn simplify_single_expression(ctx: &mut Context, expr: ExprRef) -> ExprRef {
@@ -52,7 +13,61 @@ pub fn simplify_single_expression(ctx: &mut Context, expr: ExprRef) -> ExprRef {
     res[expr].unwrap_or(expr)
 }
 
-fn simplify(ctx: &mut Context, expr: ExprRef, children: &[ExprRef]) -> Option<ExprRef> {
+pub(crate) fn do_transform_expr(
+    ctx: &mut Context,
+    mut todo: Vec<ExprRef>,
+    mut tran: impl FnMut(&mut Context, ExprRef, &[ExprRef]) -> Option<ExprRef>,
+) -> ExprMetaData<Option<ExprRef>> {
+    let mut transformed = ExprMetaData::default();
+    let mut children = Vec::with_capacity(4);
+
+    while let Some(expr_ref) = todo.pop() {
+        // check to see if we translated all the children
+        children.clear();
+        let mut children_changed = false; // track whether any of the children changed
+        let mut all_transformed = true; // tracks whether all children have been transformed or if there is more work to do
+        ctx.get(expr_ref).for_each_child(|c| {
+            match transformed.get(*c) {
+                Some(new_child_expr) => {
+                    if *new_child_expr != *c {
+                        children_changed = true; // child changed
+                    }
+                    children.push(*new_child_expr);
+                }
+                None => {
+                    if all_transformed {
+                        todo.push(expr_ref);
+                    }
+                    all_transformed = false;
+                    todo.push(*c);
+                }
+            }
+        });
+        if !all_transformed {
+            continue;
+        }
+
+        // call out to the transform
+        let tran_res = (tran)(ctx, expr_ref, &children);
+        let new_expr_ref = match tran_res {
+            Some(e) => e,
+            None => {
+                if children_changed {
+                    update_expr_children(ctx, expr_ref, &children)
+                } else {
+                    // if no children changed and the transform does not want to do changes,
+                    // we can just keep the old expression
+                    expr_ref
+                }
+            }
+        };
+        // remember the transformed version
+        *transformed.get_mut(expr_ref) = Some(new_expr_ref);
+    }
+    transformed
+}
+
+pub(crate) fn simplify(ctx: &mut Context, expr: ExprRef, children: &[ExprRef]) -> Option<ExprRef> {
     match (ctx.get(expr).clone(), children) {
         (Expr::BVIte { .. }, [cond, tru, fals]) => {
             if tru == fals {
@@ -161,128 +176,6 @@ fn simplify(ctx: &mut Context, expr: ExprRef, children: &[ExprRef]) -> Option<Ex
     }
 }
 
-pub fn do_transform(
-    ctx: &mut Context,
-    sys: &mut TransitionSystem,
-    tran: impl FnMut(&mut Context, ExprRef, &[ExprRef]) -> Option<ExprRef>,
-) {
-    let todo = get_root_expressions(sys);
-    let transformed = do_transform_expr(ctx, todo, tran);
-
-    // update transition system signals
-    for (old_expr, maybe_new_expr) in transformed.iter() {
-        if let Some(new_expr) = maybe_new_expr {
-            if *new_expr != old_expr {
-                sys.update_signal_expr(old_expr, *new_expr);
-            }
-        }
-    }
-    // update states
-    for state in sys.states.iter_mut() {
-        if let Some(new_symbol) = changed(&transformed, state.symbol) {
-            state.symbol = new_symbol;
-        }
-        if let Some(old_next) = state.next {
-            if let Some(new_next) = changed(&transformed, old_next) {
-                state.next = Some(new_next);
-            }
-        }
-        if let Some(old_init) = state.init {
-            if let Some(new_init) = changed(&transformed, old_init) {
-                state.init = Some(new_init);
-            }
-        }
-    }
-}
-
-fn changed(transformed: &ExprMetaData<Option<ExprRef>>, old_expr: ExprRef) -> Option<ExprRef> {
-    if let Some(new_expr) = transformed.get(old_expr) {
-        if *new_expr != old_expr {
-            Some(*new_expr)
-        } else {
-            None
-        }
-    } else {
-        None
-    }
-}
-
-fn do_transform_expr(
-    ctx: &mut Context,
-    mut todo: Vec<ExprRef>,
-    mut tran: impl FnMut(&mut Context, ExprRef, &[ExprRef]) -> Option<ExprRef>,
-) -> ExprMetaData<Option<ExprRef>> {
-    let mut transformed = ExprMetaData::default();
-    let mut children = Vec::with_capacity(4);
-
-    while let Some(expr_ref) = todo.pop() {
-        // check to see if we translated all the children
-        children.clear();
-        let mut children_changed = false; // track whether any of the children changed
-        let mut all_transformed = true; // tracks whether all children have been transformed or if there is more work to do
-        ctx.get(expr_ref).for_each_child(|c| {
-            match transformed.get(*c) {
-                Some(new_child_expr) => {
-                    if *new_child_expr != *c {
-                        children_changed = true; // child changed
-                    }
-                    children.push(*new_child_expr);
-                }
-                None => {
-                    if all_transformed {
-                        todo.push(expr_ref);
-                    }
-                    all_transformed = false;
-                    todo.push(*c);
-                }
-            }
-        });
-        if !all_transformed {
-            continue;
-        }
-
-        // call out to the transform
-        let tran_res = (tran)(ctx, expr_ref, &children);
-        let new_expr_ref = match tran_res {
-            Some(e) => e,
-            None => {
-                if children_changed {
-                    update_expr_children(ctx, expr_ref, &children)
-                } else {
-                    // if no children changed and the transform does not want to do changes,
-                    // we can just keep the old expression
-                    expr_ref
-                }
-            }
-        };
-        // remember the transformed version
-        *transformed.get_mut(expr_ref) = Some(new_expr_ref);
-    }
-    transformed
-}
-
-fn get_root_expressions(sys: &TransitionSystem) -> Vec<ExprRef> {
-    // include all input, output, assertion and assumptions expressions
-    let mut out = Vec::from_iter(
-        sys.get_signals(is_usage_root_signal)
-            .iter()
-            .map(|(e, _)| *e),
-    );
-
-    // include all states
-    for (_, state) in sys.states() {
-        out.push(state.symbol);
-        if let Some(init) = state.init {
-            out.push(init);
-        }
-        if let Some(next) = state.next {
-            out.push(next);
-        }
-    }
-
-    out
-}
-
 fn update_expr_children(ctx: &mut Context, expr_ref: ExprRef, children: &[ExprRef]) -> ExprRef {
     let new_expr = match (ctx.get(expr_ref), children) {
         (Expr::BVSymbol { .. }, _) => panic!("No children, should never get here."),
@@ -366,11 +259,70 @@ fn update_expr_children(ctx: &mut Context, expr_ref: ExprRef, children: &[ExprRe
     ctx.add_expr(new_expr)
 }
 
-/// Slightly different definition from use counts, as we want to retain all inputs in transformation passes.
-fn is_usage_root_signal(info: &SignalInfo) -> bool {
-    info.is_input()
-        || info.labels.is_output()
-        || info.labels.is_constraint()
-        || info.labels.is_bad()
-        || info.labels.is_fair()
+/// A dense hash map to store meta-data related to each expression
+#[derive(Debug, Default, Clone)]
+pub struct ExprMetaData<T: Default + Clone> {
+    inner: Vec<T>,
+    default: T,
+}
+
+impl<T: Default + Clone> ExprMetaData<T> {
+    #[allow(dead_code)]
+    pub fn get(&self, e: ExprRef) -> &T {
+        self.inner.get(e.index()).unwrap_or(&self.default)
+    }
+
+    pub fn get_mut(&mut self, e: ExprRef) -> &mut T {
+        if self.inner.len() <= e.index() {
+            self.inner.resize(e.index() + 1, T::default());
+        }
+        &mut self.inner[e.index()]
+    }
+
+    pub fn into_vec(self) -> Vec<T> {
+        self.inner
+    }
+
+    pub fn iter(&self) -> ExprMetaDataIter<T> {
+        ExprMetaDataIter {
+            inner: self.inner.iter(),
+            index: 0,
+        }
+    }
+}
+
+impl<T: Default + Clone> Index<ExprRef> for ExprMetaData<T> {
+    type Output = T;
+
+    fn index(&self, index: ExprRef) -> &Self::Output {
+        self.get(index)
+    }
+}
+
+impl<T: Default + Clone> Index<&ExprRef> for ExprMetaData<T> {
+    type Output = T;
+
+    fn index(&self, index: &ExprRef) -> &Self::Output {
+        self.get(*index)
+    }
+}
+
+pub struct ExprMetaDataIter<'a, T> {
+    inner: std::slice::Iter<'a, T>,
+    index: usize,
+}
+
+impl<'a, T> Iterator for ExprMetaDataIter<'a, T> {
+    type Item = (ExprRef, &'a T);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.inner.next() {
+            None => None,
+            Some(value) => {
+                let index_ref = ExprRef::from_index(self.index);
+                self.index += 1;
+                Some((index_ref, value))
+            }
+        }
+    }
 }

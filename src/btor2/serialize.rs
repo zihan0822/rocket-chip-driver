@@ -3,6 +3,7 @@
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 
 use crate::ir::*;
+use crate::system::TransitionSystem;
 use std::io::Write;
 
 pub fn serialize(

@@ -7,6 +7,8 @@ use crate::ir::*;
 use crate::mc::types::InitValue;
 use crate::mc::Witness;
 use crate::smt::*;
+use crate::system::analysis::{analyze_for_serialization, count_expr_uses, UseCountInt, Uses};
+use crate::system::{SignalInfo, SignalKind, State, TransitionSystem};
 use baa::*;
 use easy_smt as smt;
 use std::collections::HashSet;
