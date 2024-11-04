@@ -496,12 +496,17 @@ mod tests {
     #[test]
     fn reference_ids() {
         let mut ctx = Context::default();
+
+        // ids 1 and 2 are reserved for true and false
+        assert_eq!(ctx.fals().0.get(), 1);
+        assert_eq!(ctx.tru().0.get(), 2);
+
         let str_id0 = ctx.string("a".into());
         let id0 = ctx.add_expr(Expr::BVSymbol {
             name: str_id0,
             width: 1,
         });
-        assert_eq!(id0.0.get(), 1, "ids start at one (for now)");
+        assert_eq!(id0.0.get(), 3, "ids start at three (for now)");
         let id0_b = ctx.add_expr(Expr::BVSymbol {
             name: str_id0,
             width: 1,
