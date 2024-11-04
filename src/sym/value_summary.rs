@@ -9,7 +9,8 @@ use std::hash::Hash;
 
 #[derive(Debug, Clone)]
 pub struct GuardCtx {
-    bdd: BDD<u16>,
+    /// The variables in the BDD are expressions which we do not want to import into the BDD.
+    bdd: BDD<ExprRef>,
 }
 
 impl Default for GuardCtx {
@@ -43,6 +44,41 @@ impl GuardCtx {
 
     pub fn is_true(&self, e: Guard) -> bool {
         matches!(e, boolean_expression::BDD_ONE)
+    }
+
+    pub fn expr_to_guard(&mut self, ec: &mut Context, expr: ExprRef) -> Guard {
+        debug_assert!(expr.is_bool(ec));
+        traversal::bottom_up_multi_pat(
+            ec,
+            expr,
+            |ctx, expr, children| {
+                // check to see if we are going to convert this expression, if we are not, then
+                // we do not want to visit the children at all
+                expr.for_each_child(|c| children.push(*c));
+                let all_bool_children = children.iter().all(|e| ctx.get(*e).is_bool(ctx));
+                if !all_bool_children {
+                    children.clear(); // we do not want to include the children
+                }
+            },
+            |ctx, expr, children| {
+                match ctx.get(expr) {
+                    Expr::BVLiteral(v) => self.bdd.constant(v.is_true()),
+                    Expr::BVNot(_, _) => self.bdd.not(children[0]),
+                    Expr::BVAnd(_, _, _) => self.bdd.and(children[0], children[1]),
+                    Expr::BVOr(_, _, _) => self.bdd.or(children[0], children[1]),
+                    Expr::BVXor(_, _, _) => self.bdd.xor(children[0], children[1]),
+                    Expr::BVImplies(_, _) => self.bdd.implies(children[0], children[1]),
+                    // other expressions just become a terminal
+                    _ => {
+                        debug_assert!(
+                            children.is_empty(),
+                            "children should not have been visited!"
+                        );
+                        self.bdd.terminal(expr)
+                    }
+                }
+            },
+        )
     }
 }
 
@@ -325,18 +361,21 @@ impl Value for ExprRef {
 
 impl ToGuard for ExprRef {
     fn can_be_guard(&self, ec: &Self::Context) -> bool {
-        ec.get(*self).get_bv_type(ec) == Some(1)
-    }
-
-    fn true_value(ec: &mut Self::Context) -> Self {
-        ec.tru()
-    }
-    fn false_value(ec: &mut Self::Context) -> Self {
-        ec.fals()
+        ec.get(*self).is_bool(ec)
     }
 
     fn to_guard(&self, ec: &Context, gc: &mut GuardCtx) -> Option<Guard> {
+        if !self.can_be_guard(ec) {
+            return None;
+        }
         todo!()
+    }
+    fn true_value(ec: &mut Self::Context) -> Self {
+        ec.tru()
+    }
+
+    fn false_value(ec: &mut Self::Context) -> Self {
+        ec.fals()
     }
 }
 

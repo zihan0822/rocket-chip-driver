@@ -6,7 +6,11 @@ use crate::ir::{Context, Expr, ExprRef, ForEachChild};
 
 /// Visits expression nodes bottom up while propagating values
 #[inline]
-pub fn bottom_up<R>(ctx: &Context, expr: ExprRef, f: impl FnMut(&Context, &Expr, &[R]) -> R) -> R {
+pub fn bottom_up<R>(
+    ctx: &Context,
+    expr: ExprRef,
+    f: impl FnMut(&Context, ExprRef, &[R]) -> R,
+) -> R {
     bottom_up_multi_pat(
         ctx,
         expr,
@@ -22,7 +26,7 @@ pub fn bottom_up_multi_pat<R>(
     ctx: &Context,
     expr: ExprRef,
     mut get_children: impl FnMut(&Context, &Expr, &mut Vec<ExprRef>),
-    mut f: impl FnMut(&Context, &Expr, &[R]) -> R,
+    mut f: impl FnMut(&Context, ExprRef, &[R]) -> R,
 ) -> R {
     let mut todo = vec![(expr, false)];
     let mut stack = Vec::with_capacity(4);
@@ -48,7 +52,7 @@ pub fn bottom_up_multi_pat<R>(
         // Otherwise, all arguments are available on the stack for us to use.
         let num_children = expr.num_children();
         let values = &stack[stack.len() - num_children..];
-        let result = f(ctx, expr, values);
+        let result = f(ctx, e, values);
         stack.truncate(stack.len() - num_children);
         stack.push(result);
     }

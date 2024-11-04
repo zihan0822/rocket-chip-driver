@@ -129,6 +129,9 @@ pub trait TypeCheck {
             None
         }
     }
+    fn is_bool(&self, ctx: &Context) -> bool {
+        self.get_bv_type(ctx) == Some(1)
+    }
 }
 
 impl TypeCheck for Expr {
