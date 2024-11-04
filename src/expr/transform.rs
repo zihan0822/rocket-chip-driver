@@ -4,13 +4,12 @@
 
 use crate::expr::*;
 use baa::BitVecOps;
-use std::ops::Index;
 
 /// Applies simplifications to a single expression.
 pub fn simplify_single_expression(ctx: &mut Context, expr: ExprRef) -> ExprRef {
     let todo = vec![expr];
     let res = do_transform_expr(ctx, todo, simplify);
-    res[expr].unwrap_or(expr)
+    res.get(expr).unwrap_or(expr)
 }
 
 pub(crate) fn do_transform_expr(
@@ -257,72 +256,4 @@ fn update_expr_children(ctx: &mut Context, expr_ref: ExprRef, children: &[ExprRe
         }
     };
     ctx.add_expr(new_expr)
-}
-
-/// A dense hash map to store meta-data related to each expression
-#[derive(Debug, Default, Clone)]
-pub struct ExprMetaData<T: Default + Clone> {
-    inner: Vec<T>,
-    default: T,
-}
-
-impl<T: Default + Clone> ExprMetaData<T> {
-    #[allow(dead_code)]
-    pub fn get(&self, e: ExprRef) -> &T {
-        self.inner.get(e.index()).unwrap_or(&self.default)
-    }
-
-    pub fn get_mut(&mut self, e: ExprRef) -> &mut T {
-        if self.inner.len() <= e.index() {
-            self.inner.resize(e.index() + 1, T::default());
-        }
-        &mut self.inner[e.index()]
-    }
-
-    pub fn into_vec(self) -> Vec<T> {
-        self.inner
-    }
-
-    pub fn iter(&self) -> ExprMetaDataIter<T> {
-        ExprMetaDataIter {
-            inner: self.inner.iter(),
-            index: 0,
-        }
-    }
-}
-
-impl<T: Default + Clone> Index<ExprRef> for ExprMetaData<T> {
-    type Output = T;
-
-    fn index(&self, index: ExprRef) -> &Self::Output {
-        self.get(index)
-    }
-}
-
-impl<T: Default + Clone> Index<&ExprRef> for ExprMetaData<T> {
-    type Output = T;
-
-    fn index(&self, index: &ExprRef) -> &Self::Output {
-        self.get(*index)
-    }
-}
-
-pub struct ExprMetaDataIter<'a, T> {
-    inner: std::slice::Iter<'a, T>,
-    index: usize,
-}
-
-impl<'a, T> Iterator for ExprMetaDataIter<'a, T> {
-    type Item = (ExprRef, &'a T);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.inner.next() {
-            None => None,
-            Some(value) => {
-                let index_ref = ExprRef::from_index(self.index);
-                self.index += 1;
-                Some((index_ref, value))
-            }
-        }
-    }
 }
