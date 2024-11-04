@@ -197,29 +197,41 @@ impl<V: Value> ValueSummary<V> {
         self.entries.len()
     }
 
-    /// combines entries with the same value into one
-    fn coalesce(&mut self, gc: &mut GuardCtx) {
-        let mut by_value = HashMap::with_capacity(self.entries.len());
-        let mut delete_list = vec![];
-        for ii in 0..self.entries.len() {
-            let entry = self.entries[ii].clone();
-            if let Some(prev_ii) = by_value.get(&entry.value) {
-                // we found a duplicate! let's merge
-                let prev_ii: usize = *prev_ii;
-                let prev = self.entries[prev_ii].clone();
-                let combined_guard = gc.or(prev.guard, entry.guard);
-                // update the current entry
-                self.entries[ii].guard = combined_guard;
-                // schedule the duplicate to be deleted
-                delete_list.push(prev_ii);
-            }
-            // remember the final entry containing this value
-            by_value.insert(entry.value, ii);
-        }
-
-        // delete duplicate entries
-        delete_entries(delete_list, &mut self.entries);
+    pub fn is_empty(&self) -> bool {
+        debug_assert!(
+            !self.entries.is_empty(),
+            "in a valid ValueSummary there always must be at least one entry"
+        );
+        false
     }
+
+    /// combines entries with the same value into one
+    pub fn coalesce(&mut self, gc: &mut GuardCtx) {
+        coalesce_entries(&mut self.entries, gc);
+    }
+}
+
+fn coalesce_entries<V: Value>(entries: &mut Vec<Entry<V>>, gc: &mut GuardCtx) {
+    let mut by_value = HashMap::with_capacity(entries.len());
+    let mut delete_list = vec![];
+    for ii in 0..entries.len() {
+        let entry = entries[ii].clone();
+        if let Some(prev_ii) = by_value.get(&entry.value) {
+            // we found a duplicate! let's merge
+            let prev_ii: usize = *prev_ii;
+            let prev = entries[prev_ii].clone();
+            let combined_guard = gc.or(prev.guard, entry.guard);
+            // update the current entry
+            entries[ii].guard = combined_guard;
+            // schedule the duplicate to be deleted
+            delete_list.push(prev_ii);
+        }
+        // remember the final entry containing this value
+        by_value.insert(entry.value, ii);
+    }
+
+    // delete duplicate entries
+    delete_entries(delete_list, entries);
 }
 
 impl<V: Value + ToGuard> ValueSummary<V> {
@@ -291,6 +303,11 @@ impl<V: Value + ToGuard> ValueSummary<V> {
                 }
                 GuardResult::CannotConvert => unreachable!("failed to convert"),
             }
+        }
+        // eagerly combine entries that evaluated to the same result
+        // in the case of X/Unknown, this should leave us with a single entry
+        if results.len() > 1 {
+            coalesce_entries(&mut results, gc);
         }
         (guard, results)
     }

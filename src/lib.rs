@@ -9,4 +9,4 @@ pub mod ir;
 pub mod mc;
 pub mod sim;
 mod smt;
-mod sym;
+pub mod sym;

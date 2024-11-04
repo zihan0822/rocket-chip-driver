@@ -5,13 +5,12 @@
 use crate::ir::{Context, TransitionSystem};
 
 /// Symbolic execution engine.
-#[allow(dead_code)]
 pub struct SymEngine {
     sys: TransitionSystem,
 }
 
 impl SymEngine {
-    pub fn new(ctx: &Context, sys: TransitionSystem) -> Self {
+    pub fn new(_ctx: &Context, sys: TransitionSystem) -> Self {
         Self { sys }
     }
 }
