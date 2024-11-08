@@ -185,8 +185,16 @@ impl Context {
         let index = self.values.get_index(value);
         self.add_expr(Expr::BVLiteral(BVLitValue::new(index)))
     }
-    pub fn bit_vec(&mut self, value: impl Into<u128>, width: impl Into<WidthInt>) -> ExprRef {
-        let value = BitVecValue::from_u128(value.into(), width.into());
+    pub fn bit_vec_val(
+        &mut self,
+        value: impl TryInto<u128>,
+        width: impl TryInto<WidthInt>,
+    ) -> ExprRef {
+        let (value, width) = match (value.try_into(), width.try_into()) {
+            (Ok(value), Ok(width)) => (value, width),
+            _ => panic!("failed to convert value or width! Both must be positive!"),
+        };
+        let value = BitVecValue::from_u128(value, width);
         self.bv_lit(&value)
     }
     pub fn zero(&mut self, width: WidthInt) -> ExprRef {
@@ -376,8 +384,8 @@ impl<'a> Builder<'a> {
     pub fn bv_lit<'b>(&self, value: impl Into<BitVecValueRef<'b>>) -> ExprRef {
         self.ctx.borrow_mut().bv_lit(value)
     }
-    pub fn bit_vec(&self, value: impl Into<u128>, width: impl Into<WidthInt>) -> ExprRef {
-        self.ctx.borrow_mut().bit_vec(value, width)
+    pub fn bit_vec_val(&self, value: impl TryInto<u128>, width: impl TryInto<WidthInt>) -> ExprRef {
+        self.ctx.borrow_mut().bit_vec_val(value, width)
     }
     pub fn zero(&self, width: WidthInt) -> ExprRef {
         self.ctx.borrow_mut().zero(width)
@@ -551,5 +559,11 @@ mod tests {
         let mut ctx = Context::default();
         let expr = ctx.build(|b| b.and(b.bv_symbol("a", 1), b.bv_symbol("b", 1)));
         assert_eq!(expr.serialize_to_str(&ctx), "and(a, b)");
+    }
+
+    #[test]
+    fn test_bit_vec_val() {
+        let mut ctx = Context::default();
+        let _v0 = ctx.bit_vec_val(1, 128);
     }
 }
