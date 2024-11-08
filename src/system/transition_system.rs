@@ -234,17 +234,19 @@ impl TransitionSystem {
         self.add_signal(symbol, SignalKind::Input, SignalLabels::default(), name);
     }
 
-    pub fn add_state(&mut self, ctx: &Context, symbol: ExprRef) -> StateRef {
-        assert!(ctx.get(symbol).is_symbol());
+    pub fn add_state(&mut self, ctx: &Context, state: impl Into<State>) -> StateRef {
+        let state = state.into();
+        assert!(ctx.get(state.symbol).is_symbol());
         // also add as a signal
-        let name = ctx.get(symbol).get_symbol_name_ref();
-        self.add_signal(symbol, SignalKind::State, SignalLabels::default(), name);
+        let name = ctx.get(state.symbol).get_symbol_name_ref();
+        self.add_signal(
+            state.symbol,
+            SignalKind::State,
+            SignalLabels::default(),
+            name,
+        );
         let id = self.states.len();
-        self.states.push(State {
-            symbol,
-            init: None,
-            next: None,
-        });
+        self.states.push(state);
         StateRef(id)
     }
 

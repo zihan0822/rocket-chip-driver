@@ -185,6 +185,10 @@ impl Context {
         let index = self.values.get_index(value);
         self.add_expr(Expr::BVLiteral(BVLitValue::new(index)))
     }
+    pub fn bit_vec(&mut self, value: impl Into<u128>, width: impl Into<WidthInt>) -> ExprRef {
+        let value = BitVecValue::from_u128(value.into(), width.into());
+        self.bv_lit(&value)
+    }
     pub fn zero(&mut self, width: WidthInt) -> ExprRef {
         self.bv_lit(&BitVecValue::zero(width))
     }
@@ -372,11 +376,14 @@ impl<'a> Builder<'a> {
     pub fn bv_lit<'b>(&self, value: impl Into<BitVecValueRef<'b>>) -> ExprRef {
         self.ctx.borrow_mut().bv_lit(value)
     }
-    pub fn zero(&mut self, width: WidthInt) -> ExprRef {
+    pub fn bit_vec(&self, value: impl Into<u128>, width: impl Into<WidthInt>) -> ExprRef {
+        self.ctx.borrow_mut().bit_vec(value, width)
+    }
+    pub fn zero(&self, width: WidthInt) -> ExprRef {
         self.ctx.borrow_mut().zero(width)
     }
 
-    pub fn zero_array(&mut self, tpe: ArrayType) -> ExprRef {
+    pub fn zero_array(&self, tpe: ArrayType) -> ExprRef {
         self.ctx.borrow_mut().zero_array(tpe)
     }
 

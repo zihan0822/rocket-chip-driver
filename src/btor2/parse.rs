@@ -451,10 +451,15 @@ impl<'a> Parser<'a> {
     ) -> ParseLineResult<()> {
         let tpe = self.get_tpe_from_id(line, cont.tokens[2])?;
         let name = self.get_label_name(cont, DEFAULT_STATE_PREFIX);
-        let sym = self.ctx.symbol(name, tpe);
-        let state_ref = self.sys.add_state(self.ctx, sym);
+        let symbol = self.ctx.symbol(name, tpe);
+        let state = State {
+            symbol,
+            next: None,
+            init: None,
+        };
+        let state_ref = self.sys.add_state(self.ctx, state);
         self.state_map.insert(line_id, state_ref);
-        self.signal_map.insert(line_id, sym);
+        self.signal_map.insert(line_id, symbol);
         Ok(())
     }
 
