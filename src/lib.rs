@@ -5,6 +5,7 @@
 extern crate lazy_static;
 
 pub mod btor2;
+pub mod egraphs;
 pub mod expr;
 pub mod mc;
 pub mod sim;
