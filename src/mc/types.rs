@@ -5,16 +5,17 @@
 
 use baa::Value;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum InitValue {
     BitVec(baa::BitVecValue),
     /// For arrays we store the array data + the entries that are relevant.
     Array(baa::ArrayValue, Vec<baa::BitVecValue>),
     /// No value available
+    #[default]
     None,
 }
 
-impl TryFrom<InitValue> for baa::Value {
+impl TryFrom<InitValue> for Value {
     type Error = ();
 
     fn try_from(value: InitValue) -> Result<Self, Self::Error> {
@@ -26,12 +27,6 @@ impl TryFrom<InitValue> for baa::Value {
     }
 }
 
-impl Default for InitValue {
-    fn default() -> Self {
-        InitValue::None
-    }
-}
-
 /// Contains the initial state and the inputs over `len` cycles.
 #[derive(Debug, Default)]
 pub struct Witness {
@@ -40,7 +35,7 @@ pub struct Witness {
     /// Optional name for each init value.
     pub init_names: Vec<Option<String>>,
     /// The inputs over time. Each entry contains an optional value for each input.
-    pub inputs: Vec<Vec<Option<baa::Value>>>,
+    pub inputs: Vec<Vec<Option<Value>>>,
     /// Optional name for each input
     pub input_names: Vec<Option<String>>,
     /// Index of all safety properties (bad state predicates) that are violated by this witness.

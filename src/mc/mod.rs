@@ -5,7 +5,6 @@
 mod smt;
 mod types;
 
-pub use crate::sim::interpreter::Simulator;
 pub use smt::{
     check_assuming, check_assuming_end, get_smt_value, ModelCheckResult, SmtModelChecker,
     SmtModelCheckerOptions, SmtSolverCmd, TransitionSystemEncoding, UnrollSmtEncoding,
