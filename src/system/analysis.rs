@@ -4,7 +4,9 @@
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
 use super::{SignalInfo, SignalKind, State, TransitionSystem};
-use crate::expr::{Context, DenseExprMetaData, ExprMetaData, ExprRef, ForEachChild};
+use crate::expr::{
+    Context, DenseExprMetaData, DenseExprMetaDataBool, ExprMetaData, ExprRef, ForEachChild,
+};
 
 pub type UseCountInt = u16;
 
@@ -90,7 +92,7 @@ fn cone_of_influence_impl(
 ) -> Vec<ExprRef> {
     let mut out = vec![];
     let mut todo = vec![root];
-    let mut visited = DenseExprMetaData::default();
+    let mut visited = DenseExprMetaDataBool::default();
     let states = sys.state_map();
 
     while let Some(expr_ref) = todo.pop() {
@@ -215,7 +217,7 @@ pub fn analyze_for_serialization(
     // first we identify which expressions are used for init and which are used for next
     let (init_count, next_count, mut other_count) = init_counts(ctx, sys, include_outputs);
 
-    let mut visited = DenseExprMetaData::default();
+    let mut visited = DenseExprMetaDataBool::default();
     let mut signal_order = Vec::new();
 
     // add all inputs

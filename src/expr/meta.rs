@@ -7,6 +7,7 @@
 //! Provides the `[ExprMetaData]` trait and a dense as well as sparse implementation for it.
 
 use super::ExprRef;
+use baa::Word;
 use std::fmt::Debug;
 use std::ops::{Index, IndexMut};
 
@@ -86,8 +87,85 @@ impl<'a, T> Iterator for ExprMetaDataIter<'a, T> {
 
 /// A dense hash map to store boolean meta-data related to each expression
 #[derive(Debug, Default, Clone)]
-pub struct DenseExprMetaBool {
+pub struct DenseExprMetaDataBool {
     inner: Vec<u64>,
+}
+
+fn index_to_word_and_bit(index: ExprRef) -> (usize, u32) {
+    let index = index.index();
+    let word = index / Word::BITS as usize;
+    let bit = index % Word::BITS as usize;
+    (word, bit as u32)
+}
+
+impl Index<ExprRef> for DenseExprMetaDataBool {
+    type Output = bool;
+
+    fn index(&self, index: ExprRef) -> &Self::Output {
+        let (word_idx, bit) = index_to_word_and_bit(index);
+        let word = self.inner.get(word_idx).cloned().unwrap_or_default();
+        if ((word >> bit) & 1) == 1 {
+            &TRU
+        } else {
+            &FALS
+        }
+    }
+}
+
+impl ExprMetaData<bool> for DenseExprMetaDataBool {
+    fn iter<'a>(&'a self) -> impl Iterator<Item = (ExprRef, &'a bool)>
+    where
+        bool: 'a,
+    {
+        ExprMetaBoolIter {
+            inner: self.inner.iter(),
+            value: 0,
+            index: 0,
+        }
+    }
+
+    fn insert(&mut self, e: ExprRef, data: bool) {
+        let (word_idx, bit) = index_to_word_and_bit(e);
+        if self.inner.len() <= word_idx {
+            self.inner.resize(e.index(), 0);
+        }
+        if data {
+            // set bit
+            self.inner[word_idx] |= 1u64 << bit;
+        } else {
+            // clear bit
+            self.inner[word_idx] &= !(1u64 << bit);
+        }
+    }
+}
+
+struct ExprMetaBoolIter<'a> {
+    inner: std::slice::Iter<'a, u64>,
+    value: u64,
+    index: usize,
+}
+
+impl<'a> Iterator for ExprMetaBoolIter<'a> {
+    type Item = (ExprRef, &'a bool);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index % u64::BITS as usize == 0 {
+            match self.inner.next() {
+                None => return None,
+                Some(value) => {
+                    self.value = *value;
+                }
+            }
+        }
+        let index_ref = ExprRef::from_index(self.index);
+        self.index += 1;
+        let bit = self.index / u64::BITS as usize;
+        if ((self.value >> bit) & 1) == 1 {
+            Some((index_ref, &TRU))
+        } else {
+            Some((index_ref, &FALS))
+        }
+    }
 }
 
 const TRU: bool = true;
