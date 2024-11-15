@@ -61,7 +61,7 @@ pub(crate) fn do_transform_expr(
             }
         };
         // remember the transformed version
-        transformed[expr_ref] = Some(new_expr_ref);
+        transformed.insert(expr_ref, Some(new_expr_ref));
     }
     transformed
 }

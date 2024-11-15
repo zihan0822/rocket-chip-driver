@@ -10,19 +10,22 @@ use super::ExprRef;
 use std::fmt::Debug;
 use std::ops::{Index, IndexMut};
 
-pub trait ExprMetaData<T>: Debug + Clone + Index<ExprRef> + IndexMut<ExprRef>
+pub trait ExprMetaData<T>: Debug + Clone + Index<ExprRef>
 where
     T: Default + Clone,
 {
     fn iter<'a>(&'a self) -> impl Iterator<Item = (ExprRef, &'a T)>
     where
         T: 'a;
+
+    fn insert(&mut self, e: ExprRef, data: T);
 }
 
 /// A dense hash map to store meta-data related to each expression
 #[derive(Debug, Default, Clone)]
 pub struct DenseExprMetaData<T: Default + Clone + Debug> {
     inner: Vec<T>,
+    // we need actual storage so that we can return a reference
     default: T,
 }
 
@@ -40,15 +43,6 @@ impl<T: Default + Clone + Debug> Index<ExprRef> for DenseExprMetaData<T> {
     }
 }
 
-impl<T: Default + Clone + Debug> IndexMut<ExprRef> for DenseExprMetaData<T> {
-    fn index_mut(&mut self, e: ExprRef) -> &mut Self::Output {
-        if self.inner.len() <= e.index() {
-            self.inner.resize(e.index() + 1, T::default());
-        }
-        &mut self.inner[e.index()]
-    }
-}
-
 impl<T: Default + Clone + Debug> ExprMetaData<T> for DenseExprMetaData<T> {
     fn iter<'a>(&'a self) -> impl Iterator<Item = (ExprRef, &'a T)>
     where
@@ -57,6 +51,15 @@ impl<T: Default + Clone + Debug> ExprMetaData<T> for DenseExprMetaData<T> {
         ExprMetaDataIter {
             inner: self.inner.iter(),
             index: 0,
+        }
+    }
+
+    fn insert(&mut self, e: ExprRef, data: T) {
+        if self.inner.len() <= e.index() {
+            self.inner.resize(e.index(), T::default());
+            self.inner.push(data);
+        } else {
+            self.inner[e.index()] = data;
         }
     }
 }
@@ -80,3 +83,12 @@ impl<'a, T> Iterator for ExprMetaDataIter<'a, T> {
         }
     }
 }
+
+/// A dense hash map to store boolean meta-data related to each expression
+#[derive(Debug, Default, Clone)]
+pub struct DenseExprMetaBool {
+    inner: Vec<u64>,
+}
+
+const TRU: bool = true;
+const FALS: bool = false;

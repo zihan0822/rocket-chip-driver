@@ -4,7 +4,7 @@
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
 use super::{SignalInfo, SignalKind, State, TransitionSystem};
-use crate::expr::{Context, DenseExprMetaData, ExprRef, ForEachChild};
+use crate::expr::{Context, DenseExprMetaData, ExprMetaData, ExprRef, ForEachChild};
 
 pub type UseCountInt = u16;
 
@@ -26,7 +26,7 @@ fn internal_count_expr_uses(
     );
     // ensure that all roots start with count 1
     for expr in todo.iter() {
-        use_count[*expr] = 1;
+        use_count.insert(*expr, 1);
     }
 
     while let Some(expr) = todo.pop() {
@@ -34,17 +34,17 @@ fn internal_count_expr_uses(
             // for states, we also want to mark the initial and the next expression as used
             if let Some(init) = state.init {
                 if !ignore_init {
-                    let count = &mut use_count[init];
-                    if *count == 0 {
-                        *count = 1;
+                    let count = use_count[init];
+                    if count == 0 {
+                        use_count.insert(init, 1);
                         todo.push(init);
                     }
                 }
             }
             if let Some(next) = state.next {
-                let count = &mut use_count[next];
-                if *count == 0 {
-                    *count = 1;
+                let count = use_count[next];
+                if count == 0 {
+                    use_count.insert(next, 1);
                     todo.push(next);
                 }
             }
@@ -134,7 +134,7 @@ fn cone_of_influence_impl(
                 out.push(expr_ref);
             }
         }
-        visited[expr_ref] = true;
+        visited.insert(expr_ref, true);
     }
 
     out
@@ -159,7 +159,7 @@ fn simple_count_expr_uses(ctx: &Context, roots: Vec<ExprRef>) -> Vec<UseCountInt
 
     // ensure that all roots start with count 1
     for expr in todo.iter() {
-        use_count[*expr] = 1;
+        use_count.insert(*expr, 1);
     }
 
     while let Some(expr) = todo.pop() {
@@ -177,9 +177,9 @@ fn count_uses(
     todo: &mut Vec<ExprRef>,
 ) {
     ctx.get(expr).for_each_child(|child| {
-        let count = &mut use_count[*child];
-        let is_first_use = *count == 0;
-        *count += 1;
+        let count = use_count[*child];
+        let is_first_use = count == 0;
+        use_count.insert(*child, count + 1);
         if is_first_use {
             todo.push(*child);
         }
@@ -220,7 +220,7 @@ pub fn analyze_for_serialization(
 
     // add all inputs
     for (input, _) in sys.get_signals(|s| s.kind == SignalKind::Input) {
-        visited[input] = true;
+        visited.insert(input, true);
         let (uses, _) = analyze_use(input, &init_count, &next_count, &other_count);
         signal_order.push(RootInfo { expr: input, uses });
     }
@@ -290,7 +290,7 @@ pub fn analyze_for_serialization(
                 });
             }
         }
-        visited[expr_ref] = true;
+        visited.insert(expr_ref, true);
     }
 
     SerializeMeta { signal_order }
