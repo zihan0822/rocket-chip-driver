@@ -7,7 +7,7 @@
 //! well as functions to access the type of correctly types expressions.
 
 use super::{ArrayType, Context, Expr, ExprRef, Type};
-use crate::expr::expr::WidthInt;
+use crate::expr::nodes::WidthInt;
 
 #[derive(Debug, Clone)]
 pub struct TypeCheckError {
