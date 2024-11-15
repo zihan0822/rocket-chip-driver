@@ -80,10 +80,10 @@ pub fn do_transform(
     }
 }
 
-fn changed(transformed: &ExprMetaData<Option<ExprRef>>, old_expr: ExprRef) -> Option<ExprRef> {
-    if let Some(new_expr) = transformed.get(old_expr) {
-        if *new_expr != old_expr {
-            Some(*new_expr)
+fn changed(transformed: &DenseExprMetaData<Option<ExprRef>>, old_expr: ExprRef) -> Option<ExprRef> {
+    if let Some(new_expr) = transformed[old_expr] {
+        if new_expr != old_expr {
+            Some(new_expr)
         } else {
             None
         }

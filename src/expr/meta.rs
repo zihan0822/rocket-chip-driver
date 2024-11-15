@@ -8,44 +8,52 @@
 
 use super::ExprRef;
 use std::fmt::Debug;
-use std::ops::Index;
+use std::ops::{Index, IndexMut};
 
-pub trait ExprMetaDataTrait<T>: Debug + Clone
+pub trait ExprMetaData<T>: Debug + Clone + Index<ExprRef> + IndexMut<ExprRef>
 where
     T: Default + Clone,
 {
-    // TODO: rename to ExprMetaData
-    fn get(&self, e: ExprRef) -> &T;
-    fn set(&mut self, e: ExprRef, value: T);
-    fn iter(&self) -> impl Iterator<Item = (ExprRef, T)>;
+    fn iter<'a>(&'a self) -> impl Iterator<Item = (ExprRef, &'a T)>
+    where
+        T: 'a;
 }
 
 /// A dense hash map to store meta-data related to each expression
 #[derive(Debug, Default, Clone)]
-pub struct ExprMetaData<T: Default + Clone> {
+pub struct DenseExprMetaData<T: Default + Clone + Debug> {
     inner: Vec<T>,
     default: T,
 }
 
-impl<T: Default + Clone> ExprMetaData<T> {
-    #[allow(dead_code)]
-    pub fn get(&self, e: ExprRef) -> &T {
+impl<T: Default + Clone + Debug> DenseExprMetaData<T> {
+    pub fn into_vec(self) -> Vec<T> {
+        self.inner
+    }
+}
+
+impl<T: Default + Clone + Debug> Index<ExprRef> for DenseExprMetaData<T> {
+    type Output = T;
+
+    fn index(&self, e: ExprRef) -> &Self::Output {
         self.inner.get(e.index()).unwrap_or(&self.default)
     }
+}
 
-    // TODO: change to `set`
-    pub fn get_mut(&mut self, e: ExprRef) -> &mut T {
+impl<T: Default + Clone + Debug> IndexMut<ExprRef> for DenseExprMetaData<T> {
+    fn index_mut(&mut self, e: ExprRef) -> &mut Self::Output {
         if self.inner.len() <= e.index() {
             self.inner.resize(e.index() + 1, T::default());
         }
         &mut self.inner[e.index()]
     }
+}
 
-    pub fn into_vec(self) -> Vec<T> {
-        self.inner
-    }
-
-    pub fn iter(&self) -> ExprMetaDataIter<T> {
+impl<T: Default + Clone + Debug> ExprMetaData<T> for DenseExprMetaData<T> {
+    fn iter<'a>(&'a self) -> impl Iterator<Item = (ExprRef, &'a T)>
+    where
+        T: 'a,
+    {
         ExprMetaDataIter {
             inner: self.inner.iter(),
             index: 0,
@@ -53,7 +61,7 @@ impl<T: Default + Clone> ExprMetaData<T> {
     }
 }
 
-pub struct ExprMetaDataIter<'a, T> {
+struct ExprMetaDataIter<'a, T> {
     inner: std::slice::Iter<'a, T>,
     index: usize,
 }

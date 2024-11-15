@@ -9,15 +9,15 @@ use baa::BitVecOps;
 pub fn simplify_single_expression(ctx: &mut Context, expr: ExprRef) -> ExprRef {
     let todo = vec![expr];
     let res = do_transform_expr(ctx, todo, simplify);
-    res.get(expr).unwrap_or(expr)
+    res[expr].unwrap_or(expr)
 }
 
 pub(crate) fn do_transform_expr(
     ctx: &mut Context,
     mut todo: Vec<ExprRef>,
     mut tran: impl FnMut(&mut Context, ExprRef, &[ExprRef]) -> Option<ExprRef>,
-) -> ExprMetaData<Option<ExprRef>> {
-    let mut transformed = ExprMetaData::default();
+) -> DenseExprMetaData<Option<ExprRef>> {
+    let mut transformed: DenseExprMetaData<Option<ExprRef>> = DenseExprMetaData::default();
     let mut children = Vec::with_capacity(4);
 
     while let Some(expr_ref) = todo.pop() {
@@ -26,12 +26,12 @@ pub(crate) fn do_transform_expr(
         let mut children_changed = false; // track whether any of the children changed
         let mut all_transformed = true; // tracks whether all children have been transformed or if there is more work to do
         ctx.get(expr_ref).for_each_child(|c| {
-            match transformed.get(*c) {
+            match transformed[*c] {
                 Some(new_child_expr) => {
-                    if *new_child_expr != *c {
+                    if new_child_expr != *c {
                         children_changed = true; // child changed
                     }
-                    children.push(*new_child_expr);
+                    children.push(new_child_expr);
                 }
                 None => {
                     if all_transformed {
@@ -61,7 +61,7 @@ pub(crate) fn do_transform_expr(
             }
         };
         // remember the transformed version
-        *transformed.get_mut(expr_ref) = Some(new_expr_ref);
+        transformed[expr_ref] = Some(new_expr_ref);
     }
     transformed
 }
