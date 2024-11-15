@@ -31,6 +31,27 @@ pub struct SparseExprMetaData<T: Default + Clone + Debug> {
     default: T,
 }
 
+impl<T: Default + Clone + Debug> Index<ExprRef> for SparseExprMetaData<T> {
+    type Output = T;
+
+    fn index(&self, e: ExprRef) -> &Self::Output {
+        self.inner.get(&e).unwrap_or(&self.default)
+    }
+}
+
+impl<T: Default + Clone + Debug> ExprMetaData<T> for SparseExprMetaData<T> {
+    fn iter<'a>(&'a self) -> impl Iterator<Item = (ExprRef, &'a T)>
+    where
+        T: 'a,
+    {
+        self.inner.iter().map(|(k, v)| (*k, v))
+    }
+
+    fn insert(&mut self, e: ExprRef, data: T) {
+        self.inner.insert(e, data);
+    }
+}
+
 /// A dense hash map to store meta-data related to each expression
 #[derive(Debug, Default, Clone)]
 pub struct DenseExprMetaData<T: Default + Clone + Debug> {
