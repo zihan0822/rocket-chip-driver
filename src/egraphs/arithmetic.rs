@@ -3,7 +3,6 @@
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
 use crate::expr::*;
-use baa::WidthInt;
 use egg::Language;
 use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
