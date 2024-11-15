@@ -15,7 +15,7 @@ mod types;
 pub use context::{Context, ExprRef, StringRef};
 pub use eval::{eval_array_expr, eval_bv_expr, eval_expr, SymbolValueStore};
 pub use foreach::ForEachChild;
-pub use meta::{DenseExprMetaData, DenseExprMetaDataBool, ExprMetaData};
+pub use meta::{DenseExprMetaData, DenseExprMetaDataBool, ExprMetaData, SparseExprMetaData};
 pub use nodes::{ArrayType, Expr, Type, WidthInt};
 pub use serialize::SerializableIrNode;
 pub(crate) use serialize::{serialize_expr, serialize_expr_ref};
