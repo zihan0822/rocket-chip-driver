@@ -5,8 +5,8 @@
 use baa::BitVecOps;
 use patronus::btor2;
 use patronus::expr::Context;
-use patronus::mc::Simulator;
-use patronus::sim::interpreter::Interpreter;
+use patronus::sim::Interpreter;
+use patronus::sim::Simulator;
 
 const COUNT_2: &str = r#"
 1 sort bitvec 3

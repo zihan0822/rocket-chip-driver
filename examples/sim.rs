@@ -5,8 +5,7 @@
 use baa::{BitVecOps, BitVecValue, WidthInt};
 use clap::{arg, Parser, ValueEnum};
 use patronus::expr::*;
-use patronus::mc::Simulator;
-use patronus::sim::interpreter::Interpreter;
+use patronus::sim::*;
 use patronus::system::*;
 use patronus::*;
 use std::collections::HashMap;

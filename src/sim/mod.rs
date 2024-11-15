@@ -2,6 +2,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 mod interface;
-pub mod interpreter;
+mod interpreter;
 
 pub use interface::Simulator;
+pub use interpreter::Interpreter;
