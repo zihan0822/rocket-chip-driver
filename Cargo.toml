@@ -24,6 +24,7 @@ smallvec = "1.11.2"
 baa = "0.14.1"
 boolean_expression = "0.4.4"
 egg = "0.9.5"
+rustc-hash = "2.0.0"
 
 [dev-dependencies]
 clap =  { version = "4.4.8", features = ["derive"] }

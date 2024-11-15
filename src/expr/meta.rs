@@ -8,8 +8,9 @@
 
 use super::ExprRef;
 use baa::Word;
+use rustc_hash::FxHashMap;
 use std::fmt::Debug;
-use std::ops::{Index, IndexMut};
+use std::ops::Index;
 
 pub trait ExprMetaData<T>: Debug + Clone + Index<ExprRef>
 where
@@ -20,6 +21,14 @@ where
         T: 'a;
 
     fn insert(&mut self, e: ExprRef, data: T);
+}
+
+/// A sparse hash map to stare meta-data related to each expression
+#[derive(Debug, Default, Clone)]
+pub struct SparseExprMetaData<T: Default + Clone + Debug> {
+    inner: FxHashMap<ExprRef, T>,
+    // we need actual storage so that we can return a reference
+    default: T,
 }
 
 /// A dense hash map to store meta-data related to each expression
