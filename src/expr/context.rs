@@ -220,6 +220,9 @@ impl Context {
     pub fn one(&mut self, width: WidthInt) -> ExprRef {
         self.bv_lit(&BitVecValue::from_u64(1, width))
     }
+    pub fn ones(&mut self, width: WidthInt) -> ExprRef {
+        self.bv_lit(&BitVecValue::ones(width))
+    }
     pub fn bv_equal(&mut self, a: ExprRef, b: ExprRef) -> ExprRef {
         self.add_expr(Expr::BVEqual(a, b))
     }
@@ -400,6 +403,9 @@ impl<'a> Builder<'a> {
     }
     pub fn one(&self, width: WidthInt) -> ExprRef {
         self.ctx.borrow_mut().one(width)
+    }
+    pub fn ones(&self, width: WidthInt) -> ExprRef {
+        self.ctx.borrow_mut().ones(width)
     }
     pub fn bv_equal(&self, a: ExprRef, b: ExprRef) -> ExprRef {
         self.ctx.borrow_mut().bv_equal(a, b)
