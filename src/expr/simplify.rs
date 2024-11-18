@@ -3,7 +3,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
-use super::{BVLitValue, Context, Expr, ExprMetaData, ExprRef, TypeCheck};
+use super::{BVLitValue, Context, Expr, ExprMetaData, ExprRef, TypeCheck, WidthInt};
 use baa::BitVecOps;
 
 /// Performs simplification and canonicalization on expressions and caches the results.
@@ -18,6 +18,21 @@ impl<T: ExprMetaData<Option<ExprRef>>> Simplifier<T> {
 
     pub fn simplify(&mut self, ctx: &mut Context, e: ExprRef) -> ExprRef {
         todo!()
+    }
+}
+
+/// Simplifies one expression (not its children)
+pub(crate) fn simplify(ctx: &mut Context, expr: ExprRef, children: &[ExprRef]) -> Option<ExprRef> {
+    match (ctx.get(expr).clone(), children) {
+        (Expr::BVNot(_, _), [e]) => simplify_bv_not(ctx, *e),
+        (Expr::BVZeroExt { by, .. }, [e]) => simplify_bv_zero_ext(ctx, *e, by),
+        (Expr::BVSlice { lo, hi, .. }, [e]) => simplify_bv_slice(ctx, *e, lo, hi),
+        (Expr::BVIte { .. }, [cond, tru, fals]) => simplify_ite(ctx, *cond, *tru, *fals),
+        (Expr::BVAnd(..), [a, b]) => simplify_bv_and(ctx, *a, *b),
+        (Expr::BVOr(..), [a, b]) => simplify_bv_or(ctx, *a, *b),
+        (Expr::BVXor(..), [a, b]) => simplify_bv_xor(ctx, *a, *b),
+
+        _ => None,
     }
 }
 
@@ -147,5 +162,70 @@ fn simplify_bv_or(ctx: &mut Context, a: ExprRef, b: ExprRef) -> Option<ExprRef> 
                 _ => None,
             }
         }
+    }
+}
+
+fn simplify_bv_xor(ctx: &mut Context, a: ExprRef, b: ExprRef) -> Option<ExprRef> {
+    // a xor a -> 0
+    if a == b {
+        let width = ctx.get(a).get_bv_type(ctx).unwrap();
+        return Some(ctx.zero(width));
+    }
+
+    // other simplifications depend on whether one or two of the values are a constant
+    match find_lits_commutative(ctx, a, b) {
+        Lits::Two(va, vb) => {
+            // concretely evaluate
+            Some(ctx.bv_lit(&va.get(ctx).xor(&vb.get(ctx))))
+        }
+        Lits::One((lit, _), expr) => {
+            if lit.get(ctx).is_zero() {
+                // a xor 0 -> a
+                Some(expr)
+            } else if lit.get(ctx).is_all_ones() {
+                // a xor 1 -> !a
+                Some(ctx.not(expr))
+            } else {
+                None
+            }
+        }
+        Lits::None(_, _) => {
+            match (ctx.get(a), ctx.get(b)) {
+                // a xor !a -> 1
+                (Expr::BVNot(inner, w), _) if *inner == b => Some(ctx.ones(*w)),
+                (_, Expr::BVNot(inner, w)) if *inner == b => Some(ctx.ones(*w)),
+                _ => None,
+            }
+        }
+    }
+}
+
+fn simplify_bv_not(ctx: &mut Context, e: ExprRef) -> Option<ExprRef> {
+    match ctx.get(e) {
+        Expr::BVNot(inner, _) => Some(*inner), // double negation
+        Expr::BVLiteral(value) => Some(ctx.bv_lit(&value.get(ctx).not())),
+        _ => None,
+    }
+}
+
+fn simplify_bv_zero_ext(ctx: &mut Context, e: ExprRef, by: WidthInt) -> Option<ExprRef> {
+    match ctx.get(e) {
+        // zero extend constant
+        Expr::BVLiteral(value) => Some(ctx.bv_lit(&value.get(ctx).zero_extend(by))),
+        _ => None,
+    }
+}
+
+fn simplify_bv_slice(ctx: &mut Context, e: ExprRef, hi: WidthInt, lo: WidthInt) -> Option<ExprRef> {
+    match ctx.get(e) {
+        // combine slices
+        Expr::BVSlice {
+            lo: inner_lo,
+            e: inner_e,
+            ..
+        } => Some(ctx.slice(*inner_e, hi + inner_lo, lo + inner_lo)),
+        // slice constant
+        Expr::BVLiteral(value) => Some(ctx.bv_lit(&value.get(ctx).slice(hi, lo))),
+        _ => None,
     }
 }

@@ -3,7 +3,6 @@
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 
 use crate::expr::*;
-use baa::BitVecOps;
 
 /// Applies simplifications to a single expression.
 pub fn simplify_single_expression(ctx: &mut Context, expr: ExprRef) -> ExprRef {
@@ -64,115 +63,6 @@ pub(crate) fn do_transform_expr(
         transformed.insert(expr_ref, Some(new_expr_ref));
     }
     transformed
-}
-
-pub(crate) fn simplify(ctx: &mut Context, expr: ExprRef, children: &[ExprRef]) -> Option<ExprRef> {
-    match (ctx.get(expr).clone(), children) {
-        (Expr::BVIte { .. }, [cond, tru, fals]) => {
-            if tru == fals {
-                // condition does not matter
-                Some(*tru)
-            } else if let Expr::BVLiteral(value) = ctx.get(*cond) {
-                if value.get(ctx).is_fals() {
-                    Some(*fals)
-                } else {
-                    Some(*tru)
-                }
-            } else {
-                // this unwrap should always be OK since it is a **BV**Ite
-                let value_width = ctx.get(*tru).get_bv_type(ctx).unwrap();
-                if value_width == 1 {
-                    if let (Expr::BVLiteral(vt), Expr::BVLiteral(vf)) =
-                        (ctx.get(*tru), ctx.get(*fals))
-                    {
-                        match (
-                            vt.get(ctx).to_bool().unwrap(),
-                            vf.get(ctx).to_bool().unwrap(),
-                        ) {
-                            (true, false) => Some(*cond),
-                            (false, true) => Some(ctx.not(*cond)),
-                            _ => Some(*tru),
-                        }
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            }
-        }
-        (Expr::BVAnd(_, _, 1), [a, b]) => {
-            // boolean and simplifications
-            if let Expr::BVLiteral(va) = ctx.get(*a) {
-                if va.get(ctx).is_fals() {
-                    Some(*a) /* false */
-                } else {
-                    Some(*b)
-                }
-            } else if let Expr::BVLiteral(vb) = ctx.get(*b) {
-                if vb.get(ctx).is_fals() {
-                    Some(*b) /* true */
-                } else {
-                    Some(*a)
-                }
-            } else {
-                None
-            }
-        }
-        (Expr::BVAnd(_, _, _), [a, b]) => {
-            if let (Expr::BVLiteral(va), Expr::BVLiteral(vb)) = (ctx.get(*a), ctx.get(*b)) {
-                Some(ctx.bv_lit(&va.get(ctx).and(&vb.get(ctx))))
-            } else {
-                None
-            }
-        }
-        (Expr::BVOr(_, _, 1), [a, b]) => {
-            // boolean or simplifications
-            if let Expr::BVLiteral(va) = ctx.get(*a) {
-                if va.get(ctx).is_fals() {
-                    Some(*b)
-                } else {
-                    Some(*a) /* true */
-                }
-            } else if let Expr::BVLiteral(vb) = ctx.get(*b) {
-                if vb.get(ctx).is_fals() {
-                    Some(*a)
-                } else {
-                    Some(*b) /* true */
-                }
-            } else {
-                None
-            }
-        }
-        (Expr::BVOr(_, _, _), [a, b]) => {
-            if let (Expr::BVLiteral(va), Expr::BVLiteral(vb)) = (ctx.get(*a), ctx.get(*b)) {
-                Some(ctx.bv_lit(&va.get(ctx).or(&vb.get(ctx))))
-            } else {
-                None
-            }
-        }
-        (Expr::BVNot(_, _), [e]) => {
-            match ctx.get(*e) {
-                Expr::BVNot(inner, _) => Some(*inner), // double negation
-                Expr::BVLiteral(value) => Some(ctx.bv_lit(&value.get(ctx).not())),
-                _ => None,
-            }
-        }
-        (Expr::BVZeroExt { by, .. }, [e]) => match ctx.get(*e) {
-            Expr::BVLiteral(value) => Some(ctx.bv_lit(&value.get(ctx).zero_extend(by))),
-            _ => None,
-        },
-        // combine slices
-        (Expr::BVSlice { lo, hi, .. }, [e]) => match ctx.get(*e) {
-            Expr::BVSlice {
-                lo: inner_lo,
-                e: inner_e,
-                ..
-            } => Some(ctx.slice(*inner_e, hi + inner_lo, lo + inner_lo)),
-            _ => None,
-        },
-        _ => None, // no matching simplification
-    }
 }
 
 fn update_expr_children(ctx: &mut Context, expr_ref: ExprRef, children: &[ExprRef]) -> ExprRef {

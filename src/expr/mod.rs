@@ -19,6 +19,7 @@ pub use meta::{DenseExprMetaData, DenseExprMetaDataBool, ExprMetaData, SparseExp
 pub use nodes::{ArrayType, BVLitValue, Expr, Type, WidthInt};
 pub use serialize::SerializableIrNode;
 pub(crate) use serialize::{serialize_expr, serialize_expr_ref};
+pub(crate) use simplify::simplify;
+pub(crate) use transform::do_transform_expr;
 pub use transform::simplify_single_expression;
-pub(crate) use transform::{do_transform_expr, simplify};
 pub use types::{TypeCheck, TypeCheckError};
