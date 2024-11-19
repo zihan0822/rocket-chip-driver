@@ -34,6 +34,8 @@ pub(crate) fn simplify(ctx: &mut Context, expr: ExprRef, children: &[ExprRef]) -
         (Expr::BVAnd(..), [a, b]) => simplify_bv_and(ctx, *a, *b),
         (Expr::BVOr(..), [a, b]) => simplify_bv_or(ctx, *a, *b),
         (Expr::BVXor(..), [a, b]) => simplify_bv_xor(ctx, *a, *b),
+        (Expr::BVAdd(..), [a, b]) => simplify_bv_add(ctx, *a, *b),
+        (Expr::BVMul(..), [a, b]) => simplify_bv_mul(ctx, *a, *b),
         (Expr::BVShiftLeft(_, _, w), [a, b]) => simplify_bv_shift_left(ctx, *a, *b, w),
         (Expr::BVShiftRight(_, _, w), [a, b]) => simplify_bv_shift_right(ctx, *a, *b, w),
         (Expr::BVSignExt { by, .. }, [e]) => simplify_bv_sign_ext(ctx, *e, by),
@@ -342,5 +344,38 @@ fn simplify_bv_arithmetic_shift_right(
             }
         }
         (_, _) => None,
+    }
+}
+
+fn simplify_bv_add(ctx: &mut Context, a: ExprRef, b: ExprRef) -> Option<ExprRef> {
+    match find_lits_commutative(ctx, a, b) {
+        Lits::Two(va, vb) => Some(ctx.bv_lit(&va.get(ctx).add(&vb.get(ctx)))),
+        Lits::One((va, _), b) => {
+            if va.get(ctx).is_zero() {
+                Some(b)
+            } else {
+                None
+            }
+        }
+        Lits::None(_, _) => None,
+    }
+}
+
+fn simplify_bv_mul(ctx: &mut Context, a: ExprRef, b: ExprRef) -> Option<ExprRef> {
+    match find_lits_commutative(ctx, a, b) {
+        Lits::Two(va, vb) => Some(ctx.bv_lit(&va.get(ctx).mul(&vb.get(ctx)))),
+        Lits::One((va, a), b) => {
+            let va = va.get(ctx);
+            if va.is_zero() {
+                // b * 0 -> 0
+                Some(a)
+            } else if va.is_one() {
+                // b * 1 -> b
+                Some(b)
+            } else {
+                None
+            }
+        }
+        Lits::None(_, _) => None,
     }
 }

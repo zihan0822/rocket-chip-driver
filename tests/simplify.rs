@@ -166,3 +166,33 @@ fn test_simplify_arithmetic_shift_right() {
         "sext(a : bv<3>[2], 2)",
     );
 }
+
+#[test]
+fn test_simplify_add() {
+    // add constants
+    ts("add(true, true)", "false");
+    ts("add(true, false)", "true");
+    ts("add(false, false)", "false");
+    ts("add(15'd123, 15'd321)", "15'd444");
+
+    // add zero
+    ts("add(a : bv<4>, 4'd0)", "a : bv<4>");
+    ts("add(4'd0, a : bv<4>)", "a : bv<4>");
+}
+
+#[test]
+fn test_simplify_mul() {
+    // multiply constants
+    ts("mul(true, true)", "true");
+    ts("mul(true, false)", "false");
+    ts("mul(false, false)", "false");
+    ts("mul(17'd123, 17'd321)", "17'd39483");
+
+    // multiply with zero
+    ts("mul(a : bv<4>, 4'd0)", "4'd0");
+    ts("mul(4'd0, a : bv<4>)", "4'd0");
+
+    // multiply with one
+    ts("mul(a : bv<4>, 4'd1)", "a : bv<4>");
+    ts("mul(4'd1, a : bv<4>)", "a : bv<4>");
+}
