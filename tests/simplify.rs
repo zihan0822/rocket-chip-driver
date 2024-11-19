@@ -127,3 +127,18 @@ fn test_simplify_shift_left() {
     ts("shift_left(a : bv<3>, 3'd2)", "concat(a : bv<3>[0], 2'b00)");
     ts("shift_left(a : bv<3>, 3'd3)", "3'b000");
 }
+
+#[test]
+fn test_simplify_shift_right() {
+    // shift a constant by a constant
+    ts("shift_right(3'b101, 3'd0)", "3'b101");
+    ts("shift_right(3'b101, 3'd1)", "3'b010");
+    ts("shift_right(3'b101, 3'd2)", "3'b001");
+    ts("shift_right(3'b101, 3'd3)", "3'b000");
+
+    // shift by a constant
+    ts("shift_right(a : bv<3>, 3'd0)", "a : bv<3>");
+    ts("shift_right(a : bv<3>, 3'd1)", "zext(a : bv<3>[2:1], 1)");
+    ts("shift_right(a : bv<3>, 3'd2)", "zext(a : bv<3>[2], 2)");
+    ts("shift_right(a : bv<3>, 3'd3)", "3'b000");
+}
