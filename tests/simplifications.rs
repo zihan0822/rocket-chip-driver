@@ -29,7 +29,9 @@ fn test_simplify_and_or() {
     ts("or(false, true)", "true");
     ts("or(false, false)", "false");
     ts("and(a : bv<1>, true)", "a : bv<1>");
+    ts("and(a : bv<3>, 3'b111)", "a : bv<3>");
     ts("and(a : bv<1>, false)", "false");
+    ts("and(a : bv<3>, 3'd0)", "3'd0");
     ts("or(a : bv<1>, true)", "true");
     ts("or(a : bv<1>, false)", "a : bv<1>");
 }

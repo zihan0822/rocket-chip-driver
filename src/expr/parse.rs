@@ -27,6 +27,12 @@ enum Arg {
     C(WidthInt),
 }
 
+#[derive(Debug, Copy, Clone)]
+enum ArgTpe {
+    E,
+    C,
+}
+
 impl<'a> Parser<'a> {
     fn new(ctx: &'a mut Context, inp: &'a str) -> Self {
         let inp = inp.trim();
@@ -67,7 +73,7 @@ impl<'a> Parser<'a> {
         let fun = any_function_regex.matches(self.inp);
         if let Some(fun_id) = fun.into_iter().next() {
             self.consume_r(&function_regex[fun_id]);
-            let args = self.parse_args();
+            let args = self.parse_args(fun_id);
             Some(self.make_fun(fun_id, args))
         } else {
             None
@@ -177,27 +183,38 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_args(&mut self) -> Vec<Arg> {
+    fn parse_args(&mut self, fun_id: usize) -> Vec<Arg> {
         let mut args = vec![];
-        loop {
-            // arguments are either expressions or numbers
-            if let Some(num) = self.try_parse_width_int() {
-                args.push(Arg::C(num));
-            } else {
-                args.push(Arg::E(self.parse_expr()));
+        let arg_types = function_args[fun_id];
+        for (ii, at) in arg_types.iter().enumerate() {
+            match at {
+                ArgTpe::E => {
+                    args.push(Arg::E(self.parse_expr()));
+                }
+                ArgTpe::C => {
+                    args.push(Arg::C(self.try_parse_width_int().unwrap()));
+                }
             }
-            // are we done?
-            if let Some(m) = comma_regex.find(self.inp) {
+            let is_last = ii + 1 == arg_types.len();
+            if is_last {
+                if let Some(m) = close_regex.find(self.inp) {
+                    self.consume_m(&m);
+                } else {
+                    panic!(
+                        "failed to find end of function {} @ {}",
+                        functions[fun_id], self.inp
+                    );
+                }
+            } else if let Some(m) = comma_regex.find(self.inp) {
                 self.consume_m(&m);
-                // continue to next argument
-            } else if let Some(m) = close_regex.find(self.inp) {
-                self.consume_m(&m);
-                // done
-                return args;
             } else {
-                todo!("handle parser error @ {}", self.inp);
+                panic!(
+                    "failed to find end of argument in function {} @ {}",
+                    functions[fun_id], self.inp
+                );
             }
         }
+        args
     }
 
     fn try_parse_width_int(&mut self) -> Option<WidthInt> {
@@ -255,6 +272,34 @@ lazy_static! {
         "sub",
         "ite",
     ];
+    static ref function_args: [&'static [ArgTpe]; 26] = [
+        &[ArgTpe::E, ArgTpe::C],
+        &[ArgTpe::E, ArgTpe::C],
+        &[ArgTpe::E],
+        &[ArgTpe::E],
+        &[ArgTpe::E, ArgTpe::E],
+        &[ArgTpe::E, ArgTpe::E],
+        &[ArgTpe::E, ArgTpe::E],
+        &[ArgTpe::E, ArgTpe::E],
+        &[ArgTpe::E, ArgTpe::E],
+        &[ArgTpe::E, ArgTpe::E],
+        &[ArgTpe::E, ArgTpe::E],
+        &[ArgTpe::E, ArgTpe::E],
+        &[ArgTpe::E, ArgTpe::E],
+        &[ArgTpe::E, ArgTpe::E],
+        &[ArgTpe::E, ArgTpe::E],
+        &[ArgTpe::E, ArgTpe::E],
+        &[ArgTpe::E, ArgTpe::E],
+        &[ArgTpe::E, ArgTpe::E],
+        &[ArgTpe::E, ArgTpe::E],
+        &[ArgTpe::E, ArgTpe::E],
+        &[ArgTpe::E, ArgTpe::E],
+        &[ArgTpe::E, ArgTpe::E],
+        &[ArgTpe::E, ArgTpe::E],
+        &[ArgTpe::E, ArgTpe::E],
+        &[ArgTpe::E, ArgTpe::E],
+        &[ArgTpe::E, ArgTpe::E, ArgTpe::E],
+    ];
     static ref function_regex: Vec<Regex> =
         functions.iter().map(|name| Regex::new(&format!("^{name}\\s*\\(\\s*")).unwrap()).collect();
     static ref any_function_regex: RegexSet =
@@ -274,7 +319,6 @@ lazy_static! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::expr::SerializableIrNode;
 
     #[test]
     fn test_regexes() {
@@ -324,6 +368,11 @@ mod tests {
                 c.bv_symbol("a", 10),
                 c.bv_symbol("a", 10)
             )),
+        );
+
+        assert_eq!(
+            parse_expr(&mut ctx, "and(a : bv<3>, 3'b111)"),
+            ctx.build(|c| c.and(c.bv_symbol("a", 3), c.bit_vec_val(0b111, 3)))
         );
     }
 }
