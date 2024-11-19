@@ -111,4 +111,19 @@ fn test_simplify_slice() {
 }
 
 #[test]
-fn test_simplify_shift_left() {}
+fn test_simplify_shift_left() {
+    // shift a constant by a constant
+    ts("shift_left(3'b011, 3'd0)", "3'b011");
+    ts("shift_left(3'b011, 3'd1)", "3'b110");
+    ts("shift_left(3'b011, 3'd2)", "3'b100");
+    ts("shift_left(3'b011, 3'd3)", "3'b000");
+
+    // shift by a constant
+    ts("shift_left(a : bv<3>, 3'd0)", "a : bv<3>");
+    ts(
+        "shift_left(a : bv<3>, 3'd1)",
+        "concat(a : bv<3>[1:0], 1'b0)",
+    );
+    ts("shift_left(a : bv<3>, 3'd2)", "concat(a : bv<3>[0], 2'b00)");
+    ts("shift_left(a : bv<3>, 3'd3)", "3'b000");
+}

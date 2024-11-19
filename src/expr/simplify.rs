@@ -34,6 +34,7 @@ pub(crate) fn simplify(ctx: &mut Context, expr: ExprRef, children: &[ExprRef]) -
         (Expr::BVAnd(..), [a, b]) => simplify_bv_and(ctx, *a, *b),
         (Expr::BVOr(..), [a, b]) => simplify_bv_or(ctx, *a, *b),
         (Expr::BVXor(..), [a, b]) => simplify_bv_xor(ctx, *a, *b),
+        (Expr::BVShiftLeft(_, _, w), [a, b]) => simplify_bv_shift_left(ctx, *a, *b, w),
         (Expr::BVSignExt { by, .. }, [e]) => simplify_bv_sign_ext(ctx, *e, by),
         _ => None,
     }
@@ -245,5 +246,35 @@ fn simplify_bv_slice(ctx: &mut Context, e: ExprRef, hi: WidthInt, lo: WidthInt) 
         // slice constant
         Expr::BVLiteral(value) => Some(ctx.bv_lit(&value.get(ctx).slice(hi, lo))),
         _ => None,
+    }
+}
+
+fn simplify_bv_shift_left(
+    ctx: &mut Context,
+    a: ExprRef,
+    b: ExprRef,
+    width: WidthInt,
+) -> Option<ExprRef> {
+    match (ctx.get(a), ctx.get(b)) {
+        (Expr::BVLiteral(va), Expr::BVLiteral(vb)) => {
+            Some(ctx.bv_lit(&va.get(ctx).shift_left(&vb.get(ctx))))
+        }
+        (_, Expr::BVLiteral(by)) => {
+            let by = by.get(ctx);
+            if let Some(by) = by.to_u64() {
+                let by = by as WidthInt;
+                if by >= width {
+                    Some(ctx.zero(width))
+                } else if by == 0 {
+                    Some(a)
+                } else {
+                    let msb = width - 1 - by;
+                    Some(ctx.build(|c| c.concat(c.slice(a, msb, 0), c.zero(by))))
+                }
+            } else {
+                Some(ctx.zero(width))
+            }
+        }
+        (_, _) => None,
     }
 }
