@@ -21,19 +21,39 @@ fn ts(inp: &str, expect: &str) {
 }
 
 #[test]
-fn test_simplify_and_or() {
+fn test_simplify_and() {
     ts("true", "true");
     ts("false", "false");
     ts("and(true, false)", "false");
     ts("and(true, true)", "true");
-    ts("or(false, true)", "true");
-    ts("or(false, false)", "false");
     ts("and(a : bv<1>, true)", "a : bv<1>");
     ts("and(a : bv<3>, 3'b111)", "a : bv<3>");
     ts("and(a : bv<1>, false)", "false");
-    ts("and(a : bv<3>, 3'd0)", "3'd0");
+    ts("and(a : bv<3>, 3'b000)", "3'b000");
+    ts("and(a : bv<1>, not(a))", "false");
+    ts("and(not(a : bv<1>), a)", "false");
+}
+
+#[test]
+fn test_simplify_or() {
+    ts("or(false, true)", "true");
+    ts("or(false, false)", "false");
     ts("or(a : bv<1>, true)", "true");
+    ts("or(a : bv<3>, 3'b111)", "3'b111");
     ts("or(a : bv<1>, false)", "a : bv<1>");
+    ts("or(a : bv<3>, 3'b000)", "a : bv<3>");
+    ts("or(a : bv<1>, not(a))", "true");
+    ts("or(not(a : bv<1>), a)", "true");
+}
+
+#[test]
+fn test_simplify_xor() {
+    ts("xor(false, true)", "true");
+    ts("xor(false, false)", "false");
+    ts("xor(true, true)", "false");
+    ts("xor(a : bv<1>, a)", "false");
+    ts("xor(a : bv<1>, not(a))", "true");
+    ts("xor(not(a : bv<1>), a)", "true");
 }
 
 #[test]
