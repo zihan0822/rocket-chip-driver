@@ -12,7 +12,7 @@ use rustc_hash::FxHashMap;
 use std::fmt::Debug;
 use std::ops::Index;
 
-pub trait ExprMetaData<T>: Debug + Clone + Index<ExprRef>
+pub trait ExprMetaData<T>: Debug + Clone + Index<ExprRef, Output = T>
 where
     T: Default + Clone,
 {

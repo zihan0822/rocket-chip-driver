@@ -3,7 +3,9 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
-use super::{BVLitValue, Context, Expr, ExprMetaData, ExprRef, TypeCheck, WidthInt};
+use super::{
+    do_transform_expr, BVLitValue, Context, Expr, ExprMetaData, ExprRef, TypeCheck, WidthInt,
+};
 use baa::BitVecOps;
 
 /// Performs simplification and canonicalization on expressions and caches the results.
@@ -17,7 +19,8 @@ impl<T: ExprMetaData<Option<ExprRef>>> Simplifier<T> {
     }
 
     pub fn simplify(&mut self, ctx: &mut Context, e: ExprRef) -> ExprRef {
-        todo!()
+        do_transform_expr(ctx, &mut self.cache, vec![e], simplify);
+        self.cache[e].unwrap()
     }
 }
 

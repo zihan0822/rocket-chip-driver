@@ -7,16 +7,17 @@ use crate::expr::*;
 /// Applies simplifications to a single expression.
 pub fn simplify_single_expression(ctx: &mut Context, expr: ExprRef) -> ExprRef {
     let todo = vec![expr];
-    let res = do_transform_expr(ctx, todo, simplify);
-    res[expr].unwrap_or(expr)
+    let mut transformed = SparseExprMetaData::default();
+    do_transform_expr(ctx, &mut transformed, todo, simplify);
+    transformed[expr].unwrap_or(expr)
 }
 
-pub(crate) fn do_transform_expr(
+pub(crate) fn do_transform_expr<T: ExprMetaData<Option<ExprRef>>>(
     ctx: &mut Context,
+    transformed: &mut T,
     mut todo: Vec<ExprRef>,
     mut tran: impl FnMut(&mut Context, ExprRef, &[ExprRef]) -> Option<ExprRef>,
-) -> DenseExprMetaData<Option<ExprRef>> {
-    let mut transformed: DenseExprMetaData<Option<ExprRef>> = DenseExprMetaData::default();
+) {
     let mut children = Vec::with_capacity(4);
 
     while let Some(expr_ref) = todo.pop() {
@@ -62,7 +63,6 @@ pub(crate) fn do_transform_expr(
         // remember the transformed version
         transformed.insert(expr_ref, Some(new_expr_ref));
     }
-    transformed
 }
 
 fn update_expr_children(ctx: &mut Context, expr_ref: ExprRef, children: &[ExprRef]) -> ExprRef {

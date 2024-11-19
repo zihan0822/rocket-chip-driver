@@ -52,7 +52,8 @@ pub fn do_transform(
     tran: impl FnMut(&mut Context, ExprRef, &[ExprRef]) -> Option<ExprRef>,
 ) {
     let todo = get_root_expressions(sys);
-    let transformed = do_transform_expr(ctx, todo, tran);
+    let mut transformed = DenseExprMetaData::default();
+    do_transform_expr(ctx, &mut transformed, todo, tran);
 
     // update transition system signals
     for (old_expr, maybe_new_expr) in transformed.iter() {
