@@ -57,6 +57,30 @@ fn test_simplify_xor() {
 }
 
 #[test]
+fn test_simplify_not() {
+    ts("not(false)", "true");
+    ts("not(true)", "false");
+    ts("not(a: bv<1>)", "not(a: bv<1>)");
+    ts("not(not(a: bv<1>))", "a: bv<1>");
+    ts("not(not(not(a: bv<1>)))", "not(a: bv<1>)");
+    ts("not(not(not(not(a: bv<1>))))", "a: bv<1>");
+}
+
+#[test]
+fn test_simplify_zext() {
+    ts("zext(false, 1)", "2'b00");
+    ts("zext(true, 1)", "2'b01");
+    ts("zext(true, 0)", "true");
+}
+
+#[test]
+fn test_simplify_sext() {
+    ts("sext(false, 1)", "2'b00");
+    ts("sext(true, 1)", "2'b11");
+    ts("sext(true, 0)", "true");
+}
+
+#[test]
 fn test_simplify_ite() {
     // outcome is always the same
     ts("ite(c : bv<1>, a: bv<10>, a)", "a : bv<10>");
@@ -70,4 +94,18 @@ fn test_simplify_ite() {
     ts("ite(c : bv<1>, true, true)", "true");
     ts("ite(c : bv<1>, false, true)", "not(c : bv<1>)");
     ts("ite(c : bv<1>, false, false)", "false");
+}
+
+#[test]
+fn test_simplify_slice() {
+    // slice a constant
+    ts("3'b110[2]", "true");
+    ts("3'b110[1]", "true");
+    ts("3'b110[0]", "false");
+    ts("4'b1100[3:2]", "2'b11");
+    ts("4'b1100[2:1]", "2'b10");
+    ts("4'b1100[1:0]", "2'b00");
+
+    // nested slices
+    ts("a : bv<10>[6:3][1]", "a : bv<10>[4]");
 }

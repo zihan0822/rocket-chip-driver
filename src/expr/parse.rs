@@ -9,7 +9,7 @@ use std::collections::HashMap;
 
 pub fn parse_expr(ctx: &mut Context, inp: &str) -> ExprRef {
     let mut parser = Parser::new(ctx, inp);
-    let expr = parser.parse_expr();
+    let expr = parser.parse_expr_all();
     expr.type_check(ctx)
         .unwrap_or_else(|_| panic!("{inp} failed to type-check"));
     expr
@@ -40,29 +40,34 @@ impl<'a> Parser<'a> {
         Self { ctx, inp, symbols }
     }
 
+    fn parse_expr_all(&mut self) -> ExprRef {
+        let e = self.parse_expr();
+        assert!(self.inp.is_empty(), "could not pars: {}", self.inp);
+        e
+    }
+
     fn parse_expr(&mut self) -> ExprRef {
-        let e = self
+        let mut e = self
             .try_parse_fun()
             .or_else(|| self.try_pars_bv_lit())
             .or_else(|| self.try_parse_symbol())
             .unwrap_or_else(|| panic!("failed to parse: {}", self.inp));
 
-        if let Some(c) = slice_regex.captures(self.inp) {
+        while let Some(c) = slice_regex.captures(self.inp) {
             if let Some(bit) = c.get(2) {
                 let bit = Self::width_int(bit);
                 self.consume_c(&c);
-                self.ctx.slice(e, bit, bit)
+                e = self.ctx.slice(e, bit, bit);
             } else if let (Some(msb), Some(lsb)) = (c.get(4), c.get(5)) {
                 let msb = Self::width_int(msb);
                 let lsb = Self::width_int(lsb);
                 self.consume_c(&c);
-                self.ctx.slice(e, msb, lsb)
+                e = self.ctx.slice(e, msb, lsb);
             } else {
                 unreachable!("unexpected slice! @ {}", self.inp)
             }
-        } else {
-            e
         }
+        e
     }
 
     fn width_int(m: Match) -> WidthInt {

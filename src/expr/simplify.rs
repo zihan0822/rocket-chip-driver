@@ -29,12 +29,12 @@ pub(crate) fn simplify(ctx: &mut Context, expr: ExprRef, children: &[ExprRef]) -
     match (ctx.get(expr).clone(), children) {
         (Expr::BVNot(_, _), [e]) => simplify_bv_not(ctx, *e),
         (Expr::BVZeroExt { by, .. }, [e]) => simplify_bv_zero_ext(ctx, *e, by),
-        (Expr::BVSlice { lo, hi, .. }, [e]) => simplify_bv_slice(ctx, *e, lo, hi),
+        (Expr::BVSlice { lo, hi, .. }, [e]) => simplify_bv_slice(ctx, *e, hi, lo),
         (Expr::BVIte { .. }, [cond, tru, fals]) => simplify_ite(ctx, *cond, *tru, *fals),
         (Expr::BVAnd(..), [a, b]) => simplify_bv_and(ctx, *a, *b),
         (Expr::BVOr(..), [a, b]) => simplify_bv_or(ctx, *a, *b),
         (Expr::BVXor(..), [a, b]) => simplify_bv_xor(ctx, *a, *b),
-
+        (Expr::BVSignExt { by, .. }, [e]) => simplify_bv_sign_ext(ctx, *e, by),
         _ => None,
     }
 }
@@ -212,10 +212,25 @@ fn simplify_bv_not(ctx: &mut Context, e: ExprRef) -> Option<ExprRef> {
 }
 
 fn simplify_bv_zero_ext(ctx: &mut Context, e: ExprRef, by: WidthInt) -> Option<ExprRef> {
-    match ctx.get(e) {
-        // zero extend constant
-        Expr::BVLiteral(value) => Some(ctx.bv_lit(&value.get(ctx).zero_extend(by))),
-        _ => None,
+    if by == 0 {
+        Some(e)
+    } else {
+        match ctx.get(e) {
+            // zero extend constant
+            Expr::BVLiteral(value) => Some(ctx.bv_lit(&value.get(ctx).zero_extend(by))),
+            _ => None,
+        }
+    }
+}
+
+fn simplify_bv_sign_ext(ctx: &mut Context, e: ExprRef, by: WidthInt) -> Option<ExprRef> {
+    if by == 0 {
+        Some(e)
+    } else {
+        match ctx.get(e) {
+            Expr::BVLiteral(value) => Some(ctx.bv_lit(&value.get(ctx).sign_extend(by))),
+            _ => None,
+        }
     }
 }
 
