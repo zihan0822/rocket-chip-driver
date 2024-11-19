@@ -3,6 +3,7 @@
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 #[macro_use]
 extern crate lazy_static;
+extern crate core;
 
 pub mod btor2;
 pub mod egraphs;

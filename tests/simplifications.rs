@@ -4,8 +4,35 @@
 
 use patronus::expr::*;
 
+/// test a simplification
+fn ts(inp: fn(Builder) -> ExprRef, expect: fn(Builder) -> ExprRef) {
+    let mut ctx = Context::default();
+    let input = ctx.build(inp);
+    let expected = ctx.build(expect);
+    let simplified = simplify_single_expression(&mut ctx, input);
+    assert_eq!(
+        simplified,
+        expected,
+        "simplify({}) = {}\nExpected: {}",
+        input.serialize_to_str(&ctx),
+        simplified.serialize_to_str(&ctx),
+        expected.serialize_to_str(&ctx)
+    );
+}
+
 #[test]
 fn test_simplify_and_or() {
+    // true -> true
+    ts(|c| c.one(1), |c| c.one(1));
+    // fals -> fals
+    ts(|c| c.zero(1), |c| c.zero(1));
+    // 1 & 0 -> 0
+    ts(|c| c.and(c.one(1), c.zero(1)), |c| c.zero(1));
+    // 1 & 1 -> 1
+    ts(|c| c.and(c.one(1), c.one(1)), |c| c.one(1));
+    // 0 | 1 -> 1
+    ts(|c| c.or(c.zero(1), c.one(1)), |c| c.one(1));
+
     let mut ctx = Context::default();
     let tru = ctx.one(1);
     assert_eq!(simplify_single_expression(&mut ctx, tru), tru);
