@@ -142,3 +142,27 @@ fn test_simplify_shift_right() {
     ts("shift_right(a : bv<3>, 3'd2)", "zext(a : bv<3>[2], 2)");
     ts("shift_right(a : bv<3>, 3'd3)", "3'b000");
 }
+
+#[test]
+fn test_simplify_arithmetic_shift_right() {
+    // shift a constant by a constant
+    ts("arithmetic_shift_right(3'b101, 3'd0)", "3'b101");
+    ts("arithmetic_shift_right(3'b101, 3'd1)", "3'b110");
+    ts("arithmetic_shift_right(3'b101, 3'd2)", "3'b111");
+    ts("arithmetic_shift_right(3'b101, 3'd3)", "3'b111");
+
+    // shift by a constant
+    ts("arithmetic_shift_right(a : bv<3>, 3'd0)", "a : bv<3>");
+    ts(
+        "arithmetic_shift_right(a : bv<3>, 3'd1)",
+        "sext(a : bv<3>[2:1], 1)",
+    );
+    ts(
+        "arithmetic_shift_right(a : bv<3>, 3'd2)",
+        "sext(a : bv<3>[2], 2)",
+    );
+    ts(
+        "arithmetic_shift_right(a : bv<3>, 3'd3)",
+        "sext(a : bv<3>[2], 2)",
+    );
+}

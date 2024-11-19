@@ -37,6 +37,9 @@ pub(crate) fn simplify(ctx: &mut Context, expr: ExprRef, children: &[ExprRef]) -
         (Expr::BVShiftLeft(_, _, w), [a, b]) => simplify_bv_shift_left(ctx, *a, *b, w),
         (Expr::BVShiftRight(_, _, w), [a, b]) => simplify_bv_shift_right(ctx, *a, *b, w),
         (Expr::BVSignExt { by, .. }, [e]) => simplify_bv_sign_ext(ctx, *e, by),
+        (Expr::BVArithmeticShiftRight(_, _, w), [a, b]) => {
+            simplify_bv_arithmetic_shift_right(ctx, *a, *b, w)
+        }
         _ => None,
     }
 }
@@ -305,6 +308,37 @@ fn simplify_bv_shift_right(
                 }
             } else {
                 Some(ctx.zero(width))
+            }
+        }
+        (_, _) => None,
+    }
+}
+
+fn simplify_bv_arithmetic_shift_right(
+    ctx: &mut Context,
+    a: ExprRef,
+    b: ExprRef,
+    width: WidthInt,
+) -> Option<ExprRef> {
+    match (ctx.get(a), ctx.get(b)) {
+        (Expr::BVLiteral(va), Expr::BVLiteral(vb)) => {
+            Some(ctx.bv_lit(&va.get(ctx).arithmetic_shift_right(&vb.get(ctx))))
+        }
+        (_, Expr::BVLiteral(by)) => {
+            let by = by.get(ctx);
+            if let Some(by) = by.to_u64() {
+                let by = by as WidthInt;
+                if by >= width {
+                    Some(ctx.build(|c| c.sign_extend(c.slice(a, width - 1, width - 1), width - 1)))
+                } else if by == 0 {
+                    Some(a)
+                } else {
+                    let msb = width - 1;
+                    let lsb = by;
+                    Some(ctx.build(|c| c.sign_extend(c.slice(a, msb, lsb), by)))
+                }
+            } else {
+                Some(ctx.build(|c| c.sign_extend(c.slice(a, width - 1, width - 1), width - 1)))
             }
         }
         (_, _) => None,
