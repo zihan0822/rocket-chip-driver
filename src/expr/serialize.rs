@@ -195,7 +195,7 @@ where
             write!(writer, ")")
         }
         Expr::BVShiftLeft(a, b, _) => {
-            write!(writer, "logical_shift_left(")?;
+            write!(writer, "shift_left(")?;
             if (serialize_child)(a, writer)? {
                 serialize_expr_ref(a, ctx, writer, serialize_child)?;
             }
@@ -217,7 +217,7 @@ where
             write!(writer, ")")
         }
         Expr::BVShiftRight(a, b, _) => {
-            write!(writer, "logical_shift_right(")?;
+            write!(writer, "shift_right(")?;
             if (serialize_child)(a, writer)? {
                 serialize_expr_ref(a, ctx, writer, serialize_child)?;
             }

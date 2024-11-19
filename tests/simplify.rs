@@ -109,3 +109,6 @@ fn test_simplify_slice() {
     // nested slices
     ts("a : bv<10>[6:3][1]", "a : bv<10>[4]");
 }
+
+#[test]
+fn test_simplify_shift_left() {}
