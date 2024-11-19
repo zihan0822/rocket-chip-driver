@@ -394,6 +394,14 @@ impl<'a> Builder<'a> {
         self.ctx.borrow_mut().zero(width)
     }
 
+    pub fn tru(&self) -> ExprRef {
+        self.ctx.borrow().tru()
+    }
+
+    pub fn fals(&self) -> ExprRef {
+        self.ctx.borrow().fals()
+    }
+
     pub fn zero_array(&self, tpe: ArrayType) -> ExprRef {
         self.ctx.borrow_mut().zero_array(tpe)
     }

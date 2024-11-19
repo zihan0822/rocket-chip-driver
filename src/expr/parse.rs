@@ -9,7 +9,10 @@ use std::collections::HashMap;
 
 pub fn parse_expr(ctx: &mut Context, inp: &str) -> ExprRef {
     let mut parser = Parser::new(ctx, inp);
-    parser.parse_expr()
+    let expr = parser.parse_expr();
+    expr.type_check(ctx)
+        .unwrap_or_else(|_| panic!("{inp} failed to type-check"));
+    expr
 }
 
 struct Parser<'a> {
@@ -72,10 +75,6 @@ impl<'a> Parser<'a> {
     }
 
     fn try_pars_bv_lit(&mut self) -> Option<ExprRef> {
-        // fast exit
-        if !self.inp.chars().next().unwrap().is_ascii_digit() {
-            return None;
-        }
         if let Some(m) = bin_lit_regex.captures(self.inp) {
             let width: WidthInt = m.get(1).unwrap().as_str().parse().unwrap();
             let value_str = m.get(2).unwrap().as_str();
@@ -94,6 +93,14 @@ impl<'a> Parser<'a> {
             let value = BitVecValue::from_str_radix(value_str, 16, width).unwrap();
             self.consume_c(&m);
             Some(self.ctx.bv_lit(&value))
+        } else if let Some(c) = true_false_regex.captures(self.inp) {
+            self.consume_c(&c);
+            if c.get(2).is_some() {
+                Some(self.ctx.tru())
+            } else {
+                debug_assert!(c.get(3).is_some());
+                Some(self.ctx.fals())
+            }
         } else {
             None
         }
@@ -258,14 +265,34 @@ lazy_static! {
     static ref bin_lit_regex: Regex = Regex::new(r"^([[:digit:]]+)'b([01]+)\s*").unwrap();
     static ref dec_lit_regex: Regex = Regex::new(r"^([[:digit:]]+)'d([[:digit:]]+)\s*").unwrap();
     static ref hex_lit_regex: Regex = Regex::new(r"^([[:digit:]]+)'x([0-9a-fA-F]+)\s*").unwrap();
+    static ref true_false_regex: Regex = Regex::new(r"^((true)|(false))\s*").unwrap();
     // escaped or not + optional type info
-    static ref symbol_regex: Regex = Regex::new(r"^(([[:alpha:]][[:alphanum:]]*)|(\|[^\|]*\|))\s*(:\s*bv<([[:digit:]]+)>\s*)?").unwrap();
+    static ref symbol_regex: Regex = Regex::new(r"^(([[:alpha:]][[:alnum:]]*)|(\|[^\|]*\|))\s*(:\s*bv<\s*([[:digit:]]+)\s*>\s*)?").unwrap();
     static ref slice_regex: Regex = Regex::new(r"^(\[\s*([[:digit:]]+)\s*\]\s*)|(\[\s*([[:digit:]]+)\s*:\s*([[:digit:]]+)\s*\]\s*)").unwrap();
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::expr::SerializableIrNode;
+
+    #[test]
+    fn test_regexes() {
+        assert!(true_false_regex.is_match("true"));
+        assert!(true_false_regex.is_match("false"));
+        assert!(true_false_regex.is_match("true  "));
+        assert!(true_false_regex.is_match("false  "));
+        assert!(!true_false_regex.is_match(" false"));
+        assert!(true_false_regex.is_match("false  123"));
+
+        assert!(symbol_regex.is_match("a"));
+        assert!(symbol_regex.is_match("|a|"));
+        assert!(symbol_regex.is_match("a : bv<10>"));
+        assert!(symbol_regex.is_match("a : bv< 10>"));
+        assert!(symbol_regex.is_match("a : bv<10 >"));
+        assert!(symbol_regex.is_match("a: bv<10>"));
+        assert!(symbol_regex.is_match("a :bv<10>"));
+    }
 
     #[test]
     fn simple_parse() {
@@ -283,6 +310,20 @@ mod tests {
         assert_eq!(
             parse_expr(&mut ctx, "a : bv<10>[7:3]"),
             ctx.build(|c| c.slice(c.bv_symbol("a", 10), 7, 3))
+        );
+
+        assert_eq!(
+            parse_expr(&mut ctx, "and(true, false)"),
+            ctx.build(|c| c.and(c.tru(), c.fals()))
+        );
+
+        assert_eq!(
+            parse_expr(&mut ctx, "ite(c : bv<1>, a: bv<10>, a)"),
+            ctx.build(|c| c.bv_ite(
+                c.bv_symbol("c", 1),
+                c.bv_symbol("a", 10),
+                c.bv_symbol("a", 10)
+            )),
         );
     }
 }

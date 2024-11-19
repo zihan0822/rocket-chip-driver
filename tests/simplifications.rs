@@ -5,10 +5,10 @@
 use patronus::expr::*;
 
 /// test a simplification
-fn ts(inp: fn(Builder) -> ExprRef, expect: fn(Builder) -> ExprRef) {
+fn ts(inp: &str, expect: &str) {
     let mut ctx = Context::default();
-    let input = ctx.build(inp);
-    let expected = ctx.build(expect);
+    let input = parse_expr(&mut ctx, inp);
+    let expected = parse_expr(&mut ctx, expect);
     let simplified = simplify_single_expression(&mut ctx, input);
     assert_eq!(
         simplified,
@@ -22,62 +22,30 @@ fn ts(inp: fn(Builder) -> ExprRef, expect: fn(Builder) -> ExprRef) {
 
 #[test]
 fn test_simplify_and_or() {
-    // true -> true
-    ts(|c| c.one(1), |c| c.one(1));
-    // fals -> fals
-    ts(|c| c.zero(1), |c| c.zero(1));
-    // 1 & 0 -> 0
-    ts(|c| c.and(c.one(1), c.zero(1)), |c| c.zero(1));
-    // 1 & 1 -> 1
-    ts(|c| c.and(c.one(1), c.one(1)), |c| c.one(1));
-    // 0 | 1 -> 1
-    ts(|c| c.or(c.zero(1), c.one(1)), |c| c.one(1));
-
-    let mut ctx = Context::default();
-    let tru = ctx.one(1);
-    assert_eq!(simplify_single_expression(&mut ctx, tru), tru);
-    let fals = ctx.zero(1);
-    assert_eq!(simplify_single_expression(&mut ctx, fals), fals);
-    let tru_and_fals = ctx.and(tru, fals);
-    assert_eq!(simplify_single_expression(&mut ctx, tru_and_fals), fals);
-    let tru_and_tru = ctx.and(tru, tru);
-    assert_eq!(simplify_single_expression(&mut ctx, tru_and_tru), tru);
-    let fals_or_tru = ctx.or(fals, tru);
-    assert_eq!(simplify_single_expression(&mut ctx, fals_or_tru), tru);
-    let fals_or_fals = ctx.or(fals, fals);
-    assert_eq!(simplify_single_expression(&mut ctx, fals_or_fals), fals);
-    let a = ctx.bv_symbol("a", 1);
-    let a_and_tru = ctx.and(a, tru);
-    assert_eq!(simplify_single_expression(&mut ctx, a_and_tru), a);
-    let a_or_tru = ctx.or(a, tru);
-    assert_eq!(simplify_single_expression(&mut ctx, a_or_tru), tru);
+    ts("true", "true");
+    ts("false", "false");
+    ts("and(true, false)", "false");
+    ts("and(true, true)", "true");
+    ts("or(false, true)", "true");
+    ts("or(false, false)", "false");
+    ts("and(a : bv<1>, true)", "a : bv<1>");
+    ts("and(a : bv<1>, false)", "false");
+    ts("or(a : bv<1>, true)", "true");
+    ts("or(a : bv<1>, false)", "a : bv<1>");
 }
 
 #[test]
 fn test_simplify_ite() {
-    let mut ctx = Context::default();
-    let a = ctx.bv_symbol("a", 12);
-    let b = ctx.bv_symbol("b", 12);
-    let c = ctx.bv_symbol("c", 1);
-    let tru = ctx.one(1);
-    let fals = ctx.zero(1);
-
     // outcome is always the same
-    let ite_c_a_a = ctx.bv_ite(c, a, a);
-    assert_eq!(simplify_single_expression(&mut ctx, ite_c_a_a), a);
+    ts("ite(c : bv<1>, a: bv<10>, a)", "a : bv<10>");
 
     // constant condition
-    let ite_tru_a_b = ctx.bv_ite(tru, a, b);
-    assert_eq!(simplify_single_expression(&mut ctx, ite_tru_a_b), a);
-    let ite_fals_a_b = ctx.bv_ite(fals, a, b);
-    assert_eq!(simplify_single_expression(&mut ctx, ite_fals_a_b), b);
+    ts("ite(true, a: bv<10>, b: bv<10>)", "a : bv<10>");
+    ts("ite(false, a: bv<10>, b: bv<10>)", "b : bv<10>");
 
     // both true and false value are boolean constants
-    let ite_c_tru_fals = ctx.bv_ite(c, tru, fals);
-    assert_eq!(simplify_single_expression(&mut ctx, ite_c_tru_fals), c);
-    let ite_c_tru_tru = ctx.bv_ite(c, tru, tru);
-    assert_eq!(simplify_single_expression(&mut ctx, ite_c_tru_tru), tru);
-    let ite_c_fals_tru = ctx.bv_ite(c, fals, tru);
-    let not_c = ctx.not(c);
-    assert_eq!(simplify_single_expression(&mut ctx, ite_c_fals_tru), not_c);
+    ts("ite(c : bv<1>, true, false)", "c : bv<1>");
+    ts("ite(c : bv<1>, true, true)", "true");
+    ts("ite(c : bv<1>, false, true)", "not(c : bv<1>)");
+    ts("ite(c : bv<1>, false, false)", "false");
 }
