@@ -107,7 +107,7 @@ fn simplify_ite(ctx: &mut Context, cond: ExprRef, tru: ExprRef, fals: ExprRef) -
 enum Lits {
     Two(BVLitValue, BVLitValue),
     One((BVLitValue, ExprRef), ExprRef),
-    None(ExprRef, ExprRef),
+    None,
 }
 
 /// Finds the maximum number of literals. Only works on commutative operations.
@@ -117,7 +117,7 @@ fn find_lits_commutative(ctx: &Context, a: ExprRef, b: ExprRef) -> Lits {
         (Expr::BVLiteral(va), Expr::BVLiteral(vb)) => Lits::Two(*va, *vb),
         (Expr::BVLiteral(va), _) => Lits::One((*va, a), b),
         (_, Expr::BVLiteral(vb)) => Lits::One((*vb, b), a),
-        (_, _) => Lits::None(a, b),
+        (_, _) => Lits::None,
     }
 }
 
@@ -145,7 +145,7 @@ fn simplify_bv_and(ctx: &mut Context, a: ExprRef, b: ExprRef) -> Option<ExprRef>
                 None
             }
         }
-        Lits::None(_, _) => {
+        Lits::None => {
             match (ctx.get(a), ctx.get(b)) {
                 // a & !a -> 0
                 (Expr::BVNot(inner, w), _) if *inner == b => Some(ctx.zero(*w)),
@@ -179,7 +179,7 @@ fn simplify_bv_or(ctx: &mut Context, a: ExprRef, b: ExprRef) -> Option<ExprRef> 
                 None
             }
         }
-        Lits::None(_, _) => {
+        Lits::None => {
             match (ctx.get(a), ctx.get(b)) {
                 // a | !a -> 1
                 (Expr::BVNot(inner, w), _) if *inner == b => Some(ctx.ones(*w)),
@@ -214,7 +214,7 @@ fn simplify_bv_xor(ctx: &mut Context, a: ExprRef, b: ExprRef) -> Option<ExprRef>
                 None
             }
         }
-        Lits::None(_, _) => {
+        Lits::None => {
             match (ctx.get(a), ctx.get(b)) {
                 // a xor !a -> 1
                 (Expr::BVNot(inner, w), _) if *inner == b => Some(ctx.ones(*w)),
@@ -372,7 +372,7 @@ fn simplify_bv_add(ctx: &mut Context, a: ExprRef, b: ExprRef) -> Option<ExprRef>
                 None
             }
         }
-        Lits::None(_, _) => None,
+        Lits::None => None,
     }
 }
 
@@ -395,6 +395,6 @@ fn simplify_bv_mul(ctx: &mut Context, a: ExprRef, b: ExprRef) -> Option<ExprRef>
                 None
             }
         }
-        Lits::None(_, _) => None,
+        Lits::None => None,
     }
 }
