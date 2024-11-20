@@ -36,24 +36,28 @@ pub fn replace_anonymous_inputs_with_zero(ctx: &mut Context, sys: &mut Transitio
     }
 
     // replace any use of the input with zero
-    do_transform(ctx, sys, |_ctx, expr, _children| {
-        replace_map.get(&expr).cloned()
-    });
+    do_transform(
+        ctx,
+        sys,
+        ExprTransformMode::SingleStep,
+        |_ctx, expr, _children| replace_map.get(&expr).cloned(),
+    );
 }
 
 /// Applies simplifications to the expressions used in the system.
 pub fn simplify_expressions(ctx: &mut Context, sys: &mut TransitionSystem) {
-    do_transform(ctx, sys, simplify);
+    do_transform(ctx, sys, ExprTransformMode::FixedPoint, simplify);
 }
 
 pub fn do_transform(
     ctx: &mut Context,
     sys: &mut TransitionSystem,
+    mode: ExprTransformMode,
     tran: impl FnMut(&mut Context, ExprRef, &[ExprRef]) -> Option<ExprRef>,
 ) {
     let todo = get_root_expressions(sys);
     let mut transformed = DenseExprMetaData::default();
-    do_transform_expr(ctx, &mut transformed, todo, tran);
+    do_transform_expr(ctx, mode, &mut transformed, todo, tran);
 
     // update transition system signals
     for (old_expr, maybe_new_expr) in transformed.iter() {

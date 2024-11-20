@@ -4,16 +4,15 @@
 
 use crate::expr::*;
 
-/// Applies simplifications to a single expression.
-pub fn simplify_single_expression(ctx: &mut Context, expr: ExprRef) -> ExprRef {
-    let todo = vec![expr];
-    let mut transformed = SparseExprMetaData::default();
-    do_transform_expr(ctx, &mut transformed, todo, simplify);
-    transformed[expr].unwrap_or(expr)
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum ExprTransformMode {
+    SingleStep,
+    FixedPoint,
 }
 
 pub(crate) fn do_transform_expr<T: ExprMetaData<Option<ExprRef>>>(
     ctx: &mut Context,
+    mode: ExprTransformMode,
     transformed: &mut T,
     mut todo: Vec<ExprRef>,
     mut tran: impl FnMut(&mut Context, ExprRef, &[ExprRef]) -> Option<ExprRef>,
@@ -49,7 +48,12 @@ pub(crate) fn do_transform_expr<T: ExprMetaData<Option<ExprRef>>>(
         // call out to the transform
         let tran_res = (tran)(ctx, expr_ref, &children);
         let new_expr_ref = match tran_res {
-            Some(e) => e,
+            Some(e) => {
+                if mode == ExprTransformMode::FixedPoint && transformed[e].is_none() {
+                    todo.push(e);
+                }
+                e
+            }
             None => {
                 if children_changed {
                     update_expr_children(ctx, expr_ref, &children)

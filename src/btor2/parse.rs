@@ -804,11 +804,16 @@ fn improve_state_names(ctx: &mut Context, sys: &mut TransitionSystem) {
     if renames.is_empty() {
         return; // noting to do
     }
-    do_transform(ctx, sys, |ctx, expr_ref, _| {
-        renames
-            .get(&expr_ref)
-            .map(|new_name_ref| ctx.symbol(*new_name_ref, expr_ref.get_type(ctx)))
-    });
+    do_transform(
+        ctx,
+        sys,
+        ExprTransformMode::SingleStep,
+        |ctx, expr_ref, _| {
+            renames
+                .get(&expr_ref)
+                .map(|new_name_ref| ctx.symbol(*new_name_ref, expr_ref.get_type(ctx)))
+        },
+    );
 }
 
 // Line Tokenizer

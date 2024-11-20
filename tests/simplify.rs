@@ -197,8 +197,7 @@ fn test_simplify_mul() {
     ts("mul(4'd1, a : bv<4>)", "a : bv<4>");
 
     // multiply with power of two (this includes a simplification of the left shift)
-    // TODO
-    // ts("mul(a : bv<4>, 4'd2)", "zext(a : bv<4>[3:1], 1)");
-    // ts("mul(a : bv<4>, 4'd4)", "zext(a : bv<4>[3:2], 2)");
-    // ts("mul(a : bv<4>, 4'd8)", "zext(a : bv<4>[3], 3)");
+    ts("mul(a : bv<4>, 4'd2)", "concat(a : bv<4>[2:0],  1'b0)");
+    ts("mul(a : bv<4>, 4'd4)", "concat(a : bv<4>[1:0], 2'b00)");
+    ts("mul(a : bv<4>, 4'd8)", "concat(a : bv<4>[0],  3'b000)");
 }

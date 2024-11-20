@@ -23,6 +23,17 @@ where
     fn insert(&mut self, e: ExprRef, data: T);
 }
 
+pub fn extract_fixed_point(data: &impl ExprMetaData<Option<ExprRef>>, mut key: ExprRef) -> ExprRef {
+    // TODO: actually update data in order to speed up future lookups, similar to union find
+    loop {
+        let value = data[key].unwrap();
+        if value == key {
+            return value;
+        }
+        key = value;
+    }
+}
+
 /// A sparse hash map to stare meta-data related to each expression
 #[derive(Debug, Default, Clone)]
 pub struct SparseExprMetaData<T: Default + Clone + Debug> {
