@@ -201,3 +201,16 @@ fn test_simplify_mul() {
     ts("mul(a : bv<4>, 4'd4)", "concat(a : bv<4>[1:0], 2'b00)");
     ts("mul(a : bv<4>, 4'd8)", "concat(a : bv<4>[0],  3'b000)");
 }
+
+// from maltese-smt:
+// https://github.com/ucb-bar/maltese-smt/blob/main/test/maltese/smt/SMTSimplifierSpec.scala
+#[test]
+fn test_simplify_bool_equality() {
+    ts("eq(b : bv<1>, true)", "b : bv<1>");
+    ts("eq(b : bv<1>, false)", "not(b : bv<1>)");
+    ts("eq(false, b : bv<1>)", "not(b : bv<1>)");
+}
+
+// from maltese-smt
+#[test]
+fn test_simplify_comparison_to_concat() {}
