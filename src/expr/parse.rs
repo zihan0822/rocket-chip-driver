@@ -255,7 +255,7 @@ impl<'a> Parser<'a> {
     }
 }
 
-const FUNCTIONS: [&'static str; 26] = [
+const FUNCTIONS: [&str; 26] = [
     "zext",
     "sext",
     "not",
@@ -284,7 +284,7 @@ const FUNCTIONS: [&'static str; 26] = [
     "ite",
 ];
 
-const FUNCTION_ARGS: [&'static [ArgTpe]; 26] = [
+const FUNCTION_ARGS: [&[ArgTpe]; 26] = [
     &[ArgTpe::E, ArgTpe::C],
     &[ArgTpe::E, ArgTpe::C],
     &[ArgTpe::E],
