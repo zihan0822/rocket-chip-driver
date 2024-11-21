@@ -67,17 +67,22 @@ fn test_simplify_not() {
 }
 
 #[test]
-fn test_simplify_zext() {
+fn test_simplify_zero_extend() {
     ts("zext(false, 1)", "2'b00");
     ts("zext(true, 1)", "2'b01");
     ts("zext(true, 0)", "true");
+    // zero extends always get normalized to a concat with zero
+    ts("zext(a: bv<2>, 4)", "concat(4'd0, a: bv<2>)");
+    ts("zext(zext(a: bv<2>, 4), 3)", "concat(7'd0, a: bv<2>)");
 }
 
 #[test]
-fn test_simplify_sext() {
+fn test_simplify_sign_extend() {
     ts("sext(false, 1)", "2'b00");
     ts("sext(true, 1)", "2'b11");
     ts("sext(true, 0)", "true");
+    // combine sign extensions
+    ts("sext(sext(a: bv<2>, 4), 3)", "sext(a : bv<2>, 7)");
 }
 
 #[test]
@@ -242,6 +247,51 @@ fn test_simplify_comparison_to_concat() {
     );
 }
 
+#[test]
+fn test_simplify_comparison_to_zero_extend() {
+    ts("eq(4'd0, zext(a:bv<5>, 4)[8:5])", "true");
+    ts("eq(4'd1, zext(a:bv<5>, 4)[8:5])", "false");
+    ts("eq(2'b10, zext(a:bv<1>, 1))", "false");
+    ts("eq(concat(4'd0, a:bv<5>), zext(a:bv<5>, 4))", "true");
+}
+
 // from maltese-smt
 #[test]
-fn test_simplify_bit_masks() {}
+fn test_simplify_bit_masks() {
+    ts(
+        "and(concat(a: bv<2>, b: bv<3>), 5'b11000",
+        "concat(a:bv<2>, 3'd0)",
+    );
+    ts(
+        "and(concat(a: bv<2>, b: bv<3>), 5'b10000",
+        "concat(a:bv<2>[1], 4'd0)",
+    );
+    ts(
+        "and(concat(a: bv<2>, b: bv<3>), 5'b01000",
+        "concat(concat(1'd0, a:bv<2>[0]), 3'd0)",
+    );
+    ts(
+        "and(concat(a: bv<2>, b: bv<3>), 5'b00100",
+        "concat(concat(2'd0, b:bv<3>[2]), 2'd0)",
+    );
+    ts(
+        "and(concat(a: bv<2>, b: bv<3>), 5'b00010",
+        "concat(concat(3'd0, b:bv<3>[1]), 1'd0)",
+    );
+    ts(
+        "and(concat(a: bv<2>, b: bv<3>), 5'b00001",
+        "concat(4'd0, b:bv<3>[0])",
+    );
+}
+
+// from maltese-smt
+#[test]
+fn test_simplify_slice_on_sign_extension() {
+    // sext is essentially like a concat and thus we want to push the slice into it
+    ts("sext(a:bv<4>, 2)[3:0]", "a:bv<4>");
+    ts("sext(a:bv<4>, 2)[3:1]", "a:bv<4>[3:1]");
+    ts("sext(a:bv<4>, 2)[2:1]", "a:bv<4>[2:1]");
+    ts("sext(a:bv<4>, 2)[4:0]", "sext(a:bv<4>, 1)");
+    ts("sext(a:bv<4>, 2)[5:0]", "sext(a:bv<4>, 2)");
+    ts("sext(a:bv<4>, 2)[4:1]", "sext(a:bv<4>[3:1], 1)");
+}
