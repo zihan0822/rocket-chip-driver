@@ -326,15 +326,15 @@ fn test_simplify_bit_masks() {
     );
     ts(
         "and(concat(a: bv<2>, b: bv<3>), 5'b01000)",
-        "concat(concat(1'd0, a:bv<2>[0]), 3'd0)",
+        "concat(1'd0, concat(a:bv<2>[0], 3'd0))",
     );
     ts(
         "and(concat(a: bv<2>, b: bv<3>), 5'b00100)",
-        "concat(concat(2'd0, b:bv<3>[2]), 2'd0)",
+        "concat(2'd0, concat(b:bv<3>[2], 2'd0))",
     );
     ts(
         "and(concat(a: bv<2>, b: bv<3>), 5'b00010)",
-        "concat(concat(3'd0, b:bv<3>[1]), 1'd0)",
+        "concat(3'd0, concat(b:bv<3>[1], 1'd0))",
     );
     ts(
         "and(concat(a: bv<2>, b: bv<3>), 5'b00001)",

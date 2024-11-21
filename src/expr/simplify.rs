@@ -10,6 +10,7 @@ use super::{
 use crate::expr::meta::get_fixed_point;
 use crate::expr::transform::ExprTransformMode;
 use baa::BitVecOps;
+use smallvec::{smallvec, SmallVec};
 
 /// Applies simplifications to a single expression.
 pub fn simplify_single_expression(ctx: &mut Context, expr: ExprRef) -> ExprRef {
@@ -211,8 +212,6 @@ fn simplify_bv_and(ctx: &mut Context, a: ExprRef, b: ExprRef) -> Option<ExprRef>
                 // a & 1 -> a
                 Some(expr)
             } else {
-                // deal with bit mask
-
                 // (a # b) & mask -> ((a & mask_upper) # (b & mask_lower))
                 if let Expr::BVConcat(a, b, width) = ctx.get(expr).clone() {
                     let b_width = b.get_bv_type(ctx).unwrap();
@@ -221,7 +220,35 @@ fn simplify_bv_and(ctx: &mut Context, a: ExprRef, b: ExprRef) -> Option<ExprRef>
                     let b_mask = ctx.bv_lit(&lit.get(ctx).slice(b_width - 1, 0));
                     Some(ctx.build(|c| c.concat(c.and(a, a_mask), c.and(b, b_mask))))
                 } else {
-                    None
+                    // deal with bit mask
+                    let width = expr.get_bv_type(ctx).unwrap();
+                    let ones = lit.get(ctx).bit_set_intervals();
+                    debug_assert!(!ones.is_empty());
+                    let mut bit = 0;
+                    let mut values: SmallVec<[ExprRef; 6]> = smallvec![];
+                    for interval in ones.into_iter() {
+                        if interval.start > bit {
+                            // zero
+                            values.push(ctx.zero(interval.start - bit));
+                        }
+                        // slice
+                        values.push(ctx.slice(expr, interval.end - 1, interval.start));
+                        // remember end of slice
+                        bit = interval.end;
+                    }
+                    // zero at the end?
+                    if bit < width {
+                        values.push(ctx.zero(width - bit));
+                    }
+                    debug_assert!(values.len() > 1);
+
+                    // the values are in the wrong order, so we need to reverse them
+                    let out = values
+                        .into_iter()
+                        .rev()
+                        .reduce(|a, b| ctx.concat(a, b))
+                        .unwrap();
+                    Some(out)
                 }
             }
         }
