@@ -420,6 +420,16 @@ fn simplify_bv_slice(ctx: &mut Context, e: ExprRef, hi: WidthInt, lo: WidthInt) 
                 Some(ctx.concat(a_slice, b_slice))
             }
         }
+        // slice of sign extend
+        Expr::BVSignExt { e, .. } => {
+            let e_width = e.get_bv_type(ctx).unwrap();
+            if hi < e_width {
+                Some(ctx.slice(e, hi, lo))
+            } else {
+                let inner = ctx.slice(e, e_width - 1, lo);
+                Some(ctx.sign_extend(inner, hi - e_width + 1))
+            }
+        }
         _ => None,
     }
 }
