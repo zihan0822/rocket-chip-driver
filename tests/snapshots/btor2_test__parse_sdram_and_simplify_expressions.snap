@@ -33,7 +33,7 @@ output data_out : bv<16>
 output busy : bv<1>
 node %152 : bv<17> = _state_5[state]
 node _logic_not_sdram_controller.no_tri_state.v:315_26 : bv<1> = eq(state_cnt, 4'b0000)
-node _ge_sdram_controller.no_tri_state.v:294_25 : bv<1> = ugte(zext(refresh_cnt, 22), 32'x00000207)
+node _ge_sdram_controller.no_tri_state.v:294_25 : bv<1> = ugte(concat(22'x000000, refresh_cnt), 32'x00000207)
 node _eq_sdram_controller.no_tri_state.v:292_24 : bv<1> = eq(state, 5'b00000)
 node _auto_opt_dff.cc:195:make_patterns_logic_224 : bv<1> = not(eq(concat(_eq_sdram_controller.no_tri_state.v:292_24, _logic_not_sdram_controller.no_tri_state.v:315_26), 2'b00))
 node _eq_sdram_controller.no_tri_state.v:209_10 : bv<1> = eq(state, 5'b10100)

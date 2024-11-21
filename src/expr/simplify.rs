@@ -268,7 +268,8 @@ fn simplify_bv_zero_ext(ctx: &mut Context, e: ExprRef, by: WidthInt) -> Option<E
         match ctx.get(e) {
             // zero extend constant
             Expr::BVLiteral(value) => Some(ctx.bv_lit(&value.get(ctx).zero_extend(by))),
-            _ => None,
+            // normalize to concat(${by}'d0, e);
+            _ => Some(ctx.build(|c| c.concat(c.zero(by), e))),
         }
     }
 }
