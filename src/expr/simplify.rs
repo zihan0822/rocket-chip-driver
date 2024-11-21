@@ -452,6 +452,25 @@ fn simplify_bv_slice(ctx: &mut Context, e: ExprRef, hi: WidthInt, lo: WidthInt) 
         Expr::BVIte { cond, tru, fals } => {
             Some(ctx.build(|c| c.bv_ite(cond, c.slice(tru, hi, lo), c.slice(fals, hi, lo))))
         }
+        // slice of not
+        Expr::BVNot(e, _) => Some(ctx.build(|c| c.not(c.slice(e, hi, lo)))),
+        // slice of neg
+        Expr::BVNegate(e, _) if lo == 0 => Some(ctx.build(|c| c.negate(c.slice(e, hi, lo)))),
+        // slice of bit-wise ops
+        Expr::BVAnd(a, b, _) => Some(ctx.build(|c| c.and(c.slice(a, hi, lo), c.slice(b, hi, lo)))),
+        Expr::BVOr(a, b, _) => Some(ctx.build(|c| c.or(c.slice(a, hi, lo), c.slice(b, hi, lo)))),
+        Expr::BVXor(a, b, _) => Some(ctx.build(|c| c.xor(c.slice(a, hi, lo), c.slice(b, hi, lo)))),
+        // these ops have information flow from low to high bits
+        Expr::BVAdd(a, b, _) if lo == 0 => {
+            Some(ctx.build(|c| c.add(c.slice(a, hi, lo), c.slice(b, hi, lo))))
+        }
+        Expr::BVSub(a, b, _) if lo == 0 => {
+            Some(ctx.build(|c| c.sub(c.slice(a, hi, lo), c.slice(b, hi, lo))))
+        }
+        Expr::BVMul(a, b, _) if lo == 0 => {
+            Some(ctx.build(|c| c.mul(c.slice(a, hi, lo), c.slice(b, hi, lo))))
+        }
+
         _ => None,
     }
 }

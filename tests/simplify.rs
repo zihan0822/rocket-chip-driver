@@ -432,6 +432,40 @@ fn test_simplify_concat_of_adjacent_slices() {
     ts("concat(a:bv<32>[31:19], a[18:0])", "a:bv<32>");
 }
 
-// TODO: add slice simplifications: https://github.com/ekiwi/maltese-private/blob/main/test/maltese/smt/SMTSimplifierSliceSpec.scala
+#[test]
+fn test_simplify_slice_of_op() {
+    // push into not
+    ts("not(a:bv<32>)[20:1]", "not(a:bv<32>[20:1])");
+    ts("not(a:bv<32>)[15:0]", "not(a:bv<32>[15:0])");
+
+    // push slice into neg, which we can only for msbs
+    ts("neg(a:bv<32>)[20:1]", "neg(a:bv<32>)[20:1]");
+    ts("neg(a:bv<32>)[15:0]", "neg(a:bv<32>[15:0])");
+
+    // push into bit-wise and arithmetic binary ops
+    for op in ["and", "or", "xor", "add", "sub", "mul"] {
+        ts(
+            &format!("{op}(a:bv<32>, b:bv<32>)[30:0]"),
+            &format!("{op}(a:bv<32>[30:0], b:bv<32>[30:0])"),
+        );
+        if op == "and" || op == "or" || op == "xor" {
+            ts(
+                &format!("{op}(a:bv<32>, b:bv<32>)[30:2]"),
+                &format!("{op}(a:bv<32>[30:2], b:bv<32>[30:2])"),
+            );
+        } else {
+            ts(
+                &format!("{op}(a:bv<32>, b:bv<32>)[30:2]"),
+                &format!("{op}(a:bv<32>, b:bv<32>)[30:2]"),
+            );
+        }
+
+        // examples that show up in actual code
+        ts(
+            &format!("{op}(zext(a:bv<32>, 1), zext(b:bv<32>, 1))[31:0]"),
+            &format!("{op}(a:bv<32>, b:bv<32>)"),
+        );
+    }
+}
 
 // TODO: add missing literals simplifications: https://github.com/ekiwi/maltese-private/blob/main/test/maltese/smt/SMTSimplifierLiteralsSpec.scala
