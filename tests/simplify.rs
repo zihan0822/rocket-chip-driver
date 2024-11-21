@@ -297,6 +297,10 @@ fn test_simplify_comparison_to_concat() {
 
 #[test]
 fn test_simplify_comparison_to_zero_extend() {
+    // all of this is solved by a combination of simplifying:
+    //  - comparison to concat
+    //  - pushing slice into concat
+    //  - normalizing zero extend as concat with zeros
     ts("eq(4'd0, zext(a:bv<5>, 4)[8:5])", "true");
     ts("eq(4'd1, zext(a:bv<5>, 4)[8:5])", "false");
     ts("eq(2'b10, zext(a:bv<1>, 1))", "false");
@@ -307,27 +311,27 @@ fn test_simplify_comparison_to_zero_extend() {
 #[test]
 fn test_simplify_bit_masks() {
     ts(
-        "and(concat(a: bv<2>, b: bv<3>), 5'b11000",
+        "and(concat(a: bv<2>, b: bv<3>), 5'b11000)",
         "concat(a:bv<2>, 3'd0)",
     );
     ts(
-        "and(concat(a: bv<2>, b: bv<3>), 5'b10000",
+        "and(concat(a: bv<2>, b: bv<3>), 5'b10000)",
         "concat(a:bv<2>[1], 4'd0)",
     );
     ts(
-        "and(concat(a: bv<2>, b: bv<3>), 5'b01000",
+        "and(concat(a: bv<2>, b: bv<3>), 5'b01000)",
         "concat(concat(1'd0, a:bv<2>[0]), 3'd0)",
     );
     ts(
-        "and(concat(a: bv<2>, b: bv<3>), 5'b00100",
+        "and(concat(a: bv<2>, b: bv<3>), 5'b00100)",
         "concat(concat(2'd0, b:bv<3>[2]), 2'd0)",
     );
     ts(
-        "and(concat(a: bv<2>, b: bv<3>), 5'b00010",
+        "and(concat(a: bv<2>, b: bv<3>), 5'b00010)",
         "concat(concat(3'd0, b:bv<3>[1]), 1'd0)",
     );
     ts(
-        "and(concat(a: bv<2>, b: bv<3>), 5'b00001",
+        "and(concat(a: bv<2>, b: bv<3>), 5'b00001)",
         "concat(4'd0, b:bv<3>[0])",
     );
 }
@@ -335,13 +339,29 @@ fn test_simplify_bit_masks() {
 // from maltese-smt
 #[test]
 fn test_simplify_slice_on_sign_extension() {
-    // sext is essentially like a concat and thus we want to push the slice into it
+    // sext is essentially like a concat, and thus we want to push the slice into it
     ts("sext(a:bv<4>, 2)[3:0]", "a:bv<4>");
     ts("sext(a:bv<4>, 2)[3:1]", "a:bv<4>[3:1]");
     ts("sext(a:bv<4>, 2)[2:1]", "a:bv<4>[2:1]");
     ts("sext(a:bv<4>, 2)[4:0]", "sext(a:bv<4>, 1)");
     ts("sext(a:bv<4>, 2)[5:0]", "sext(a:bv<4>, 2)");
     ts("sext(a:bv<4>, 2)[4:1]", "sext(a:bv<4>[3:1], 1)");
+}
+
+#[test]
+fn test_push_slice_into_concat() {
+    // slice on a concat should become part of that concat
+    ts(
+        "concat(a:bv<3>, b:bv<2>)[3:0]",
+        "concat(a:bv<3>[1:0], b:bv<2>)",
+    );
+    ts(
+        "concat(a:bv<3>, b:bv<2>)[3:1]",
+        "concat(a:bv<3>[1:0], b:bv<2>[1])",
+    );
+    ts("concat(a:bv<3>, b:bv<2>)[3:2]", "a:bv<3>[1:0]");
+    ts("concat(a:bv<3>, b:bv<2>)[1:0]", "b:bv<2>");
+    ts("concat(a:bv<3>, b:bv<2>)[1]", "b:bv<2>[1]");
 }
 
 // TODO: add slice simplifications: https://github.com/ekiwi/maltese-private/blob/main/test/maltese/smt/SMTSimplifierSliceSpec.scala

@@ -336,15 +336,32 @@ fn simplify_bv_concat(ctx: &mut Context, a: ExprRef, b: ExprRef) -> Option<ExprR
 }
 
 fn simplify_bv_slice(ctx: &mut Context, e: ExprRef, hi: WidthInt, lo: WidthInt) -> Option<ExprRef> {
-    match ctx.get(e) {
+    debug_assert!(hi >= lo);
+    match ctx.get(e).clone() {
         // combine slices
         Expr::BVSlice {
             lo: inner_lo,
             e: inner_e,
             ..
-        } => Some(ctx.slice(*inner_e, hi + inner_lo, lo + inner_lo)),
+        } => Some(ctx.slice(inner_e, hi + inner_lo, lo + inner_lo)),
         // slice constant
         Expr::BVLiteral(value) => Some(ctx.bv_lit(&value.get(ctx).slice(hi, lo))),
+        // slice concat
+        Expr::BVConcat(a, b, _) => {
+            let b_width = b.get_bv_type(ctx).unwrap();
+            if hi < b_width {
+                // the slice only includes b
+                Some(ctx.slice(b, hi, lo))
+            } else if lo >= b_width {
+                // the slice only includes a
+                Some(ctx.slice(a, hi - b_width, lo - b_width))
+            } else {
+                // both a and b are included
+                let a_slice = ctx.slice(a, hi - b_width, 0);
+                let b_slice = ctx.slice(b, b_width - 1, lo);
+                Some(ctx.concat(a_slice, b_slice))
+            }
+        }
         _ => None,
     }
 }
