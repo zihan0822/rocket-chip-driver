@@ -135,7 +135,7 @@ fn simplify_bv_equal(ctx: &mut Context, a: ExprRef, b: ExprRef) -> Option<ExprRe
             debug_assert!(!va.get(ctx).is_equal(&vb.get(ctx)));
             Some(ctx.fals())
         }
-        Lits::One((lit, lit_expr), expr) => {
+        Lits::One((lit, _), expr) => {
             if lit.is_true() {
                 // a == true -> a
                 Some(expr)
@@ -281,6 +281,11 @@ fn simplify_bv_sign_ext(ctx: &mut Context, e: ExprRef, by: WidthInt) -> Option<E
     } else {
         match ctx.get(e) {
             Expr::BVLiteral(value) => Some(ctx.bv_lit(&value.get(ctx).sign_extend(by))),
+            Expr::BVSignExt {
+                e: inner_e,
+                by: inner_by,
+                ..
+            } => Some(ctx.sign_extend(*inner_e, by + inner_by)),
             _ => None,
         }
     }
