@@ -218,6 +218,42 @@ fn test_simplify_mul() {
     ts("mul(a : bv<4>, 4'd8)", "concat(a : bv<4>[0],  3'b000)");
 }
 
+#[test]
+fn test_simplify_concat() {
+    // normalize concats
+    ts(
+        "concat(concat(a : bv<1>, b:bv<1>), c:bv<1>)",
+        "concat(a : bv<1>, concat(b:bv<1>, c:bv<1>))",
+    );
+
+    // concat constants
+    ts("concat(3'b110, 2'b01)", "5'b11001");
+    ts("concat(3'b110, concat(false, true))", "5'b11001");
+    ts("concat(concat(3'b110, false), true)", "5'b11001");
+
+    // concat constants in the presence of other expressions
+    ts(
+        "concat(a : bv<3>, concat(false, true))",
+        "concat(a:bv<3>, 2'b01)",
+    );
+    ts(
+        "concat(concat(a : bv<3>, false), true)",
+        "concat(a:bv<3>, 2'b01)",
+    );
+    ts(
+        "concat(true, concat(false, a : bv<3>))",
+        "concat(2'b10, a:bv<3>)",
+    );
+    ts(
+        "concat(concat(true, false), a : bv<3>)",
+        "concat(2'b10, a:bv<3>)",
+    );
+    ts(
+        "concat(3'b101, concat(true, concat(false, a : bv<3>)))",
+        "concat(5'b10110, a:bv<3>)",
+    );
+}
+
 // from maltese-smt:
 // https://github.com/ucb-bar/maltese-smt/blob/main/test/maltese/smt/SMTSimplifierSpec.scala
 #[test]

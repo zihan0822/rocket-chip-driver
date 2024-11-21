@@ -46,6 +46,7 @@ pub(crate) fn simplify(ctx: &mut Context, expr: ExprRef, children: &[ExprRef]) -
         (Expr::BVZeroExt { by, .. }, [e]) => simplify_bv_zero_ext(ctx, *e, by),
         (Expr::BVSlice { lo, hi, .. }, [e]) => simplify_bv_slice(ctx, *e, hi, lo),
         (Expr::BVIte { .. }, [cond, tru, fals]) => simplify_ite(ctx, *cond, *tru, *fals),
+        (Expr::BVConcat(..), [a, b]) => simplify_bv_concat(ctx, *a, *b),
         (Expr::BVEqual(..), [a, b]) => simplify_bv_equal(ctx, *a, *b),
         (Expr::BVAnd(..), [a, b]) => simplify_bv_and(ctx, *a, *b),
         (Expr::BVOr(..), [a, b]) => simplify_bv_or(ctx, *a, *b),
@@ -282,6 +283,26 @@ fn simplify_bv_sign_ext(ctx: &mut Context, e: ExprRef, by: WidthInt) -> Option<E
             Expr::BVLiteral(value) => Some(ctx.bv_lit(&value.get(ctx).sign_extend(by))),
             _ => None,
         }
+    }
+}
+
+fn simplify_bv_concat(ctx: &mut Context, a: ExprRef, b: ExprRef) -> Option<ExprRef> {
+    match *ctx.get(a) {
+        // normalize concat to be right recursive
+        Expr::BVConcat(a_a, a_b, _) => Some(ctx.build(|c| c.concat(a_a, c.concat(a_b, b)))),
+        Expr::BVLiteral(va) => match *ctx.get(b) {
+            Expr::BVLiteral(vb) => Some(ctx.bv_lit(&va.get(ctx).concat(&vb.get(ctx)))),
+            Expr::BVConcat(b_a, b_b, _) => {
+                if let Expr::BVLiteral(v_b_a) = *ctx.get(b_a) {
+                    let lit = ctx.bv_lit(&va.get(ctx).concat(&v_b_a.get(ctx)));
+                    Some(ctx.concat(lit, b_b))
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        },
+        _ => None,
     }
 }
 
