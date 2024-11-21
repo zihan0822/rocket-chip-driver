@@ -53,7 +53,7 @@ impl<'a> Parser<'a> {
             .or_else(|| self.try_parse_symbol())
             .unwrap_or_else(|| panic!("failed to parse: {}", self.inp));
 
-        while let Some(c) = slice_regex.captures(self.inp) {
+        while let Some(c) = SLICE_REGEX.captures(self.inp) {
             if let Some(bit) = c.get(2) {
                 let bit = Self::width_int(bit);
                 self.consume_c(&c);
@@ -75,9 +75,9 @@ impl<'a> Parser<'a> {
     }
 
     fn try_parse_fun(&mut self) -> Option<ExprRef> {
-        let fun = any_function_regex.matches(self.inp);
+        let fun = ANY_FUNCTION_REGEX.matches(self.inp);
         if let Some(fun_id) = fun.into_iter().next() {
-            self.consume_r(&function_regex[fun_id]);
+            self.consume_r(&FUNCTION_REGEX[fun_id]);
             let args = self.parse_args(fun_id);
             Some(self.make_fun(fun_id, args))
         } else {
@@ -86,25 +86,25 @@ impl<'a> Parser<'a> {
     }
 
     fn try_pars_bv_lit(&mut self) -> Option<ExprRef> {
-        if let Some(m) = bin_lit_regex.captures(self.inp) {
+        if let Some(m) = BIN_LIT_REGEX.captures(self.inp) {
             let width: WidthInt = m.get(1).unwrap().as_str().parse().unwrap();
             let value_str = m.get(2).unwrap().as_str();
             let value = BitVecValue::from_str_radix(value_str, 2, width).unwrap();
             self.consume_c(&m);
             Some(self.ctx.bv_lit(&value))
-        } else if let Some(m) = dec_lit_regex.captures(self.inp) {
+        } else if let Some(m) = DEC_LIT_REGEX.captures(self.inp) {
             let width: WidthInt = m.get(1).unwrap().as_str().parse().unwrap();
             let value_str = m.get(2).unwrap().as_str();
             let value = BitVecValue::from_str_radix(value_str, 10, width).unwrap();
             self.consume_c(&m);
             Some(self.ctx.bv_lit(&value))
-        } else if let Some(m) = hex_lit_regex.captures(self.inp) {
+        } else if let Some(m) = HEX_LIT_REGEX.captures(self.inp) {
             let width: WidthInt = m.get(1).unwrap().as_str().parse().unwrap();
             let value_str = m.get(2).unwrap().as_str();
             let value = BitVecValue::from_str_radix(value_str, 16, width).unwrap();
             self.consume_c(&m);
             Some(self.ctx.bv_lit(&value))
-        } else if let Some(c) = true_false_regex.captures(self.inp) {
+        } else if let Some(c) = TRUE_FALSE_REGEX.captures(self.inp) {
             self.consume_c(&c);
             if c.get(2).is_some() {
                 Some(self.ctx.tru())
@@ -118,7 +118,7 @@ impl<'a> Parser<'a> {
     }
 
     fn try_parse_symbol(&mut self) -> Option<ExprRef> {
-        if let Some(c) = symbol_regex.captures(self.inp) {
+        if let Some(c) = SYMBOL_REGEX.captures(self.inp) {
             let escaped_name = c.get(3).map(|m| {
                 let len = m.as_str().len();
                 &m.as_str()[1..len - 2]
@@ -184,13 +184,13 @@ impl<'a> Parser<'a> {
             (23, [Arg::E(a), Arg::E(b)]) => self.ctx.remainder(*a, *b),
             (24, [Arg::E(a), Arg::E(b)]) => self.ctx.sub(*a, *b),
             (25, [Arg::E(a), Arg::E(b), Arg::E(c)]) => self.ctx.bv_ite(*a, *b, *c),
-            _ => todo!("implement: {}({:?})", functions[fun_id], args),
+            _ => todo!("implement: {}({:?})", FUNCTIONS[fun_id], args),
         }
     }
 
     fn parse_args(&mut self, fun_id: usize) -> Vec<Arg> {
         let mut args = vec![];
-        let arg_types = function_args[fun_id];
+        let arg_types = FUNCTION_ARGS[fun_id];
         for (ii, at) in arg_types.iter().enumerate() {
             match at {
                 ArgTpe::E => {
@@ -202,20 +202,25 @@ impl<'a> Parser<'a> {
             }
             let is_last = ii + 1 == arg_types.len();
             if is_last {
-                if let Some(m) = close_regex.find(self.inp) {
+                if let Some(m) = CLOSE_REGEX.find(self.inp) {
                     self.consume_m(&m);
                 } else {
                     panic!(
                         "failed to find end of function {} @ {}",
-                        functions[fun_id], self.inp
+                        FUNCTIONS[fun_id], self.inp
                     );
                 }
-            } else if let Some(m) = comma_regex.find(self.inp) {
+            } else if let Some(m) = COMMA_REGEX.find(self.inp) {
                 self.consume_m(&m);
+            } else if !is_last && CLOSE_REGEX.is_match(self.inp) {
+                panic!(
+                    "Expected another argument for {}({:?},..) @ `{}`",
+                    FUNCTIONS[fun_id], args, self.inp
+                );
             } else {
                 panic!(
-                    "failed to find end of argument in function {} @ {}",
-                    functions[fun_id], self.inp
+                    "failed to find end of argument in function {}, expected `,` or `)` @ `{}`",
+                    FUNCTIONS[fun_id], self.inp
                 );
             }
         }
@@ -223,7 +228,7 @@ impl<'a> Parser<'a> {
     }
 
     fn try_parse_width_int(&mut self) -> Option<WidthInt> {
-        if let Some(m) = dec_num_regex.find(self.inp) {
+        if let Some(m) = DEC_NUM_REGEX.find(self.inp) {
             if let Ok(num) = m.as_str().parse() {
                 self.consume_m(&m);
                 return Some(num);
@@ -240,85 +245,89 @@ impl<'a> Parser<'a> {
     }
 
     fn consume_m(&mut self, m: &Match) {
+        // let to_be_consumed = &self.inp[..m.end()];
+        // println!("Consuming: {to_be_consumed}");
         self.inp = &self.inp[m.end()..];
     }
 
     fn consume_c(&mut self, c: &Captures) {
-        self.inp = &self.inp[c.get(0).unwrap().end()..];
+        self.consume_m(&c.get(0).unwrap());
     }
 }
 
+const FUNCTIONS: [&'static str; 26] = [
+    "zext",
+    "sext",
+    "not",
+    "neg",
+    "eq",
+    "implies",
+    "ugt",
+    "sgt",
+    "ugte",
+    "sgte",
+    "concat",
+    "and",
+    "or",
+    "xor",
+    "shift_left",
+    "arithmetic_shift_right",
+    "shift_right",
+    "add",
+    "mul",
+    "sdiv",
+    "udiv",
+    "smod",
+    "srem",
+    "urem",
+    "sub",
+    "ite",
+];
+
+const FUNCTION_ARGS: [&'static [ArgTpe]; 26] = [
+    &[ArgTpe::E, ArgTpe::C],
+    &[ArgTpe::E, ArgTpe::C],
+    &[ArgTpe::E],
+    &[ArgTpe::E],
+    &[ArgTpe::E, ArgTpe::E],
+    &[ArgTpe::E, ArgTpe::E],
+    &[ArgTpe::E, ArgTpe::E],
+    &[ArgTpe::E, ArgTpe::E],
+    &[ArgTpe::E, ArgTpe::E],
+    &[ArgTpe::E, ArgTpe::E],
+    &[ArgTpe::E, ArgTpe::E],
+    &[ArgTpe::E, ArgTpe::E],
+    &[ArgTpe::E, ArgTpe::E],
+    &[ArgTpe::E, ArgTpe::E],
+    &[ArgTpe::E, ArgTpe::E],
+    &[ArgTpe::E, ArgTpe::E],
+    &[ArgTpe::E, ArgTpe::E],
+    &[ArgTpe::E, ArgTpe::E],
+    &[ArgTpe::E, ArgTpe::E],
+    &[ArgTpe::E, ArgTpe::E],
+    &[ArgTpe::E, ArgTpe::E],
+    &[ArgTpe::E, ArgTpe::E],
+    &[ArgTpe::E, ArgTpe::E],
+    &[ArgTpe::E, ArgTpe::E],
+    &[ArgTpe::E, ArgTpe::E],
+    &[ArgTpe::E, ArgTpe::E, ArgTpe::E],
+];
+
 lazy_static! {
-    static ref functions: [&'static str; 26] = [
-        "zext",
-        "sext",
-        "not",
-        "neg",
-        "eq",
-        "implies",
-        "ugt",
-        "sgt",
-        "ugte",
-        "sgte",
-        "concat",
-        "and",
-        "or",
-        "xor",
-        "shift_left",
-        "arithmetic_shift_right",
-        "shift_right",
-        "add",
-        "mul",
-        "sdiv",
-        "udiv",
-        "smod",
-        "srem",
-        "urem",
-        "sub",
-        "ite",
-    ];
-    static ref function_args: [&'static [ArgTpe]; 26] = [
-        &[ArgTpe::E, ArgTpe::C],
-        &[ArgTpe::E, ArgTpe::C],
-        &[ArgTpe::E],
-        &[ArgTpe::E],
-        &[ArgTpe::E, ArgTpe::E],
-        &[ArgTpe::E, ArgTpe::E],
-        &[ArgTpe::E, ArgTpe::E],
-        &[ArgTpe::E, ArgTpe::E],
-        &[ArgTpe::E, ArgTpe::E],
-        &[ArgTpe::E, ArgTpe::E],
-        &[ArgTpe::E, ArgTpe::E],
-        &[ArgTpe::E, ArgTpe::E],
-        &[ArgTpe::E, ArgTpe::E],
-        &[ArgTpe::E, ArgTpe::E],
-        &[ArgTpe::E, ArgTpe::E],
-        &[ArgTpe::E, ArgTpe::E],
-        &[ArgTpe::E, ArgTpe::E],
-        &[ArgTpe::E, ArgTpe::E],
-        &[ArgTpe::E, ArgTpe::E],
-        &[ArgTpe::E, ArgTpe::E],
-        &[ArgTpe::E, ArgTpe::E],
-        &[ArgTpe::E, ArgTpe::E],
-        &[ArgTpe::E, ArgTpe::E],
-        &[ArgTpe::E, ArgTpe::E],
-        &[ArgTpe::E, ArgTpe::E],
-        &[ArgTpe::E, ArgTpe::E, ArgTpe::E],
-    ];
-    static ref function_regex: Vec<Regex> =
-        functions.iter().map(|name| Regex::new(&format!("^{name}\\s*\\(\\s*")).unwrap()).collect();
-    static ref any_function_regex: RegexSet =
-        RegexSet::new(functions.iter().map(|name| format!("^{name}\\s*\\(\\s*"))).unwrap();
-    static ref comma_regex: Regex = Regex::new(r"^,\s*").unwrap();
-    static ref close_regex: Regex = Regex::new(r"^\)\s*").unwrap();
-    static ref dec_num_regex: Regex = Regex::new(r"^[[:digit:]]+\s*").unwrap();
-    static ref bin_lit_regex: Regex = Regex::new(r"^([[:digit:]]+)'b([01]+)\s*").unwrap();
-    static ref dec_lit_regex: Regex = Regex::new(r"^([[:digit:]]+)'d([[:digit:]]+)\s*").unwrap();
-    static ref hex_lit_regex: Regex = Regex::new(r"^([[:digit:]]+)'x([0-9a-fA-F]+)\s*").unwrap();
-    static ref true_false_regex: Regex = Regex::new(r"^((true)|(false))\s*").unwrap();
+    static ref FUNCTION_REGEX: Vec<Regex> =
+        FUNCTIONS.iter().map(|name| Regex::new(&format!("^{name}\\s*\\(\\s*")).unwrap()).collect();
+    static ref ANY_FUNCTION_REGEX: RegexSet =
+        RegexSet::new(FUNCTIONS.iter().map(|name| format!("^{name}\\s*\\(\\s*"))).unwrap();
+    static ref COMMA_REGEX: Regex = Regex::new(r"^,\s*").unwrap();
+    static ref CLOSE_REGEX: Regex = Regex::new(r"^\)\s*").unwrap();
+    static ref DEC_NUM_REGEX: Regex = Regex::new(r"^[[:digit:]]+\s*").unwrap();
+    static ref BIN_LIT_REGEX: Regex = Regex::new(r"^([[:digit:]]+)'b([01]+)\s*").unwrap();
+    static ref DEC_LIT_REGEX: Regex = Regex::new(r"^([[:digit:]]+)'d([[:digit:]]+)\s*").unwrap();
+    static ref HEX_LIT_REGEX: Regex = Regex::new(r"^([[:digit:]]+)'x([0-9a-fA-F]+)\s*").unwrap();
+    static ref TRUE_FALSE_REGEX: Regex = Regex::new(r"^((true)|(false))\s*").unwrap();
     // escaped or not + optional type info
-    static ref symbol_regex: Regex = Regex::new(r"^(([[:alpha:]][[:alnum:]]*)|(\|[^\|]*\|))\s*(:\s*bv<\s*([[:digit:]]+)\s*>\s*)?").unwrap();
-    static ref slice_regex: Regex = Regex::new(r"^(\[\s*([[:digit:]]+)\s*\]\s*)|(\[\s*([[:digit:]]+)\s*:\s*([[:digit:]]+)\s*\]\s*)").unwrap();
+    static ref SYMBOL_REGEX: Regex = Regex::new(r"^(([[:alpha:]][[:alnum:]]*)|(\|[^\|]*\|))\s*(:\s*bv<\s*([[:digit:]]+)\s*>\s*)?").unwrap();
+    static ref SLICE_REGEX: Regex = Regex::new(r"^\[\s*(([[:digit:]]+)|(([[:digit:]]+)\s*:\s*([[:digit:]]+)))\s*\]\s*").unwrap();
 }
 
 #[cfg(test)]
@@ -327,20 +336,24 @@ mod tests {
 
     #[test]
     fn test_regexes() {
-        assert!(true_false_regex.is_match("true"));
-        assert!(true_false_regex.is_match("false"));
-        assert!(true_false_regex.is_match("true  "));
-        assert!(true_false_regex.is_match("false  "));
-        assert!(!true_false_regex.is_match(" false"));
-        assert!(true_false_regex.is_match("false  123"));
+        assert!(TRUE_FALSE_REGEX.is_match("true"));
+        assert!(TRUE_FALSE_REGEX.is_match("false"));
+        assert!(TRUE_FALSE_REGEX.is_match("true  "));
+        assert!(TRUE_FALSE_REGEX.is_match("false  "));
+        assert!(!TRUE_FALSE_REGEX.is_match(" false"));
+        assert!(TRUE_FALSE_REGEX.is_match("false  123"));
 
-        assert!(symbol_regex.is_match("a"));
-        assert!(symbol_regex.is_match("|a|"));
-        assert!(symbol_regex.is_match("a : bv<10>"));
-        assert!(symbol_regex.is_match("a : bv< 10>"));
-        assert!(symbol_regex.is_match("a : bv<10 >"));
-        assert!(symbol_regex.is_match("a: bv<10>"));
-        assert!(symbol_regex.is_match("a :bv<10>"));
+        assert!(SYMBOL_REGEX.is_match("a"));
+        assert!(SYMBOL_REGEX.is_match("|a|"));
+        assert!(SYMBOL_REGEX.is_match("a : bv<10>"));
+        assert!(SYMBOL_REGEX.is_match("a : bv< 10>"));
+        assert!(SYMBOL_REGEX.is_match("a : bv<10 >"));
+        assert!(SYMBOL_REGEX.is_match("a: bv<10>"));
+        assert!(SYMBOL_REGEX.is_match("a :bv<10>"));
+
+        assert!(CLOSE_REGEX.is_match("))"));
+
+        assert!(SLICE_REGEX.captures(", c:bv<5>[4:3]").is_none())
     }
 
     #[test]
@@ -378,6 +391,16 @@ mod tests {
         assert_eq!(
             parse_expr(&mut ctx, "and(a : bv<3>, 3'b111)"),
             ctx.build(|c| c.and(c.bv_symbol("a", 3), c.bit_vec_val(0b111, 3)))
+        );
+
+        // nested functions
+        assert_eq!(
+            parse_expr(&mut ctx, "or(and(true, true), false)"),
+            ctx.build(|c| c.or(c.and(c.tru(), c.tru()), c.fals()))
+        );
+        assert_eq!(
+            parse_expr(&mut ctx, "or(false, and(true, true))"),
+            ctx.build(|c| c.or(c.fals(), c.and(c.tru(), c.tru())))
         );
     }
 }

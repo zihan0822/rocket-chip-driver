@@ -213,4 +213,13 @@ fn test_simplify_bool_equality() {
 
 // from maltese-smt
 #[test]
-fn test_simplify_comparison_to_concat() {}
+fn test_simplify_comparison_to_concat() {
+    ts(
+        "eq(c:bv<5>, concat(a:bv<2>, b:bv<3>))",
+        "and(eq(a:bv<2>, c:bv<5>[4:3]), eq(b:bv<3>,c[2:0]))",
+    );
+    ts(
+        "eq(concat(a:bv<2>, b:bv<3>), c:bv<5>)",
+        "and(eq(a:bv<2>, c:bv<5>[4:3]), eq(b:bv<3>,c[2:0]))",
+    );
+}
