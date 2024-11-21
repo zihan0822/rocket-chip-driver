@@ -123,6 +123,15 @@ fn find_lits_commutative(ctx: &Context, a: ExprRef, b: ExprRef) -> Lits {
     }
 }
 
+#[inline]
+fn find_one_concat(ctx: &Context, a: ExprRef, b: ExprRef) -> Option<(ExprRef, ExprRef, ExprRef)> {
+    match (ctx.get(a), ctx.get(b)) {
+        (Expr::BVConcat(c_a, c_b, _), _) => Some((*c_a, *c_b, b)),
+        (_, Expr::BVConcat(c_a, c_b, _)) => Some((*c_a, *c_b, a)),
+        _ => None,
+    }
+}
+
 fn simplify_bv_equal(ctx: &mut Context, a: ExprRef, b: ExprRef) -> Option<ExprRef> {
     // a == a -> true
     if a == b {
@@ -133,21 +142,32 @@ fn simplify_bv_equal(ctx: &mut Context, a: ExprRef, b: ExprRef) -> Option<ExprRe
         Lits::Two(va, vb) => {
             // two values that are the same should always be hash-consed to the same ExprRef
             debug_assert!(!va.get(ctx).is_equal(&vb.get(ctx)));
-            Some(ctx.fals())
+            return Some(ctx.fals());
         }
         Lits::One((lit, _), expr) => {
             if lit.is_true() {
                 // a == true -> a
-                Some(expr)
+                return Some(expr);
             } else if lit.is_false() {
                 // a == false -> !a
-                Some(ctx.not(expr))
-            } else {
-                None
+                return Some(ctx.not(expr));
             }
         }
-        Lits::None => None,
+        Lits::None => {}
     }
+
+    // check to see if we are comparing to a concat
+    if let Some((concat_a, concat_b, other)) = find_one_concat(ctx, a, b) {
+        let a_width = ctx.get(concat_a).get_bv_type(ctx).unwrap();
+        let b_width = ctx.get(concat_b).get_bv_type(ctx).unwrap();
+        let width = a_width + b_width;
+        debug_assert_eq!(width, other.get_bv_type(ctx).unwrap());
+        let eq_a = ctx.build(|c| c.bv_equal(concat_a, c.slice(other, width - 1, width - a_width)));
+        let eq_b = ctx.build(|c| c.bv_equal(concat_b, c.slice(other, b_width - 1, 0)));
+        return Some(ctx.and(eq_a, eq_b));
+    }
+
+    None
 }
 
 fn simplify_bv_and(ctx: &mut Context, a: ExprRef, b: ExprRef) -> Option<ExprRef> {

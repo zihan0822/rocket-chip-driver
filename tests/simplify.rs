@@ -285,7 +285,7 @@ fn test_simplify_comparison_to_concat() {
     // now with nested concats
     ts(
         "eq(c:bv<5>, concat(concat(a1:bv<1>, a0:bv<1>), b: bv<3>))",
-        "and(and(eq(a1:bv<1>, c:bv<5>[4]), eq(a0:bv<1>, c[3])), eq(b:bv<3>, c[2:0]))",
+        "and(eq(a1:bv<1>, c:bv<5>[4]), and(eq(a0:bv<1>, c[3]), eq(b:bv<3>, c[2:0])))",
     );
 }
 

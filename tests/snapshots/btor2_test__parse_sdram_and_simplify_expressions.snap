@@ -35,14 +35,14 @@ node %152 : bv<17> = _state_5[state]
 node _logic_not_sdram_controller.no_tri_state.v:315_26 : bv<1> = eq(state_cnt, 4'b0000)
 node _ge_sdram_controller.no_tri_state.v:294_25 : bv<1> = ugte(concat(22'x000000, refresh_cnt), 32'x00000207)
 node _eq_sdram_controller.no_tri_state.v:292_24 : bv<1> = eq(state, 5'b00000)
-node _auto_opt_dff.cc:195:make_patterns_logic_224 : bv<1> = not(eq(concat(_eq_sdram_controller.no_tri_state.v:292_24, _logic_not_sdram_controller.no_tri_state.v:315_26), 2'b00))
+node _auto_opt_dff.cc:195:make_patterns_logic_224 : bv<1> = not(and(not(_eq_sdram_controller.no_tri_state.v:292_24), not(_logic_not_sdram_controller.no_tri_state.v:315_26)))
 node _eq_sdram_controller.no_tri_state.v:209_10 : bv<1> = eq(state, 5'b10100)
 state command : bv<8>
   [next] ite(rst_n, ite(_auto_opt_dff.cc:195:make_patterns_logic_224, ite(_eq_sdram_controller.no_tri_state.v:292_24, ite(_ge_sdram_controller.no_tri_state.v:294_25, 8'b10010001, ite(rd_enable, 8'b10011000, ite(wr_enable, 8'b10011000, 8'b10111000))), ite(_logic_not_sdram_controller.no_tri_state.v:315_26, %152[16:9], 8'b00000000)), command), 8'b10111000)
 state state : bv<5>
   [next] ite(rst_n, ite(_auto_opt_dff.cc:195:make_patterns_logic_224, ite(_eq_sdram_controller.no_tri_state.v:292_24, ite(_ge_sdram_controller.no_tri_state.v:294_25, 5'b00001, ite(rd_enable, 5'b10000, ite(wr_enable, 5'b11000, 5'b00000))), ite(_logic_not_sdram_controller.no_tri_state.v:315_26, %152[8:4], 5'b00000)), state), 5'b01000)
 state haddr_r : bv<24>
-  [next] ite(rst_n, ite(not(eq(concat(rd_enable, wr_enable), 2'b00)), ite(rd_enable, rd_addr, ite(wr_enable, wr_addr, 24'x000000)), haddr_r), 24'x000000)
+  [next] ite(rst_n, ite(not(and(not(rd_enable), not(wr_enable))), ite(rd_enable, rd_addr, ite(wr_enable, wr_addr, 24'x000000)), haddr_r), 24'x000000)
 state busy : bv<1>
   [next] ite(rst_n, %39, 1'b0)
 state data_out : bv<16>
@@ -57,4 +57,4 @@ state _state_5 : bv<5> -> bv<17>
 state state_cnt : bv<4>
   [next] ite(rst_n, ite(_logic_not_sdram_controller.no_tri_state.v:315_26, ite(_eq_sdram_controller.no_tri_state.v:292_24, 4'b0000, %152[3:0]), sub(state_cnt, 4'b0001)), 4'b1111)
 state refresh_cnt : bv<10>
-  [next] ite(not(eq(concat(not(rst_n), eq(state, 5'b00100)), 2'b00)), 10'x000, add(refresh_cnt, 10'x001))
+  [next] ite(not(and(rst_n, not(eq(state, 5'b00100)))), 10'x000, add(refresh_cnt, 10'x001))
