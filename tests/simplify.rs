@@ -126,6 +126,13 @@ fn test_simplify_shift_left() {
     );
     ts("shift_left(a : bv<3>, 3'd2)", "concat(a : bv<3>[0], 2'b00)");
     ts("shift_left(a : bv<3>, 3'd3)", "3'b000");
+
+    // more shift by constant tests
+    ts("shift_left(a:bv<32>, 32'd0)", "a : bv<32>");
+    ts(
+        "shift_left(a:bv<32>, 32'd4)",
+        "concat(a:bv<32>[27:0], 4'd0)",
+    );
 }
 
 #[test]
@@ -141,6 +148,10 @@ fn test_simplify_shift_right() {
     ts("shift_right(a : bv<3>, 3'd1)", "zext(a : bv<3>[2:1], 1)");
     ts("shift_right(a : bv<3>, 3'd2)", "zext(a : bv<3>[2], 2)");
     ts("shift_right(a : bv<3>, 3'd3)", "3'b000");
+
+    // more shift by constant tests
+    ts("shift_right(a:bv<32>, 32'd0)", "a : bv<32>");
+    ts("shift_right(a:bv<32>, 32'd4)", "zext(a:bv<32>[31:4], 4)");
 }
 
 #[test]
@@ -214,6 +225,7 @@ fn test_simplify_bool_equality() {
 // from maltese-smt
 #[test]
 fn test_simplify_comparison_to_concat() {
+    // eq over concat should be split up
     ts(
         "eq(c:bv<5>, concat(a:bv<2>, b:bv<3>))",
         "and(eq(a:bv<2>, c:bv<5>[4:3]), eq(b:bv<3>,c[2:0]))",
@@ -222,4 +234,14 @@ fn test_simplify_comparison_to_concat() {
         "eq(concat(a:bv<2>, b:bv<3>), c:bv<5>)",
         "and(eq(a:bv<2>, c:bv<5>[4:3]), eq(b:bv<3>,c[2:0]))",
     );
+
+    // now with nested concats
+    ts(
+        "eq(c:bv<5>, concat(concat(a1:bv<1>, a0:bv<1>), b: bv<3>))",
+        "and(and(eq(a1:bv<1>, c:bv<5>[4]), eq(a0:bv<1>, c[3])), eq(b:bv<3>, c[2:0]))",
+    );
 }
+
+// from maltese-smt
+#[test]
+fn test_simplify_bit_masks() {}
