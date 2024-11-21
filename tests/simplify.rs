@@ -426,6 +426,12 @@ fn test_slice_of_ite() {
     );
 }
 
+#[test]
+fn test_simplify_concat_of_adjacent_slices() {
+    ts("concat(a:bv<32>[20:19], a[18:0])", "a:bv<32>[20:0]");
+    ts("concat(a:bv<32>[31:19], a[18:0])", "a:bv<32>");
+}
+
 // TODO: add slice simplifications: https://github.com/ekiwi/maltese-private/blob/main/test/maltese/smt/SMTSimplifierSliceSpec.scala
 
 // TODO: add missing literals simplifications: https://github.com/ekiwi/maltese-private/blob/main/test/maltese/smt/SMTSimplifierLiteralsSpec.scala

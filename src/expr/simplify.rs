@@ -374,21 +374,39 @@ fn simplify_bv_sign_ext(ctx: &mut Context, e: ExprRef, by: WidthInt) -> Option<E
 }
 
 fn simplify_bv_concat(ctx: &mut Context, a: ExprRef, b: ExprRef) -> Option<ExprRef> {
-    match *ctx.get(a) {
+    match (ctx.get(a).clone(), ctx.get(b).clone()) {
         // normalize concat to be right recursive
-        Expr::BVConcat(a_a, a_b, _) => Some(ctx.build(|c| c.concat(a_a, c.concat(a_b, b)))),
-        Expr::BVLiteral(va) => match *ctx.get(b) {
-            Expr::BVLiteral(vb) => Some(ctx.bv_lit(&va.get(ctx).concat(&vb.get(ctx)))),
-            Expr::BVConcat(b_a, b_b, _) => {
-                if let Expr::BVLiteral(v_b_a) = *ctx.get(b_a) {
-                    let lit = ctx.bv_lit(&va.get(ctx).concat(&v_b_a.get(ctx)));
-                    Some(ctx.concat(lit, b_b))
-                } else {
-                    None
-                }
+        (Expr::BVConcat(a_a, a_b, _), _) => Some(ctx.build(|c| c.concat(a_a, c.concat(a_b, b)))),
+        (Expr::BVLiteral(va), Expr::BVLiteral(vb)) => {
+            Some(ctx.bv_lit(&va.get(ctx).concat(&vb.get(ctx))))
+        }
+        (Expr::BVLiteral(va), Expr::BVConcat(b_a, b_b, _)) => {
+            if let Expr::BVLiteral(v_b_a) = *ctx.get(b_a) {
+                let lit = ctx.bv_lit(&va.get(ctx).concat(&v_b_a.get(ctx)));
+                Some(ctx.concat(lit, b_b))
+            } else {
+                None
             }
-            _ => None,
-        },
+        }
+        (
+            Expr::BVSlice {
+                e: a,
+                hi: hi_a,
+                lo: lo_a,
+            },
+            Expr::BVSlice {
+                e: b,
+                hi: hi_b,
+                lo: lo_b,
+            },
+        ) => {
+            // slice of the same thing + adjacent
+            if a == b && lo_a == hi_b + 1 {
+                Some(ctx.slice(a, hi_a, lo_b))
+            } else {
+                None
+            }
+        }
         _ => None,
     }
 }
