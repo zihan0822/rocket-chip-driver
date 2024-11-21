@@ -44,7 +44,7 @@ state state : bv<5>
 state haddr_r : bv<24>
   [next] ite(rst_n, ite(not(or(rd_enable, wr_enable)), ite(rd_enable, rd_addr, ite(wr_enable, wr_addr, 24'x000000)), haddr_r), 24'x000000)
 state busy : bv<1>
-  [next] ite(rst_n, %39, 1'b0)
+  [next] and(rst_n, %39)
 state data_out : bv<16>
   [next] ite(rst_n, ite(wr_enable, wr_data, data_out), 16'x0000)
 state rd_data : bv<16>

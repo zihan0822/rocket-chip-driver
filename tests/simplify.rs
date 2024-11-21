@@ -105,6 +105,12 @@ fn test_simplify_ite() {
     ts("ite(c : bv<1>, true, true)", "true");
     ts("ite(c : bv<1>, false, true)", "not(c : bv<1>)");
     ts("ite(c : bv<1>, false, false)", "false");
+
+    // one value is a boolean constant
+    ts("ite(c:bv<1>, true, b:bv<1>)", "or(c:bv<1>, b:bv<1>)");
+    ts("ite(c:bv<1>, false, b:bv<1>)", "and(not(c:bv<1>), b:bv<1>)");
+    ts("ite(c:bv<1>, a:bv<1>, false)", "and(c:bv<1>, a:bv<1>)");
+    ts("ite(c:bv<1>, a:bv<1>, true)", "or(not(c:bv<1>), a:bv<1>)");
 }
 
 #[test]

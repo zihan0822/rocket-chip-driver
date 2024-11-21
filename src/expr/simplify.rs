@@ -87,23 +87,44 @@ fn simplify_ite(ctx: &mut Context, cond: ExprRef, tru: ExprRef, fals: ExprRef) -
         ctx.get(tru).get_bv_type(ctx)
     );
     if value_width == 1 {
-        if let (Expr::BVLiteral(vt), Expr::BVLiteral(vf)) = (ctx.get(tru), ctx.get(fals)) {
-            let res = match (
-                vt.get(ctx).to_bool().unwrap(),
-                vf.get(ctx).to_bool().unwrap(),
-            ) {
-                // ite(cond, true, false) -> cond
-                (true, false) => cond,
-                // ite(cond, false, true) -> !cond
-                (false, true) => ctx.not(cond),
-                _ => unreachable!(
-                    "both arguments are the same, this should have been handled earlier"
-                ),
-            };
-            return Some(res);
+        // boolean value simplifications
+        match (ctx.get(tru), ctx.get(fals)) {
+            (Expr::BVLiteral(vt), Expr::BVLiteral(vf)) => {
+                let res = match (
+                    vt.get(ctx).to_bool().unwrap(),
+                    vf.get(ctx).to_bool().unwrap(),
+                ) {
+                    // ite(cond, true, false) -> cond
+                    (true, false) => cond,
+                    // ite(cond, false, true) -> !cond
+                    (false, true) => ctx.not(cond),
+                    _ => unreachable!(
+                        "both arguments are the same, this should have been handled earlier"
+                    ),
+                };
+                Some(res)
+            }
+            (Expr::BVLiteral(vt), _) => {
+                match vt.get(ctx).to_bool().unwrap() {
+                    // ite(c, true, b) -> c | b
+                    true => Some(ctx.or(cond, fals)),
+                    // ite(c, false, b) -> !c & b
+                    false => Some(ctx.build(|c| c.and(c.not(cond), fals))),
+                }
+            }
+            (_, Expr::BVLiteral(vf)) => {
+                match vf.get(ctx).to_bool().unwrap() {
+                    // ite(c, a, true) -> !c | a
+                    true => Some(ctx.build(|c| c.or(c.not(cond), tru))),
+                    // ite(c, a, false) -> c & a
+                    false => Some(ctx.and(cond, tru)),
+                }
+            }
+            _ => None,
         }
+    } else {
+        None
     }
-    None
 }
 
 enum Lits {
@@ -190,8 +211,18 @@ fn simplify_bv_and(ctx: &mut Context, a: ExprRef, b: ExprRef) -> Option<ExprRef>
                 // a & 1 -> a
                 Some(expr)
             } else {
-                // TODO: deal with partial masks, like: a & 0xf0 -> a[7:4] # 4'd0
-                None
+                // deal with bit mask
+
+                // (a # b) & mask -> ((a & mask_upper) # (b & mask_lower))
+                if let Expr::BVConcat(a, b, width) = ctx.get(expr).clone() {
+                    let b_width = b.get_bv_type(ctx).unwrap();
+                    debug_assert_eq!(width, b_width + a.get_bv_type(ctx).unwrap());
+                    let a_mask = ctx.bv_lit(&lit.get(ctx).slice(width - 1, b_width));
+                    let b_mask = ctx.bv_lit(&lit.get(ctx).slice(b_width - 1, 0));
+                    Some(ctx.build(|c| c.concat(c.and(a, a_mask), c.and(b, b_mask))))
+                } else {
+                    None
+                }
             }
         }
         Lits::None => {
