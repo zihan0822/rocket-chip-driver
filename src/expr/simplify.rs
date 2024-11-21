@@ -199,6 +199,8 @@ fn simplify_bv_and(ctx: &mut Context, a: ExprRef, b: ExprRef) -> Option<ExprRef>
                 // a & !a -> 0
                 (Expr::BVNot(inner, w), _) if *inner == b => Some(ctx.zero(*w)),
                 (_, Expr::BVNot(inner, w)) if *inner == a => Some(ctx.zero(*w)),
+                // !a & !b -> a | b
+                (Expr::BVNot(a, _), Expr::BVNot(b, _)) => Some(ctx.or(*a, *b)),
                 _ => None,
             }
         }
@@ -233,6 +235,8 @@ fn simplify_bv_or(ctx: &mut Context, a: ExprRef, b: ExprRef) -> Option<ExprRef> 
                 // a | !a -> 1
                 (Expr::BVNot(inner, w), _) if *inner == b => Some(ctx.ones(*w)),
                 (_, Expr::BVNot(inner, w)) if *inner == a => Some(ctx.ones(*w)),
+                // !a | !b -> a & b
+                (Expr::BVNot(a, _), Expr::BVNot(b, _)) => Some(ctx.and(*a, *b)),
                 _ => None,
             }
         }

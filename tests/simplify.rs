@@ -32,6 +32,9 @@ fn test_simplify_and() {
     ts("and(a : bv<3>, 3'b000)", "3'b000");
     ts("and(a : bv<1>, not(a))", "false");
     ts("and(not(a : bv<1>), a)", "false");
+
+    // de morgan
+    ts("and(not(a:bv<3>), not(b:bv<3>))", "or(a:bv<3>, b:bv<3>)")
 }
 
 #[test]
@@ -44,6 +47,9 @@ fn test_simplify_or() {
     ts("or(a : bv<3>, 3'b000)", "a : bv<3>");
     ts("or(a : bv<1>, not(a))", "true");
     ts("or(not(a : bv<1>), a)", "true");
+
+    // de morgan
+    ts("or(not(a:bv<3>), not(b:bv<3>))", "and(a:bv<3>, b:bv<3>)")
 }
 
 #[test]
