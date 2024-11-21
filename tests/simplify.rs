@@ -150,13 +150,19 @@ fn test_simplify_shift_right() {
 
     // shift by a constant
     ts("shift_right(a : bv<3>, 3'd0)", "a : bv<3>");
-    ts("shift_right(a : bv<3>, 3'd1)", "zext(a : bv<3>[2:1], 1)");
-    ts("shift_right(a : bv<3>, 3'd2)", "zext(a : bv<3>[2], 2)");
+    ts(
+        "shift_right(a : bv<3>, 3'd1)",
+        "concat(1'd0, a : bv<3>[2:1])",
+    );
+    ts("shift_right(a : bv<3>, 3'd2)", "concat(2'd0, a : bv<3>[2])");
     ts("shift_right(a : bv<3>, 3'd3)", "3'b000");
 
     // more shift by constant tests
     ts("shift_right(a:bv<32>, 32'd0)", "a : bv<32>");
-    ts("shift_right(a:bv<32>, 32'd4)", "zext(a:bv<32>[31:4], 4)");
+    ts(
+        "shift_right(a:bv<32>, 32'd4)",
+        "concat(4'd0, a:bv<32>[31:4])",
+    );
 }
 
 #[test]
