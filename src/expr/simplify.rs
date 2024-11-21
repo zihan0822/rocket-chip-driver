@@ -46,6 +46,7 @@ pub(crate) fn simplify(ctx: &mut Context, expr: ExprRef, children: &[ExprRef]) -
         (Expr::BVZeroExt { by, .. }, [e]) => simplify_bv_zero_ext(ctx, *e, by),
         (Expr::BVSlice { lo, hi, .. }, [e]) => simplify_bv_slice(ctx, *e, hi, lo),
         (Expr::BVIte { .. }, [cond, tru, fals]) => simplify_ite(ctx, *cond, *tru, *fals),
+        (Expr::BVEqual(..), [a, b]) => simplify_bv_equal(ctx, *a, *b),
         (Expr::BVAnd(..), [a, b]) => simplify_bv_and(ctx, *a, *b),
         (Expr::BVOr(..), [a, b]) => simplify_bv_or(ctx, *a, *b),
         (Expr::BVXor(..), [a, b]) => simplify_bv_xor(ctx, *a, *b),
@@ -118,6 +119,33 @@ fn find_lits_commutative(ctx: &Context, a: ExprRef, b: ExprRef) -> Lits {
         (Expr::BVLiteral(va), _) => Lits::One((*va, a), b),
         (_, Expr::BVLiteral(vb)) => Lits::One((*vb, b), a),
         (_, _) => Lits::None,
+    }
+}
+
+fn simplify_bv_equal(ctx: &mut Context, a: ExprRef, b: ExprRef) -> Option<ExprRef> {
+    // a == a -> true
+    if a == b {
+        return Some(ctx.tru());
+    }
+
+    match find_lits_commutative(ctx, a, b) {
+        Lits::Two(va, vb) => {
+            // two values that are the same should always be hash-consed to the same ExprRef
+            debug_assert!(!va.get(ctx).is_equal(&vb.get(ctx)));
+            Some(ctx.fals())
+        }
+        Lits::One((lit, lit_expr), expr) => {
+            if lit.is_true() {
+                // a == true -> a
+                Some(expr)
+            } else if lit.is_false() {
+                // a == false -> !a
+                Some(ctx.not(expr))
+            } else {
+                None
+            }
+        }
+        Lits::None => None,
     }
 }
 
