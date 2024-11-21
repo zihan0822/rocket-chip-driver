@@ -430,6 +430,10 @@ fn simplify_bv_slice(ctx: &mut Context, e: ExprRef, hi: WidthInt, lo: WidthInt) 
                 Some(ctx.sign_extend(inner, hi - e_width + 1))
             }
         }
+        // slice of ite
+        Expr::BVIte { cond, tru, fals } => {
+            Some(ctx.build(|c| c.bv_ite(cond, c.slice(tru, hi, lo), c.slice(fals, hi, lo))))
+        }
         _ => None,
     }
 }

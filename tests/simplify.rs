@@ -418,6 +418,14 @@ fn test_push_slice_into_concat() {
     );
 }
 
+#[test]
+fn test_slice_of_ite() {
+    ts(
+        "ite(c:bv<1>, a:bv<4>, b:bv<4>)[0]",
+        "ite(c:bv<1>, a:bv<4>[0], b:bv<4>[0])",
+    );
+}
+
 // TODO: add slice simplifications: https://github.com/ekiwi/maltese-private/blob/main/test/maltese/smt/SMTSimplifierSliceSpec.scala
 
 // TODO: add missing literals simplifications: https://github.com/ekiwi/maltese-private/blob/main/test/maltese/smt/SMTSimplifierLiteralsSpec.scala

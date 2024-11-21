@@ -60,13 +60,20 @@ pub fn do_transform(
     do_transform_expr(ctx, mode, &mut transformed, todo, tran);
 
     // update transition system signals
-    for (old_expr, maybe_new_expr) in transformed.iter() {
-        if let Some(new_expr) = maybe_new_expr {
-            if *new_expr != old_expr {
-                sys.update_signal_expr(old_expr, *new_expr);
+    let signals = sys.get_signals(|_| true);
+    for (old_expr, info) in signals.into_iter() {
+        let new_expr = if mode == ExprTransformMode::FixedPoint {
+            get_fixed_point(&mut transformed, old_expr)
+        } else {
+            transformed[old_expr]
+        };
+        if let Some(new_expr) = new_expr {
+            if new_expr != old_expr {
+                sys.update_signal_expr(old_expr, new_expr);
             }
         }
     }
+
     // update states
     for state in sys.states.iter_mut() {
         if let Some(new_symbol) = changed(&transformed, state.symbol) {
