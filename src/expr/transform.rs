@@ -2,6 +2,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 
+use crate::expr::meta::get_fixed_point;
 use crate::expr::*;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -10,6 +11,7 @@ pub enum ExprTransformMode {
     FixedPoint,
 }
 
+#[inline]
 pub(crate) fn do_transform_expr<T: ExprMetaData<Option<ExprRef>>>(
     ctx: &mut Context,
     mode: ExprTransformMode,
@@ -25,7 +27,12 @@ pub(crate) fn do_transform_expr<T: ExprMetaData<Option<ExprRef>>>(
         let mut children_changed = false; // track whether any of the children changed
         let mut all_transformed = true; // tracks whether all children have been transformed or if there is more work to do
         ctx.get(expr_ref).for_each_child(|c| {
-            match transformed[*c] {
+            let transformed_child = if mode == ExprTransformMode::FixedPoint {
+                get_fixed_point(transformed, *c)
+            } else {
+                transformed[*c]
+            };
+            match transformed_child {
                 Some(new_child_expr) => {
                     if new_child_expr != *c {
                         children_changed = true; // child changed
@@ -46,14 +53,9 @@ pub(crate) fn do_transform_expr<T: ExprMetaData<Option<ExprRef>>>(
         }
 
         // call out to the transform
-        let tran_res = (tran)(ctx, expr_ref, &children);
+        let tran_res = tran(ctx, expr_ref, &children);
         let new_expr_ref = match tran_res {
-            Some(e) => {
-                if mode == ExprTransformMode::FixedPoint && transformed[e].is_none() {
-                    todo.push(e);
-                }
-                e
-            }
+            Some(e) => e,
             None => {
                 if children_changed {
                     update_expr_children(ctx, expr_ref, &children)
@@ -66,6 +68,16 @@ pub(crate) fn do_transform_expr<T: ExprMetaData<Option<ExprRef>>>(
         };
         // remember the transformed version
         transformed.insert(expr_ref, Some(new_expr_ref));
+
+        // in fixed point mode, we might not be done yet
+        let is_at_fixed_point = expr_ref == new_expr_ref;
+        if mode == ExprTransformMode::FixedPoint
+            && !is_at_fixed_point
+            && transformed[new_expr_ref].is_none()
+        {
+            // see if we can further simplify the new expression
+            todo.push(new_expr_ref);
+        }
     }
 }
 

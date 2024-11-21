@@ -7,7 +7,7 @@ use super::{
     do_transform_expr, BVLitValue, Context, Expr, ExprMetaData, ExprRef, SparseExprMetaData,
     TypeCheck, WidthInt,
 };
-use crate::expr::meta::extract_fixed_point;
+use crate::expr::meta::get_fixed_point;
 use crate::expr::transform::ExprTransformMode;
 use baa::BitVecOps;
 
@@ -35,7 +35,7 @@ impl<T: ExprMetaData<Option<ExprRef>>> Simplifier<T> {
             vec![e],
             simplify,
         );
-        extract_fixed_point(&self.cache, e)
+        get_fixed_point(&mut self.cache, e).unwrap()
     }
 }
 
