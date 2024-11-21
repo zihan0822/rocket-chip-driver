@@ -295,3 +295,7 @@ fn test_simplify_slice_on_sign_extension() {
     ts("sext(a:bv<4>, 2)[5:0]", "sext(a:bv<4>, 2)");
     ts("sext(a:bv<4>, 2)[4:1]", "sext(a:bv<4>[3:1], 1)");
 }
+
+// TODO: add slice simplifications: https://github.com/ekiwi/maltese-private/blob/main/test/maltese/smt/SMTSimplifierSliceSpec.scala
+
+// TODO: add missing literals simplifications: https://github.com/ekiwi/maltese-private/blob/main/test/maltese/smt/SMTSimplifierLiteralsSpec.scala
