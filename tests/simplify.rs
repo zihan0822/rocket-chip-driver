@@ -368,6 +368,54 @@ fn test_push_slice_into_concat() {
     ts("concat(a:bv<3>, b:bv<2>)[3:2]", "a:bv<3>[1:0]");
     ts("concat(a:bv<3>, b:bv<2>)[1:0]", "b:bv<2>");
     ts("concat(a:bv<3>, b:bv<2>)[1]", "b:bv<2>[1]");
+
+    // non-overlapping slice of 2-concat
+    ts("concat(3'b011, a : bv<2>)[4:2]", "3'b011");
+    ts("concat(3'b011, a : bv<2>)[4:3]", "2'b01");
+    ts("concat(3'b011, a : bv<2>)[1:0]", "a : bv<2>");
+    ts("concat(3'b011, a : bv<2>)[1]", "a : bv<2>[1]");
+
+    // overlapping slice of 2-concat
+    ts("concat(3'b011, a : bv<2>)[4:0]", "concat(3'b011, a:bv<2>)");
+    ts(
+        "concat(3'b011, a : bv<2>)[4:1]",
+        "concat(3'b011, a:bv<2>[1])",
+    );
+    ts("concat(3'b011, a : bv<2>)[3:0]", "concat(2'b11, a:bv<2>)");
+
+    // non-overlapping slice of 3-concat
+    ts("concat(concat(a:bv<2>, 3'b011), b : bv<2>)[6:5]", "a:bv<2>");
+    ts("concat(a:bv<2>, concat(3'b011, b : bv<2>))[6:5]", "a:bv<2>");
+    ts("concat(concat(a:bv<2>, 3'b011), b : bv<2>)[4:2]", "3'b011");
+    ts("concat(a:bv<2>, concat(3'b011, b : bv<2>))[4:2]", "3'b011");
+    ts("concat(concat(a:bv<2>, 3'b011), b : bv<2>)[1:0]", "b:bv<2>");
+    ts("concat(a:bv<2>, concat(3'b011, b : bv<2>))[1:0]", "b:bv<2>");
+
+    // overlapping slice of 3-concat
+    ts(
+        "concat(concat(a:bv<2>, 3'b011), b : bv<2>)[6:2]",
+        "concat(a:bv<2>, 3'b011)",
+    );
+    ts(
+        "concat(a:bv<2>, concat(3'b011, b : bv<2>))[6:2]",
+        "concat(a:bv<2>, 3'b011)",
+    );
+    ts(
+        "concat(concat(a:bv<2>, 3'b011), b : bv<2>)[6:3]",
+        "concat(a:bv<2>, 2'b01)",
+    );
+    ts(
+        "concat(a:bv<2>, concat(3'b011, b : bv<2>))[6:3]",
+        "concat(a:bv<2>, 2'b01)",
+    );
+    ts(
+        "concat(concat(a:bv<2>, 3'b011), b : bv<2>)[5:2]",
+        "concat(a:bv<2>[0], 3'b011)",
+    );
+    ts(
+        "concat(a:bv<2>, concat(3'b011, b : bv<2>))[5:2]",
+        "concat(a:bv<2>[0], 3'b011)",
+    );
 }
 
 // TODO: add slice simplifications: https://github.com/ekiwi/maltese-private/blob/main/test/maltese/smt/SMTSimplifierSliceSpec.scala
