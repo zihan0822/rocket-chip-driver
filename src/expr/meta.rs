@@ -14,7 +14,7 @@ use std::ops::Index;
 
 pub trait ExprMetaData<T>: Debug + Clone + Index<ExprRef, Output = T>
 where
-    T: Default + Clone,
+    T: Default + Clone + PartialEq,
 {
     fn iter<'a>(&'a self) -> impl Iterator<Item = (ExprRef, &'a T)>
     where
@@ -66,7 +66,7 @@ impl<T: Default + Clone + Debug> Index<ExprRef> for SparseExprMetaData<T> {
     }
 }
 
-impl<T: Default + Clone + Debug> ExprMetaData<T> for SparseExprMetaData<T> {
+impl<T: Default + Clone + Debug + PartialEq> ExprMetaData<T> for SparseExprMetaData<T> {
     #[inline]
     fn iter<'a>(&'a self) -> impl Iterator<Item = (ExprRef, &'a T)>
     where
@@ -77,7 +77,11 @@ impl<T: Default + Clone + Debug> ExprMetaData<T> for SparseExprMetaData<T> {
 
     #[inline]
     fn insert(&mut self, e: ExprRef, data: T) {
-        self.inner.insert(e, data);
+        if data == self.default {
+            self.inner.remove(&e);
+        } else {
+            self.inner.insert(e, data);
+        }
     }
 }
 
@@ -105,7 +109,7 @@ impl<T: Default + Clone + Debug> Index<ExprRef> for DenseExprMetaData<T> {
     }
 }
 
-impl<T: Default + Clone + Debug> ExprMetaData<T> for DenseExprMetaData<T> {
+impl<T: Default + Clone + Debug + PartialEq> ExprMetaData<T> for DenseExprMetaData<T> {
     #[inline]
     fn iter<'a>(&'a self) -> impl Iterator<Item = (ExprRef, &'a T)>
     where

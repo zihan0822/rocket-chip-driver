@@ -4,7 +4,7 @@
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
 use super::analysis::analyze_for_serialization;
-use super::{SignalInfo, SignalLabels, TransitionSystem};
+use super::TransitionSystem;
 use crate::expr::{
     serialize_expr, serialize_expr_ref, Context, ExprRef, SerializableIrNode, TypeCheck,
 };
@@ -35,8 +35,7 @@ fn serialize_transition_system<W: Write>(
             .get_symbol_name(root.expr)
             .map(|n| n.to_string())
             .unwrap_or_else(|| {
-                sys.get_signal(root.expr)
-                    .and_then(|i| i.name)
+                sys.names[root.expr]
                     .map(|n| ctx.get_str(n).to_string())
                     .unwrap_or(format!("%{}", root.expr.index()))
             });
@@ -90,7 +89,7 @@ fn serialize_transition_system<W: Write>(
     }
 
     // states
-    for (_, state) in sys.states() {
+    for state in sys.states.iter() {
         let name = ctx
             .get_symbol_name(state.symbol)
             .expect("all states are required to have a name!");

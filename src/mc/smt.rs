@@ -8,9 +8,10 @@ use crate::mc::types::InitValue;
 use crate::mc::Witness;
 use crate::smt::*;
 use crate::system::analysis::{analyze_for_serialization, count_expr_uses, UseCountInt, Uses};
-use crate::system::{SignalInfo, SignalKind, State, TransitionSystem};
+use crate::system::{State, TransitionSystem};
 use baa::*;
 use easy_smt as smt;
+use rustc_hash::FxHashSet;
 use std::collections::HashSet;
 
 #[derive(Debug, Clone, Copy)]
@@ -89,12 +90,12 @@ impl SmtModelChecker {
         enc.define_header(&mut smt_ctx)?;
         enc.init_at(ctx, &mut smt_ctx, 0)?;
 
-        let constraints = sys.constraints();
-        let bad_states = sys.bad_states();
+        let constraints = sys.constraints.clone();
+        let bad_states = sys.bad_states.clone();
 
         for k in 0..=k_max {
             // assume all constraints hold in this step
-            for (expr_ref, _) in constraints.iter() {
+            for expr_ref in constraints.iter() {
                 let expr = enc.get_at(ctx, &mut smt_ctx, *expr_ref, k);
                 smt_ctx.assert(expr)?;
             }
@@ -111,7 +112,7 @@ impl SmtModelChecker {
             }
 
             if self.opts.check_bad_states_individually {
-                for (_bs_id, (expr_ref, _)) in bad_states.iter().enumerate() {
+                for (_bs_id, expr_ref) in bad_states.iter().enumerate() {
                     let expr = enc.get_at(ctx, &mut smt_ctx, *expr_ref, k);
                     let res = check_assuming(&mut smt_ctx, expr, &self.solver)?;
 
@@ -134,7 +135,7 @@ impl SmtModelChecker {
             } else {
                 let all_bads = bad_states
                     .iter()
-                    .map(|(expr_ref, _)| enc.get_at(ctx, &mut smt_ctx, *expr_ref, k))
+                    .map(|expr_ref| enc.get_at(ctx, &mut smt_ctx, *expr_ref, k))
                     .collect::<Vec<_>>();
                 let any_bad = smt_ctx.or_many(all_bads);
                 let res = check_assuming(&mut smt_ctx, any_bad, &self.solver)?;
@@ -173,12 +174,12 @@ impl SmtModelChecker {
         smt_ctx: &mut smt::Context,
         enc: &UnrollSmtEncoding,
         k_max: u64,
-        bad_states: &[(ExprRef, SignalInfo)],
+        bad_states: &[ExprRef],
     ) -> Result<Witness> {
         let mut wit = Witness::default();
 
         // which bad states did we hit?
-        for (bad_idx, (expr, _)) in bad_states.iter().enumerate() {
+        for (bad_idx, expr) in bad_states.iter().enumerate() {
             let sym_at = enc.get_at(ctx, smt_ctx, *expr, k_max);
             let value = get_smt_value(smt_ctx, sym_at, expr.get_type(ctx))?;
             let value = match value {
@@ -192,7 +193,7 @@ impl SmtModelChecker {
         }
 
         // collect initial values
-        for (state_cnt, (_, state)) in sys.states().enumerate() {
+        for (state_cnt, state) in sys.states.iter().enumerate() {
             let sym_at = enc.get_at(ctx, smt_ctx, state.symbol, 0);
             let value = get_smt_value(smt_ctx, sym_at, state.symbol.get_type(ctx))?;
             // we assume that state ids are monotonically increasing with +1
@@ -214,18 +215,15 @@ impl SmtModelChecker {
                 .push(Some(ctx.get_symbol_name(state.symbol).unwrap().to_string()))
         }
 
-        // collect all inputs
-        let inputs = sys.get_signals(|s| s.kind == SignalKind::Input);
-
         // save input names
-        for (input, _) in inputs.iter() {
+        for input in sys.inputs.iter() {
             wit.input_names
                 .push(Some(ctx.get_symbol_name(*input).unwrap().to_string()));
         }
 
         for k in 0..=k_max {
             let mut input_values = Vec::default();
-            for (input, _) in inputs.iter() {
+            for input in sys.inputs.iter() {
                 let sym_at = enc.get_at(ctx, smt_ctx, *input, k);
                 let value = get_smt_value(smt_ctx, sym_at, input.get_type(ctx))?;
                 input_values.push(Some(value));
@@ -331,17 +329,19 @@ impl UnrollSmtEncoding {
             .max()
             .unwrap_or_default();
         let max_state_index = sys
-            .states()
-            .map(|(_, s)| s.symbol.index())
+            .states
+            .iter()
+            .map(|s| s.symbol.index())
             .max()
             .unwrap_or_default();
         let signals_map_len = std::cmp::max(max_ser_index, max_state_index) + 1;
         let mut signals = vec![None; signals_map_len];
         let mut signal_order = Vec::with_capacity(ser_info.signal_order.len());
 
-        let is_state: HashSet<ExprRef> = HashSet::from_iter(sys.states().map(|(_, s)| s.symbol));
+        let is_state: HashSet<ExprRef> = HashSet::from_iter(sys.states.iter().map(|s| s.symbol));
 
         // we skip states in our signal order since they are not calculated directly in the update function
+        let input_set = FxHashSet::from_iter(sys.inputs.iter().cloned());
         for (id, root) in ser_info
             .signal_order
             .into_iter()
@@ -349,14 +349,11 @@ impl UnrollSmtEncoding {
             .enumerate()
         {
             signal_order.push(root.expr);
-            let name = sys.get_signal(root.expr).and_then(|i| i.name).unwrap_or({
+            let name = sys.names[root.expr].unwrap_or({
                 let default_name = format!("__n{}", root.expr.index());
                 ctx.string(default_name.into())
             });
-            let is_input = sys
-                .get_signal(root.expr)
-                .map(|i| i.kind == SignalKind::Input)
-                .unwrap_or(false);
+            let is_input = input_set.contains(&root.expr);
             let info = SmtSignalInfo {
                 id: id as u16,
                 name,
@@ -367,8 +364,8 @@ impl UnrollSmtEncoding {
             };
             signals[root.expr.index()] = Some(info);
         }
-        for (id, state) in sys.states() {
-            let id = (id.to_index() + signal_order.len()) as u16;
+        for (id, state) in sys.states.iter().enumerate() {
+            let id = (id + signal_order.len()) as u16;
             let info = SmtSignalInfo {
                 id,
                 name: ctx.get(state.symbol).get_symbol_name_ref().unwrap(),

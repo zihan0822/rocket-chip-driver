@@ -3,7 +3,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
-use super::{SignalInfo, SignalKind, TransitionSystem};
+use super::TransitionSystem;
 use crate::btor2::{DEFAULT_INPUT_PREFIX, DEFAULT_STATE_PREFIX};
 use crate::expr::*;
 use std::collections::HashMap;
@@ -14,26 +14,19 @@ use std::collections::HashMap;
 pub fn replace_anonymous_inputs_with_zero(ctx: &mut Context, sys: &mut TransitionSystem) {
     // find and remove inputs
     let mut replace_map = HashMap::new();
-    for (expr, signal_info) in sys.get_signals(|s| s.is_input()) {
-        let name = ctx.get_symbol_name(expr).unwrap();
+    sys.inputs.retain(|&input| {
+        let name = ctx.get_symbol_name(input).unwrap();
         if name.starts_with(DEFAULT_INPUT_PREFIX) || name.starts_with(DEFAULT_STATE_PREFIX) {
-            let replacement = match expr.get_type(ctx) {
+            let replacement = match input.get_type(ctx) {
                 Type::BV(width) => ctx.zero(width),
                 Type::Array(tpe) => ctx.zero_array(tpe),
             };
-            replace_map.insert(expr, replacement);
-            sys.remove_signal(expr);
-            // re-insert signal info if the input has labels
-            if !signal_info.labels.is_none() {
-                sys.add_signal(
-                    replacement,
-                    SignalKind::Node,
-                    signal_info.labels,
-                    signal_info.name,
-                );
-            }
+            replace_map.insert(input, replacement);
+            false
+        } else {
+            true
         }
-    }
+    });
 
     // replace any use of the input with zero
     do_transform(

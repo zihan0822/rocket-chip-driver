@@ -3,7 +3,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
-use super::{SignalInfo, SignalKind, State, TransitionSystem};
+use super::{State, TransitionSystem};
 use crate::expr::{
     Context, DenseExprMetaData, DenseExprMetaDataBool, ExprMetaData, ExprRef, ForEachChild,
 };

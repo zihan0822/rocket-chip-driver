@@ -9,7 +9,6 @@ use baa::{BitVecValue, WidthInt};
 use fuzzy_matcher::FuzzyMatcher;
 use smallvec::SmallVec;
 use std::collections::HashMap;
-use std::str::FromStr;
 
 pub fn parse_str(ctx: &mut Context, input: &str, name: Option<&str>) -> Option<TransitionSystem> {
     match Parser::new(ctx).parse(input.as_bytes(), name) {
@@ -66,6 +65,7 @@ type LineId = u32;
 
 pub const DEFAULT_INPUT_PREFIX: &str = "_input";
 pub const DEFAULT_STATE_PREFIX: &str = "_state";
+pub const DEFAULT_OUTPUT_PREFIX: &str = "_output";
 
 impl<'a> Parser<'a> {
     fn new(ctx: &'a mut Context) -> Self {
@@ -108,17 +108,14 @@ impl<'a> Parser<'a> {
         improve_state_names(self.ctx, &mut self.sys);
 
         // demote states without next or init to input
-        let input_states = self
-            .sys
-            .states()
-            .rev() // this reverse is needed in order to properly remove elements from back to front
-            .filter(|(_, s)| s.init.is_none() && s.next.is_none())
-            .map(|(i, _)| i)
-            .collect::<Vec<_>>();
-        for state_id in input_states {
-            let st = self.sys.remove_state(state_id);
-            self.sys.add_input(self.ctx, st.symbol);
+        for state in self.sys.states.iter() {
+            if state.init.is_none() && state.next.is_none() {
+                self.sys.inputs.push(state.symbol);
+            }
         }
+        self.sys
+            .states
+            .retain(|s| s.next.is_some() || s.init.is_some());
 
         // check to see if we encountered any errors
         if self.errors.is_empty() {
@@ -152,7 +149,6 @@ impl<'a> Parser<'a> {
         };
 
         // check op
-        let mut labels = SignalLabels::default();
         let expr = if UNARY_OPS_SET.contains(op) {
             Some(self.parse_unary_op(line, tokens)?)
         } else if BINARY_OPS_SET.contains(op) {
@@ -185,8 +181,18 @@ impl<'a> Parser<'a> {
                     None
                 }
                 "output" | "bad" | "constraint" | "fair" => {
-                    labels = SignalLabels::from_str(op).unwrap();
-                    Some((self.get_expr_from_line_id(line, tokens[2])?, 3))
+                    let expr = self.get_expr_from_line_id(line, tokens[2])?;
+                    match op {
+                        "output" => {
+                            let name = self.get_label_name(&cont, DEFAULT_OUTPUT_PREFIX);
+                            self.sys.outputs.push(Output { name, expr });
+                        }
+                        "bad" => self.sys.bad_states.push(expr),
+                        "constraint" => self.sys.constraints.push(expr),
+                        "fair" => todo!("support fairness constraints"),
+                        _ => unreachable!(),
+                    }
+                    Some((expr, 3))
                 }
                 other => {
                     if OTHER_OPS_SET.contains(other) {
@@ -210,14 +216,10 @@ impl<'a> Parser<'a> {
                     }
                 }
             };
-            // inputs and states do not get here
-            let kind = SignalKind::Node;
-            let merged = match self.sys.get_signal(e) {
-                Some(info) => merge_signal_info(info, &SignalInfo { name, kind, labels }),
-                None => SignalInfo { name, kind, labels },
-            };
-            self.sys
-                .add_signal(e, merged.kind, merged.labels, merged.name);
+            // add name if available
+            if let Some(name) = name {
+                self.sys.names.insert(e, Some(name));
+            }
         }
         Ok(())
     }
@@ -789,15 +791,13 @@ fn include_name(name: &str) -> bool {
 /// for these nodes and tries to rename the states.
 fn improve_state_names(ctx: &mut Context, sys: &mut TransitionSystem) {
     let mut renames = HashMap::new();
-    for (_, state) in sys.states() {
+    for state in sys.states.iter() {
         // since the alias signal refers to the same expression as the state symbol,
         // it will generate a signal info with the better name
-        if let Some(signal) = sys.get_signal(state.symbol) {
-            if let Some(name_ref) = signal.name {
-                let old_name_ref = ctx.get(state.symbol).get_symbol_name_ref().unwrap();
-                if old_name_ref != name_ref {
-                    renames.insert(state.symbol, name_ref);
-                }
+        if let Some(name_ref) = sys.names[state.symbol] {
+            let old_name_ref = ctx.get(state.symbol).get_symbol_name_ref().unwrap();
+            if old_name_ref != name_ref {
+                renames.insert(state.symbol, name_ref);
             }
         }
     }

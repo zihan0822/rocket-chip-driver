@@ -65,7 +65,7 @@ impl<'a> Simulator for Interpreter<'a> {
         for state in self.sys.states.iter() {
             set_signal_to_zero(self.ctx, &mut self.data, state.symbol);
         }
-        for (symbol, _) in self.sys.get_signals(|s| s.is_input()) {
+        for &symbol in self.sys.inputs.iter() {
             set_signal_to_zero(self.ctx, &mut self.data, symbol);
         }
 
