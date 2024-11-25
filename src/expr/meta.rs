@@ -199,7 +199,7 @@ impl ExprMetaData<bool> for DenseExprMetaDataBool {
     fn insert(&mut self, e: ExprRef, data: bool) {
         let (word_idx, bit) = index_to_word_and_bit(e);
         if self.inner.len() <= word_idx {
-            self.inner.resize(e.index(), 0);
+            self.inner.resize(word_idx + 1, 0);
         }
         if data {
             // set bit
