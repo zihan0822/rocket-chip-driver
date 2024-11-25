@@ -99,14 +99,14 @@ fn changed(transformed: &DenseExprMetaData<Option<ExprRef>>, old_expr: ExprRef) 
 
 fn get_root_expressions(sys: &TransitionSystem) -> Vec<ExprRef> {
     // include all input, output, assertion and assumptions expressions
-    let mut out = Vec::from_iter(
-        sys.get_signals(is_usage_root_signal)
-            .iter()
-            .map(|(e, _)| *e),
-    );
+    let mut out = vec![];
+    out.extend_from_slice(sys.inputs.as_slice());
+    out.extend(sys.outputs.iter().map(|o| o.expr));
+    out.extend_from_slice(sys.bad_states.as_slice());
+    out.extend_from_slice(sys.constraints.as_slice());
 
     // include all states
-    for (_, state) in sys.states() {
+    for state in sys.states.iter() {
         out.push(state.symbol);
         if let Some(init) = state.init {
             out.push(init);
@@ -117,13 +117,4 @@ fn get_root_expressions(sys: &TransitionSystem) -> Vec<ExprRef> {
     }
 
     out
-}
-
-/// Slightly different definition from use counts, as we want to retain all inputs in transformation passes.
-fn is_usage_root_signal(info: &SignalInfo) -> bool {
-    info.is_input()
-        || info.labels.is_output()
-        || info.labels.is_constraint()
-        || info.labels.is_bad()
-        || info.labels.is_fair()
 }

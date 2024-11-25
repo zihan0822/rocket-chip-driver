@@ -142,18 +142,6 @@ fn cone_of_influence_impl(
     out
 }
 
-/// Returns whether a signal is always "used", i.e. visible to the outside world or not.
-pub fn is_usage_root_signal(info: &SignalInfo) -> bool {
-    info.labels.is_output()
-        || info.labels.is_constraint()
-        || info.labels.is_bad()
-        || info.labels.is_fair()
-}
-
-pub fn is_non_output_root_signal(info: &SignalInfo) -> bool {
-    info.labels.is_constraint() || info.labels.is_bad() || info.labels.is_fair()
-}
-
 /// Counts how often expressions are used. This version _does not_ follow any state symbols.
 fn simple_count_expr_uses(ctx: &Context, roots: Vec<ExprRef>) -> Vec<UseCountInt> {
     let mut use_count = DenseExprMetaData::default();
