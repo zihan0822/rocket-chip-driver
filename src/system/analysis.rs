@@ -4,9 +4,12 @@
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
 use super::{State, TransitionSystem};
+use crate::expr::traversal::TraversalCmd;
 use crate::expr::{
-    Context, DenseExprMetaData, DenseExprMetaDataBool, ExprMetaData, ExprRef, ForEachChild,
+    traversal, Context, DenseExprMetaData, DenseExprMetaDataBool, ExprMetaData, ExprRef,
+    ForEachChild,
 };
+use rustc_hash::FxHashSet;
 
 pub type UseCountInt = u16;
 
@@ -21,11 +24,8 @@ fn internal_count_expr_uses(
 ) -> Vec<UseCountInt> {
     let mut use_count: DenseExprMetaData<UseCountInt> = DenseExprMetaData::default();
     let states = sys.state_map();
-    let mut todo = Vec::from_iter(
-        sys.get_signals(is_usage_root_signal)
-            .iter()
-            .map(|(e, _)| *e),
-    );
+    // all observable outputs are our roots
+    let mut todo = sys.get_assert_assume_output_exprs();
     // ensure that all roots start with count 1
     for expr in todo.iter() {
         use_count.insert(*expr, 1);
@@ -94,6 +94,7 @@ fn cone_of_influence_impl(
     let mut todo = vec![root];
     let mut visited = DenseExprMetaDataBool::default();
     let states = sys.state_map();
+    let inputs = sys.input_set();
 
     while let Some(expr_ref) = todo.pop() {
         if visited[expr_ref] {
@@ -127,14 +128,8 @@ fn cone_of_influence_impl(
         }
 
         // check to see if this is a state or input
-        if expr.is_symbol() {
-            let is_state_or_input = sys
-                .get_signal(expr_ref)
-                .map(|i| i.is_input() || i.is_state())
-                .unwrap_or(false);
-            if is_state_or_input {
-                out.push(expr_ref);
-            }
+        if expr.is_symbol() && (states.contains_key(&expr_ref) || inputs.contains(&expr_ref)) {
+            out.push(expr_ref);
         }
         visited.insert(expr_ref, true);
     }
@@ -142,21 +137,20 @@ fn cone_of_influence_impl(
     out
 }
 
-/// Counts how often expressions are used. This version _does not_ follow any state symbols.
-fn simple_count_expr_uses(ctx: &Context, roots: Vec<ExprRef>) -> Vec<UseCountInt> {
-    let mut use_count = DenseExprMetaData::default();
-    let mut todo = roots;
-
-    // ensure that all roots start with count 1
-    for expr in todo.iter() {
-        use_count.insert(*expr, 1);
+/// Checks whether expressions are used. This version _does not_ follow any state symbols.
+fn check_expr_use(ctx: &Context, roots: &[ExprRef]) -> impl ExprMetaData<bool> {
+    let mut is_used = DenseExprMetaDataBool::default();
+    for &root in roots.iter() {
+        traversal::top_down(ctx, root, |_, e| {
+            if is_used[e] {
+                TraversalCmd::Stop
+            } else {
+                is_used.insert(e, true);
+                TraversalCmd::Continue
+            }
+        })
     }
-
-    while let Some(expr) = todo.pop() {
-        count_uses(ctx, expr, &mut use_count, &mut todo);
-    }
-
-    use_count.into_vec()
+    is_used
 }
 
 #[inline]
@@ -169,7 +163,7 @@ fn count_uses(
     ctx.get(expr).for_each_child(|child| {
         let count = use_count[*child];
         let is_first_use = count == 0;
-        use_count.insert(*child, count + 1);
+        use_count.insert(*child, count.saturating_add(1));
         if is_first_use {
             todo.push(*child);
         }
@@ -190,6 +184,25 @@ pub struct Uses {
     pub other: bool,
 }
 
+impl Uses {
+    pub fn is_used(&self) -> bool {
+        self.init || self.next || self.other
+    }
+
+    pub fn new(
+        e: ExprRef,
+        init_used: &impl ExprMetaData<bool>,
+        next_used: &impl ExprMetaData<bool>,
+        other_used: &impl ExprMetaData<bool>,
+    ) -> Self {
+        Self {
+            next: next_used[e],
+            init: init_used[e],
+            other: other_used[e],
+        }
+    }
+}
+
 /// Meta-data that helps with serialization, no matter if serializing to btor, our custom
 /// "human-readable" format or SMTLib.
 #[derive(Debug, Default, Clone)]
@@ -202,41 +215,45 @@ pub fn analyze_for_serialization(
     sys: &TransitionSystem,
     include_outputs: bool,
 ) -> SerializeMeta {
-    // first we identify which expressions are used for init and which are used for next
-    let (init_count, next_count, mut other_count) = init_counts(ctx, sys, include_outputs);
+    let init_exprs = sys.get_init_exprs();
+    let next_exprs = sys.get_next_exprs();
+    let other_exprs = if include_outputs {
+        sys.get_assert_assume_output_exprs()
+    } else {
+        sys.get_assert_assume_exprs()
+    };
 
+    // count how often the signal is used in different situations
+    let init_used = check_expr_use(ctx, &init_exprs);
+    let next_used = check_expr_use(ctx, &next_exprs);
+    let mut other_used = check_expr_use(ctx, &other_exprs);
+
+    // keep track of which signals have been processed
     let mut visited = DenseExprMetaDataBool::default();
     let mut signal_order = Vec::new();
 
     // add all inputs
-    for (input, _) in sys.get_signals(|s| s.kind == SignalKind::Input) {
+    for &input in sys.inputs.iter() {
         visited.insert(input, true);
-        let (uses, _) = analyze_use(input, &init_count, &next_count, &other_count);
+        let uses = Uses::new(input, &init_used, &next_used, &other_used);
         signal_order.push(RootInfo { expr: input, uses });
     }
 
-    // add all roots to todo list
-    let mut todo = Vec::new();
-    let filter = if include_outputs {
-        is_usage_root_signal
-    } else {
-        is_non_output_root_signal
-    };
-    for (expr, _) in sys.get_signals(filter) {
-        todo.push(expr);
-        other_count[expr.index()] = 100; // ensure that this expression will always be serialized
-    }
-    for (_, state) in sys.states() {
-        if let Some(expr) = state.next {
-            todo.push(expr);
-        }
-        if let Some(expr) = state.init {
-            todo.push(expr);
-        }
+    // add all roots and give them a large other count
+    let mut todo: Vec<ExprRef> =
+        Vec::with_capacity(init_exprs.len() + next_exprs.len() + other_exprs.len());
+    todo.extend(&init_exprs);
+    todo.extend(&next_exprs);
+    todo.extend(&other_exprs);
+    for &expr in todo.iter() {
+        other_used.insert(expr, true); // ensure that this expression will always be serialized
     }
 
     // visit roots in the order in which they were declared
     todo.reverse();
+
+    // keep track of which siganls are part of the initial root set
+    let is_root = FxHashSet::from_iter(todo.iter().cloned());
 
     // visit expressions
     while let Some(expr_ref) = todo.pop() {
@@ -266,14 +283,9 @@ pub fn analyze_for_serialization(
         }
 
         // add to signal order if applicable
-        if num_children > 0
-            || sys
-                .get_signal(expr_ref)
-                .map(|i| !i.labels.is_none())
-                .unwrap_or(false)
-        {
-            let (uses, total_use) = analyze_use(expr_ref, &init_count, &next_count, &other_count);
-            if total_use > 1 {
+        if num_children > 0 || is_root.contains(&expr_ref) {
+            let uses = Uses::new(expr_ref, &init_used, &next_used, &other_used);
+            if uses.is_used() {
                 signal_order.push(RootInfo {
                     expr: expr_ref,
                     uses,
@@ -286,64 +298,13 @@ pub fn analyze_for_serialization(
     SerializeMeta { signal_order }
 }
 
-fn analyze_use(
-    expr_ref: ExprRef,
-    init_count: &[UseCountInt],
-    next_count: &[UseCountInt],
-    other_count: &[UseCountInt],
-) -> (Uses, UseCountInt) {
-    let ii = expr_ref.index();
-    let init = *init_count.get(ii).unwrap_or(&0);
-    let next = *next_count.get(ii).unwrap_or(&0);
-    let other = *other_count.get(ii).unwrap_or(&0);
-    let total = init + next + other;
-    (
-        Uses {
-            init: init > 0,
-            next: next > 0,
-            other: other > 0,
-        },
-        total,
-    )
-}
-
-fn init_counts(
-    ctx: &Context,
-    sys: &TransitionSystem,
-    include_outputs: bool,
-) -> (Vec<UseCountInt>, Vec<UseCountInt>, Vec<UseCountInt>) {
-    let mut init_roots = Vec::new();
-    let mut next_roots = Vec::new();
-    for (_, state) in sys.states() {
-        if let Some(next) = state.next {
-            next_roots.push(next);
-        }
-        if let Some(init) = state.init {
-            init_roots.push(init);
-        }
-    }
-
-    let filter = if include_outputs {
-        is_usage_root_signal
-    } else {
-        is_non_output_root_signal
-    };
-    let other_roots = Vec::from_iter(sys.get_signals(filter).iter().map(|(e, _)| *e));
-
-    let init_count = simple_count_expr_uses(ctx, init_roots);
-    let next_count = simple_count_expr_uses(ctx, next_roots);
-    let other_count = simple_count_expr_uses(ctx, other_roots);
-
-    (init_count, next_count, other_count)
-}
-
 impl ForEachChild<ExprRef> for State {
     fn for_each_child(&self, mut visitor: impl FnMut(&ExprRef)) {
         if let Some(next) = &self.next {
-            (visitor)(next);
+            visitor(next);
         }
         if let Some(init) = &self.init {
-            (visitor)(init);
+            visitor(init);
         }
     }
 

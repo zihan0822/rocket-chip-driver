@@ -48,11 +48,12 @@ pub fn do_transform(
     mode: ExprTransformMode,
     tran: impl FnMut(&mut Context, ExprRef, &[ExprRef]) -> Option<ExprRef>,
 ) {
-    let todo = sys.get_all_expressions();
+    // update all expressions used in the transition system
+    let todo = sys.get_all_exprs();
     let mut transformed = DenseExprMetaData::default();
     do_transform_expr(ctx, mode, &mut transformed, todo, tran);
 
-    // update transition system signals
+    // update transition system signals to point to updated expressions
     sys.update_expressions(|old_expr| {
         if mode == ExprTransformMode::FixedPoint {
             get_fixed_point(&mut transformed, old_expr)

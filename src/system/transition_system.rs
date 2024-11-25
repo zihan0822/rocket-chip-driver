@@ -3,7 +3,7 @@
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 
 use crate::expr::{Context, ExprMetaData, ExprRef, SparseExprMetaData, StringRef};
-use std::collections::HashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct State {
@@ -106,8 +106,12 @@ impl TransitionSystem {
         modify(self.states.get_mut(reference.0).unwrap())
     }
 
-    pub fn state_map(&self) -> HashMap<ExprRef, &State> {
-        HashMap::from_iter(self.states.iter().map(|s| (s.symbol, s)))
+    pub fn state_map(&self) -> FxHashMap<ExprRef, &State> {
+        FxHashMap::from_iter(self.states.iter().map(|s| (s.symbol, s)))
+    }
+
+    pub fn input_set(&self) -> FxHashSet<ExprRef> {
+        FxHashSet::from_iter(self.inputs.iter().cloned())
     }
 
     /// Update all output, input, assume, assert, state expressions.
@@ -132,8 +136,36 @@ impl TransitionSystem {
         }
     }
 
+    /// Returns a list of all assume and assert expressions.
+    pub fn get_assert_assume_exprs(&self) -> Vec<ExprRef> {
+        let mut out = Vec::with_capacity(self.bad_states.len() + self.constraints.len());
+        out.extend_from_slice(self.bad_states.as_slice());
+        out.extend_from_slice(self.constraints.as_slice());
+        out
+    }
+
+    /// Returns a list of all assume, assert and output expressions.
+    pub fn get_assert_assume_output_exprs(&self) -> Vec<ExprRef> {
+        let mut out =
+            Vec::with_capacity(self.outputs.len() + self.bad_states.len() + self.constraints.len());
+        out.extend(self.outputs.iter().map(|o| o.expr));
+        out.extend_from_slice(self.bad_states.as_slice());
+        out.extend_from_slice(self.constraints.as_slice());
+        out
+    }
+
+    /// Returns a list of all state init expressions.
+    pub fn get_init_exprs(&self) -> Vec<ExprRef> {
+        Vec::from_iter(self.states.iter().flat_map(|s| s.init))
+    }
+
+    /// Returns a list of all state next expressions.
+    pub fn get_next_exprs(&self) -> Vec<ExprRef> {
+        Vec::from_iter(self.states.iter().flat_map(|s| s.next))
+    }
+
     /// Returns a list of all output, input, assume, assert and state expressions.
-    pub fn get_all_expressions(&self) -> Vec<ExprRef> {
+    pub fn get_all_exprs(&self) -> Vec<ExprRef> {
         // include all input, output, assertion and assumptions expressions
         let mut out = vec![];
         out.extend_from_slice(self.inputs.as_slice());

@@ -111,49 +111,6 @@ fn serialize_transition_system<W: Write>(
     Ok(())
 }
 
-fn find_type(maybe_info: Option<&SignalInfo>, aliases: &mut Vec<&'static str>) -> &'static str {
-    aliases.clear();
-    if let Some(info) = maybe_info {
-        if info.is_input() {
-            collect_aliases(info.labels, aliases);
-            return "input";
-        }
-        // NOTE: state does not matter here since they are serialized later
-        if info.labels.is_output() {
-            collect_aliases(info.labels.clear(&SignalLabels::output()), aliases);
-            return "output";
-        }
-        if info.labels.is_fair() {
-            collect_aliases(info.labels.clear(&SignalLabels::fair()), aliases);
-            return "fair";
-        }
-        if info.labels.is_bad() {
-            collect_aliases(info.labels.clear(&SignalLabels::bad()), aliases);
-            return "bad";
-        }
-        if info.labels.is_constraint() {
-            collect_aliases(info.labels.clear(&SignalLabels::constraint()), aliases);
-            return "constraint";
-        }
-    }
-    "node"
-}
-
-fn collect_aliases(labels: SignalLabels, aliases: &mut Vec<&'static str>) {
-    if labels.is_output() {
-        aliases.push("output");
-    }
-    if labels.is_fair() {
-        aliases.push("fair");
-    }
-    if labels.is_bad() {
-        aliases.push("bad");
-    }
-    if labels.is_constraint() {
-        aliases.push("constraint");
-    }
-}
-
 impl SerializableIrNode for TransitionSystem {
     fn serialize<W: Write>(&self, ctx: &Context, writer: &mut W) -> std::io::Result<()> {
         serialize_transition_system(ctx, self, writer)

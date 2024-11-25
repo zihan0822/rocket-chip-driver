@@ -64,3 +64,25 @@ pub fn bottom_up_multi_pat<R>(
     debug_assert_eq!(stack.len(), 1);
     stack.pop().unwrap()
 }
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum TraversalCmd {
+    Stop,
+    Continue,
+}
+
+/// Visits expression from top to bottom. Halts exploration if a false is returned.
+#[inline]
+pub fn top_down(
+    ctx: &Context,
+    expr: ExprRef,
+    mut f: impl FnMut(&Context, ExprRef) -> TraversalCmd,
+) {
+    let mut todo = vec![expr];
+    while let Some(e) = todo.pop() {
+        let do_continue = f(ctx, e) == TraversalCmd::Continue;
+        if do_continue {
+            ctx.get(e).for_each_child(|&c| todo.push(c));
+        }
+    }
+}
