@@ -8,7 +8,7 @@ use patronus::expr::*;
 use patronus::sim::*;
 use patronus::system::*;
 use patronus::*;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::BufRead;
 
 #[derive(Parser, Debug)]
@@ -91,7 +91,7 @@ fn main() {
         std::fs::File::open(testbench_file).expect("Failed to load testbench file"),
     );
 
-    let name_to_ref = sys.generate_name_to_ref(&ctx);
+    let name_to_ref: HashMap<String, ExprRef> = todo!(); // sys.generate_name_to_ref(&ctx);
     let (inputs, outputs) =
         read_header(&mut tb, &name_to_ref, &sys, &ctx).expect("Failed to read testbench header");
     if args.verbose {
@@ -143,13 +143,14 @@ fn read_header(
         let name = cell.trim();
         if let Some(signal_ref) = name_to_ref.get(name) {
             let width = signal_ref.get_bv_type(ctx).unwrap();
-            let signal = sys.get_signal(*signal_ref).unwrap();
-            if signal.is_input() {
-                inputs.push((cell_id, *signal_ref, name.to_string(), width));
-            }
-            if signal.is_output() {
-                outputs.push((cell_id, *signal_ref, name.to_string(), width));
-            }
+            todo!();
+            // let signal = sys.get_signal(*signal_ref).unwrap();
+            // if signal.is_input() {
+            //     inputs.push((cell_id, *signal_ref, name.to_string(), width));
+            // }
+            // if signal.is_output() {
+            //     outputs.push((cell_id, *signal_ref, name.to_string(), width));
+            // }
         }
     }
     Ok((inputs, outputs))

@@ -3,10 +3,11 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
-use super::analysis::analyze_for_serialization;
+use super::analysis::{analyze_for_serialization, SerializeSignalKind};
 use super::TransitionSystem;
 use crate::expr::{
-    serialize_expr, serialize_expr_ref, Context, ExprRef, SerializableIrNode, TypeCheck,
+    serialize_expr, serialize_expr_ref, Context, ExprMetaData, ExprRef, SerializableIrNode,
+    SparseExprMetaData, TypeCheck,
 };
 use std::io::Write;
 
@@ -20,12 +21,7 @@ fn serialize_transition_system<W: Write>(
     }
 
     let signals = analyze_for_serialization(ctx, sys, true).signal_order;
-    let max_id = signals
-        .iter()
-        .map(|s| s.expr.index())
-        .max()
-        .unwrap_or_default();
-    let mut names = vec![None; max_id + 1];
+    let mut names: SparseExprMetaData<Option<String>> = SparseExprMetaData::default();
     for root in signals.iter() {
         // try names in this order:
         // - symbol name
@@ -39,12 +35,12 @@ fn serialize_transition_system<W: Write>(
                     .map(|n| ctx.get_str(n).to_string())
                     .unwrap_or(format!("%{}", root.expr.index()))
             });
-        names[root.expr.index()] = Some(name);
+        names.insert(root.expr, Some(name));
     }
 
     // this closure allows us to use node names instead of serializing all sub-expressions
     let serialize_child = |expr_ref: &ExprRef, writer: &mut W| -> std::io::Result<bool> {
-        if let Some(Some(name)) = names.get(expr_ref.index()) {
+        if let Some(name) = &names[*expr_ref] {
             write!(writer, "{}", name)?;
             Ok(false)
         } else {
@@ -53,14 +49,12 @@ fn serialize_transition_system<W: Write>(
     };
 
     // signals
-    let mut aliases = Vec::new();
     for root in signals.iter() {
-        let maybe_info = sys.get_signal(root.expr);
-        let name = names[root.expr.index()].as_ref().unwrap();
+        let name = names[root.expr].as_ref().unwrap();
         let expr = ctx.get(root.expr);
 
         // print the kind and name
-        let kind = find_type(maybe_info, &mut aliases);
+        let kind = kind_to_string(root.kind);
         write!(writer, "{} {}", kind, name)?;
 
         // print the type
@@ -73,18 +67,6 @@ fn serialize_transition_system<W: Write>(
             write!(writer, " = ")?;
             serialize_expr(expr, ctx, writer, &serialize_child)?;
             writeln!(writer)?;
-        }
-
-        // print aliases
-        for alias in aliases.iter() {
-            // for aliases, we prefer the signal name
-            // this allows us to e.g. print the name of an output which is also an input correctly
-            let alias_name = maybe_info
-                .unwrap()
-                .name
-                .map(|n| ctx.get_str(n))
-                .unwrap_or(name);
-            writeln!(writer, "{alias} {alias_name} : {tpe} = {name}")?;
         }
     }
 
@@ -109,6 +91,18 @@ fn serialize_transition_system<W: Write>(
     }
 
     Ok(())
+}
+
+fn kind_to_string(kind: SerializeSignalKind) -> &'static str {
+    match kind {
+        SerializeSignalKind::BadState => "bad",
+        SerializeSignalKind::Constraint => "constraint",
+        SerializeSignalKind::Output => "output",
+        SerializeSignalKind::Input => "input",
+        SerializeSignalKind::StateInit => "init",
+        SerializeSignalKind::StateNext => "next",
+        SerializeSignalKind::None => "node",
+    }
 }
 
 impl SerializableIrNode for TransitionSystem {

@@ -230,8 +230,8 @@ impl<'a> Iterator for ExprMetaBoolIter<'a> {
             }
         }
         let index_ref = ExprRef::from_index(self.index);
+        let bit = self.index % u64::BITS as usize;
         self.index += 1;
-        let bit = self.index / u64::BITS as usize;
         if ((self.value >> bit) & 1) == 1 {
             Some((index_ref, &TRU))
         } else {
@@ -263,5 +263,19 @@ mod tests {
         // our current implementation updates the whole path
         assert_eq!(m[zero], Some(two));
         assert_eq!(m[one], Some(two));
+    }
+
+    #[test]
+    fn test_dense_bool() {
+        let mut m = DenseExprMetaDataBool::default();
+        assert!(!m[ExprRef::from_index(7)]);
+        m.insert(ExprRef::from_index(7), true);
+        assert!(m[ExprRef::from_index(7)]);
+        let tru_entries = m
+            .iter()
+            .filter(|(_, i)| **i)
+            .map(|(e, _)| e)
+            .collect::<Vec<_>>();
+        assert_eq!(tru_entries, [ExprRef::from_index(7)]);
     }
 }

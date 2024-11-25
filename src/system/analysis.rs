@@ -7,9 +7,8 @@ use super::{State, TransitionSystem};
 use crate::expr::traversal::TraversalCmd;
 use crate::expr::{
     traversal, Context, DenseExprMetaData, DenseExprMetaDataBool, ExprMetaData, ExprRef,
-    ForEachChild,
+    ForEachChild, SerializableIrNode,
 };
-use rustc_hash::FxHashSet;
 
 pub type UseCountInt = u16;
 
@@ -174,6 +173,18 @@ fn count_uses(
 pub struct RootInfo {
     pub expr: ExprRef,
     pub uses: Uses,
+    pub kind: SerializeSignalKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SerializeSignalKind {
+    BadState,
+    Constraint,
+    Output,
+    Input,
+    StateInit,
+    StateNext,
+    None,
 }
 
 /// Indicates which context an expression is used in.
@@ -228,35 +239,62 @@ pub fn analyze_for_serialization(
     let next_used = check_expr_use(ctx, &next_exprs);
     let mut other_used = check_expr_use(ctx, &other_exprs);
 
+    // always add all inputs to the signal order
+    let mut signal_order = Vec::new();
+    for &input in sys.inputs.iter() {
+        let uses = Uses::new(input, &init_used, &next_used, &other_used);
+        signal_order.push(RootInfo {
+            expr: input,
+            uses,
+            kind: SerializeSignalKind::Input,
+        });
+    }
+
     // keep track of which signals have been processed
     let mut visited = DenseExprMetaDataBool::default();
-    let mut signal_order = Vec::new();
-
-    // add all inputs
-    for &input in sys.inputs.iter() {
-        visited.insert(input, true);
-        let uses = Uses::new(input, &init_used, &next_used, &other_used);
-        signal_order.push(RootInfo { expr: input, uses });
-    }
 
     // add all roots and give them a large other count
-    let mut todo: Vec<ExprRef> =
+    let mut todo: Vec<(ExprRef, SerializeSignalKind)> =
         Vec::with_capacity(init_exprs.len() + next_exprs.len() + other_exprs.len());
-    todo.extend(&init_exprs);
-    todo.extend(&next_exprs);
-    todo.extend(&other_exprs);
-    for &expr in todo.iter() {
-        other_used.insert(expr, true); // ensure that this expression will always be serialized
+    todo.extend(
+        sys.constraints
+            .iter()
+            .map(|&e| (e, SerializeSignalKind::Constraint)),
+    );
+    todo.extend(
+        sys.bad_states
+            .iter()
+            .map(|&e| (e, SerializeSignalKind::BadState)),
+    );
+    if include_outputs {
+        todo.extend(
+            sys.outputs
+                .iter()
+                .map(|o| (o.expr, SerializeSignalKind::Output)),
+        );
     }
+    // ensure that non-state root expressions are always serialized
+    for (expr, _) in todo.iter() {
+        other_used.insert(*expr, true);
+    }
+
+    // add state root expressions
+    todo.extend(
+        init_exprs
+            .iter()
+            .map(|&e| (e, SerializeSignalKind::StateInit)),
+    );
+    todo.extend(
+        next_exprs
+            .iter()
+            .map(|&e| (e, SerializeSignalKind::StateNext)),
+    );
 
     // visit roots in the order in which they were declared
     todo.reverse();
 
-    // keep track of which siganls are part of the initial root set
-    let is_root = FxHashSet::from_iter(todo.iter().cloned());
-
     // visit expressions
-    while let Some(expr_ref) = todo.pop() {
+    while let Some((expr_ref, kind)) = todo.pop() {
         if visited[expr_ref] {
             continue;
         }
@@ -269,11 +307,11 @@ pub fn analyze_for_serialization(
         expr.for_each_child(|c| {
             if !visited[*c] {
                 if all_done {
-                    todo.push(expr_ref); // return expression to the todo list
+                    todo.push((expr_ref, kind)); // return expression to the todo list
                 }
                 all_done = false;
                 // we need to visit the child first
-                todo.push(*c);
+                todo.push((*c, SerializeSignalKind::None));
             }
             num_children += 1;
         });
@@ -283,12 +321,21 @@ pub fn analyze_for_serialization(
         }
 
         // add to signal order if applicable
-        if num_children > 0 || is_root.contains(&expr_ref) {
+        if num_children > 0
+            || matches!(
+                kind,
+                SerializeSignalKind::Input
+                    | SerializeSignalKind::Output
+                    | SerializeSignalKind::Constraint
+                    | SerializeSignalKind::BadState
+            )
+        {
             let uses = Uses::new(expr_ref, &init_used, &next_used, &other_used);
-            if uses.is_used() {
+            if uses.other {
                 signal_order.push(RootInfo {
                     expr: expr_ref,
                     uses,
+                    kind,
                 });
             }
         }
