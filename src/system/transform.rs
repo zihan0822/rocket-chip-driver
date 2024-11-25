@@ -48,7 +48,7 @@ pub fn do_transform(
     mode: ExprTransformMode,
     tran: impl FnMut(&mut Context, ExprRef, &[ExprRef]) -> Option<ExprRef>,
 ) {
-    let todo = get_root_expressions(sys);
+    let todo = sys.get_all_expressions();
     let mut transformed = DenseExprMetaData::default();
     do_transform_expr(ctx, mode, &mut transformed, todo, tran);
 
@@ -60,26 +60,4 @@ pub fn do_transform(
             transformed[old_expr]
         }
     });
-}
-
-fn get_root_expressions(sys: &TransitionSystem) -> Vec<ExprRef> {
-    // include all input, output, assertion and assumptions expressions
-    let mut out = vec![];
-    out.extend_from_slice(sys.inputs.as_slice());
-    out.extend(sys.outputs.iter().map(|o| o.expr));
-    out.extend_from_slice(sys.bad_states.as_slice());
-    out.extend_from_slice(sys.constraints.as_slice());
-
-    // include all states
-    for state in sys.states.iter() {
-        out.push(state.symbol);
-        if let Some(init) = state.init {
-            out.push(init);
-        }
-        if let Some(next) = state.next {
-            out.push(next);
-        }
-    }
-
-    out
 }

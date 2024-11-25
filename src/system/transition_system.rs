@@ -110,7 +110,7 @@ impl TransitionSystem {
         HashMap::from_iter(self.states.iter().map(|s| (s.symbol, s)))
     }
 
-    /// Update all output, input, assume, assert, `state.next` and `state.init` expressions.
+    /// Update all output, input, assume, assert, state expressions.
     /// If `update` returns `None`, no update is performed.
     pub fn update_expressions(&mut self, mut update: impl FnMut(ExprRef) -> Option<ExprRef>) {
         for old in self.inputs.iter_mut() {
@@ -130,5 +130,28 @@ impl TransitionSystem {
             state.init = state.init.and_then(|old| update(old));
             state.next = state.next.and_then(|old| update(old));
         }
+    }
+
+    /// Returns a list of all output, input, assume, assert and state expressions.
+    pub fn get_all_expressions(&self) -> Vec<ExprRef> {
+        // include all input, output, assertion and assumptions expressions
+        let mut out = vec![];
+        out.extend_from_slice(self.inputs.as_slice());
+        out.extend(self.outputs.iter().map(|o| o.expr));
+        out.extend_from_slice(self.bad_states.as_slice());
+        out.extend_from_slice(self.constraints.as_slice());
+
+        // include all states
+        for state in self.states.iter() {
+            out.push(state.symbol);
+            if let Some(init) = state.init {
+                out.push(init);
+            }
+            if let Some(next) = state.next {
+                out.push(next);
+            }
+        }
+
+        out
     }
 }
