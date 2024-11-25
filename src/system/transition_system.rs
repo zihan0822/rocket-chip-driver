@@ -110,7 +110,25 @@ impl TransitionSystem {
         HashMap::from_iter(self.states.iter().map(|s| (s.symbol, s)))
     }
 
-    pub fn remove_state(&mut self, state: StateRef) -> State {
-        self.states.remove(state.0)
+    /// Update all output, input, assume, assert, `state.next` and `state.init` expressions.
+    /// If `update` returns `None`, no update is performed.
+    pub fn update_expressions(&mut self, mut update: impl FnMut(ExprRef) -> Option<ExprRef>) {
+        for old in self.inputs.iter_mut() {
+            *old = update(*old).unwrap_or(*old);
+        }
+        for old in self.constraints.iter_mut() {
+            *old = update(*old).unwrap_or(*old);
+        }
+        for old in self.bad_states.iter_mut() {
+            *old = update(*old).unwrap_or(*old);
+        }
+        for output in self.outputs.iter_mut() {
+            output.expr = update(output.expr).unwrap_or(output.expr);
+        }
+        for state in self.states.iter_mut() {
+            state.symbol = update(state.symbol).unwrap_or(state.symbol);
+            state.init = state.init.and_then(|old| update(old));
+            state.next = state.next.and_then(|old| update(old));
+        }
     }
 }

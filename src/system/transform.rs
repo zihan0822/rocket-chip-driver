@@ -53,48 +53,13 @@ pub fn do_transform(
     do_transform_expr(ctx, mode, &mut transformed, todo, tran);
 
     // update transition system signals
-    let signals = sys.get_signals(|_| true);
-    for (old_expr, info) in signals.into_iter() {
-        let new_expr = if mode == ExprTransformMode::FixedPoint {
+    sys.update_expressions(|old_expr| {
+        if mode == ExprTransformMode::FixedPoint {
             get_fixed_point(&mut transformed, old_expr)
         } else {
             transformed[old_expr]
-        };
-        if let Some(new_expr) = new_expr {
-            if new_expr != old_expr {
-                sys.update_signal_expr(old_expr, new_expr);
-            }
         }
-    }
-
-    // update states
-    for state in sys.states.iter_mut() {
-        if let Some(new_symbol) = changed(&transformed, state.symbol) {
-            state.symbol = new_symbol;
-        }
-        if let Some(old_next) = state.next {
-            if let Some(new_next) = changed(&transformed, old_next) {
-                state.next = Some(new_next);
-            }
-        }
-        if let Some(old_init) = state.init {
-            if let Some(new_init) = changed(&transformed, old_init) {
-                state.init = Some(new_init);
-            }
-        }
-    }
-}
-
-fn changed(transformed: &DenseExprMetaData<Option<ExprRef>>, old_expr: ExprRef) -> Option<ExprRef> {
-    if let Some(new_expr) = transformed[old_expr] {
-        if new_expr != old_expr {
-            Some(new_expr)
-        } else {
-            None
-        }
-    } else {
-        None
-    }
+    });
 }
 
 fn get_root_expressions(sys: &TransitionSystem) -> Vec<ExprRef> {
