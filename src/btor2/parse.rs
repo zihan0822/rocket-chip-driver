@@ -7,7 +7,9 @@ use crate::system::transform::do_transform;
 use crate::system::*;
 use baa::{BitVecValue, WidthInt};
 use fuzzy_matcher::FuzzyMatcher;
+use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
+use std::borrow::Cow;
 use std::collections::HashMap;
 
 pub fn parse_str(ctx: &mut Context, input: &str, name: Option<&str>) -> Option<TransitionSystem> {
@@ -54,11 +56,13 @@ struct Parser<'a> {
     /// offset of the current line inside the file
     offset: usize,
     /// maps file id to type
-    type_map: HashMap<LineId, Type>,
+    type_map: FxHashMap<LineId, Type>,
     /// maps file id to state in the Transition System
-    state_map: HashMap<LineId, StateRef>,
+    state_map: FxHashMap<LineId, StateRef>,
     /// maps file id to signal in the Transition System
-    signal_map: HashMap<LineId, ExprRef>,
+    signal_map: FxHashMap<LineId, ExprRef>,
+    /// keeps track of names in order to uniquify them
+    unique_names: FxHashSet<String>,
 }
 
 type LineId = u32;
@@ -76,9 +80,10 @@ impl<'a> Parser<'a> {
             sys: TransitionSystem::new("".to_string()),
             errors: Errors::new(),
             offset: 0,
-            type_map: HashMap::new(),
-            state_map: HashMap::new(),
-            signal_map: HashMap::new(),
+            type_map: FxHashMap::default(),
+            state_map: FxHashMap::default(),
+            signal_map: FxHashMap::default(),
+            unique_names: FxHashSet::default(),
         }
     }
 
@@ -88,15 +93,17 @@ impl<'a> Parser<'a> {
         backup_name: Option<&str>,
     ) -> Result<TransitionSystem, Errors> {
         // ensure that default input and state names are reserved in order to get nicer names
-        for prefix in [
-            DEFAULT_CONSTRAINT_PREFIX,
-            DEFAULT_OUTPUT_PREFIX,
-            DEFAULT_BAD_STATE_PREFIX,
-            DEFAULT_INPUT_PREFIX,
-            DEFAULT_STATE_PREFIX,
-        ] {
-            self.ctx.string(prefix.into());
-        }
+        self.unique_names = FxHashSet::from_iter(
+            [
+                DEFAULT_CONSTRAINT_PREFIX,
+                DEFAULT_OUTPUT_PREFIX,
+                DEFAULT_BAD_STATE_PREFIX,
+                DEFAULT_INPUT_PREFIX,
+                DEFAULT_STATE_PREFIX,
+            ]
+            .into_iter()
+            .map(|s| s.to_string()),
+        );
 
         for line_res in input.lines() {
             let line = line_res.expect("failed to read line");
@@ -230,7 +237,7 @@ impl<'a> Parser<'a> {
                 None => None,
                 Some(name) => {
                     if include_name(name) {
-                        Some(self.ctx.add_unique_str(&clean_up_name(name)))
+                        Some(self.add_unique_str(&clean_up_name(name)))
                     } else {
                         None
                     }
@@ -242,6 +249,18 @@ impl<'a> Parser<'a> {
             }
         }
         Ok(())
+    }
+
+    fn add_unique_str(&mut self, start: &str) -> StringRef {
+        let mut count: usize = 0;
+        let mut name = start.to_string();
+        while self.unique_names.contains(&name) {
+            name = format!("{start}_{count}");
+            count += 1;
+        }
+        let id = self.ctx.string(Cow::Borrowed(&name));
+        self.unique_names.insert(name);
+        id
     }
 
     fn check_expr_type(
@@ -287,7 +306,7 @@ impl<'a> Parser<'a> {
 
         let base_str: &str = cont.tokens.get(3).unwrap_or(&default);
         // TODO: look into comment for better names
-        self.ctx.add_unique_str(base_str)
+        self.add_unique_str(base_str)
     }
 
     fn parse_unary_op(&mut self, line: &str, tokens: &[&str]) -> ParseLineResult<(ExprRef, usize)> {

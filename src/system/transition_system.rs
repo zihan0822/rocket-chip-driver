@@ -127,7 +127,6 @@ impl TransitionSystem {
             *old = update(*old).unwrap_or(*old);
         }
         for output in self.outputs.iter_mut() {
-            let old = output.expr;
             output.expr = update(output.expr).unwrap_or(output.expr);
         }
         for state in self.states.iter_mut() {
