@@ -266,16 +266,6 @@ pub fn analyze_for_serialization(
 
     // add all roots and give them a large other count
     let mut todo: Vec<(ExprRef, SerializeSignalKind)> = vec![];
-    todo.extend(
-        sys.bad_states
-            .iter()
-            .map(|&e| (e, SerializeSignalKind::BadState)),
-    );
-    todo.extend(
-        sys.constraints
-            .iter()
-            .map(|&e| (e, SerializeSignalKind::Constraint)),
-    );
     if include_outputs {
         todo.extend(
             sys.outputs
@@ -283,6 +273,16 @@ pub fn analyze_for_serialization(
                 .map(|o| (o.expr, SerializeSignalKind::Output)),
         );
     }
+    todo.extend(
+        sys.constraints
+            .iter()
+            .map(|&e| (e, SerializeSignalKind::Constraint)),
+    );
+    todo.extend(
+        sys.bad_states
+            .iter()
+            .map(|&e| (e, SerializeSignalKind::BadState)),
+    );
 
     // add state root expressions
     todo.extend(
