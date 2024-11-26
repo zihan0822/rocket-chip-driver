@@ -6,8 +6,8 @@
 use super::analysis::{analyze_for_serialization, SerializeSignalKind};
 use super::TransitionSystem;
 use crate::expr::{
-    serialize_expr, serialize_expr_ref, Context, ExprMetaData, ExprRef, SerializableIrNode,
-    SparseExprMetaData, TypeCheck,
+    serialize_expr, serialize_expr_ref, Context, ExprRef, SerializableIrNode, SparseExprMap,
+    TypeCheck,
 };
 use std::io::Write;
 
@@ -21,7 +21,7 @@ fn serialize_transition_system<W: Write>(
     }
 
     let signals = analyze_for_serialization(ctx, sys, true).signal_order;
-    let mut names: SparseExprMetaData<Option<String>> = SparseExprMetaData::default();
+    let mut names: SparseExprMap<Option<String>> = SparseExprMap::default();
     for root in signals.iter() {
         // try names in this order:
         // - symbol name
@@ -35,7 +35,7 @@ fn serialize_transition_system<W: Write>(
                     .map(|n| ctx.get_str(n).to_string())
                     .unwrap_or(format!("%{}", root.expr.index()))
             });
-        names.insert(root.expr, Some(name));
+        names[root.expr] = Some(name);
     }
 
     // this closure allows us to use node names instead of serializing all sub-expressions

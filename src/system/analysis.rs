@@ -6,8 +6,7 @@
 use super::{State, TransitionSystem};
 use crate::expr::traversal::TraversalCmd;
 use crate::expr::{
-    traversal, Context, DenseExprMetaData, DenseExprMetaDataBool, ExprMetaData, ExprRef,
-    ForEachChild, SerializableIrNode,
+    traversal, Context, DenseExprMetaData, DenseExprSet, ExprRef, ExprSet, ForEachChild,
 };
 
 pub type UseCountInt = u16;
@@ -27,7 +26,7 @@ fn internal_count_expr_uses(
     let mut todo = sys.get_assert_assume_output_exprs();
     // ensure that all roots start with count 1
     for expr in todo.iter() {
-        use_count.insert(*expr, 1);
+        use_count[*expr] = 1;
     }
 
     while let Some(expr) = todo.pop() {
@@ -37,7 +36,7 @@ fn internal_count_expr_uses(
                 if !ignore_init {
                     let count = use_count[init];
                     if count == 0 {
-                        use_count.insert(init, 1);
+                        use_count[init] = 1;
                         todo.push(init);
                     }
                 }
@@ -45,7 +44,7 @@ fn internal_count_expr_uses(
             if let Some(next) = state.next {
                 let count = use_count[next];
                 if count == 0 {
-                    use_count.insert(next, 1);
+                    use_count[next] = 1;
                     todo.push(next);
                 }
             }
@@ -91,19 +90,19 @@ fn cone_of_influence_impl(
 ) -> Vec<ExprRef> {
     let mut out = vec![];
     let mut todo = vec![root];
-    let mut visited = DenseExprMetaDataBool::default();
+    let mut visited = DenseExprSet::default();
     let states = sys.state_map();
     let inputs = sys.input_set();
 
     while let Some(expr_ref) = todo.pop() {
-        if visited[expr_ref] {
+        if visited.contains(&expr_ref) {
             continue;
         }
 
         // make sure children are visited
         let expr = ctx.get(expr_ref);
         expr.for_each_child(|c| {
-            if !visited[*c] {
+            if !visited.contains(c) {
                 todo.push(*c);
             }
         });
@@ -112,14 +111,14 @@ fn cone_of_influence_impl(
         if let Some(state) = states.get(&expr_ref) {
             if follow_init {
                 if let Some(c) = state.init {
-                    if !visited[c] {
+                    if !visited.contains(&c) {
                         todo.push(c);
                     }
                 }
             }
             if follow_next {
                 if let Some(c) = state.next {
-                    if !visited[c] {
+                    if !visited.contains(&c) {
                         todo.push(c);
                     }
                 }
@@ -130,21 +129,21 @@ fn cone_of_influence_impl(
         if expr.is_symbol() && (states.contains_key(&expr_ref) || inputs.contains(&expr_ref)) {
             out.push(expr_ref);
         }
-        visited.insert(expr_ref, true);
+        visited.insert(expr_ref);
     }
 
     out
 }
 
 /// Checks whether expressions are used. This version _does not_ follow any state symbols.
-fn check_expr_use(ctx: &Context, roots: &[ExprRef]) -> impl ExprMetaData<bool> {
-    let mut is_used = DenseExprMetaDataBool::default();
+fn check_expr_use(ctx: &Context, roots: &[ExprRef]) -> impl ExprSet {
+    let mut is_used = DenseExprSet::default();
     for &root in roots.iter() {
         traversal::top_down(ctx, root, |_, e| {
-            if is_used[e] {
+            if is_used.contains(&e) {
                 TraversalCmd::Stop
             } else {
-                is_used.insert(e, true);
+                is_used.insert(e);
                 TraversalCmd::Continue
             }
         })
@@ -162,7 +161,7 @@ fn count_uses(
     ctx.get(expr).for_each_child(|child| {
         let count = use_count[*child];
         let is_first_use = count == 0;
-        use_count.insert(*child, count.saturating_add(1));
+        use_count[*child] = count.saturating_add(1);
         if is_first_use {
             todo.push(*child);
         }
@@ -202,14 +201,14 @@ impl Uses {
 
     pub fn new(
         e: ExprRef,
-        init_used: &impl ExprMetaData<bool>,
-        next_used: &impl ExprMetaData<bool>,
-        other_used: &impl ExprMetaData<bool>,
+        init_used: &impl ExprSet,
+        next_used: &impl ExprSet,
+        other_used: &impl ExprSet,
     ) -> Self {
         Self {
-            next: next_used[e],
-            init: init_used[e],
-            other: other_used[e],
+            next: next_used.contains(&e),
+            init: init_used.contains(&e),
+            other: other_used.contains(&e),
         }
     }
 }
@@ -251,7 +250,7 @@ pub fn analyze_for_serialization(
     }
 
     // keep track of which signals have been processed
-    let mut visited = DenseExprMetaDataBool::default();
+    let mut visited = DenseExprSet::default();
 
     // add all roots and give them a large other count
     let mut todo: Vec<(ExprRef, SerializeSignalKind)> =
@@ -275,7 +274,7 @@ pub fn analyze_for_serialization(
     }
     // ensure that non-state root expressions are always serialized
     for (expr, _) in todo.iter() {
-        other_used.insert(*expr, true);
+        other_used.insert(*expr);
     }
 
     // add state root expressions
@@ -295,7 +294,7 @@ pub fn analyze_for_serialization(
 
     // visit expressions
     while let Some((expr_ref, kind)) = todo.pop() {
-        if visited[expr_ref] {
+        if visited.contains(&expr_ref) {
             continue;
         }
 
@@ -305,7 +304,7 @@ pub fn analyze_for_serialization(
         let mut all_done = true;
         let mut num_children = 0;
         expr.for_each_child(|c| {
-            if !visited[*c] {
+            if !visited.contains(c) {
                 if all_done {
                     todo.push((expr_ref, kind)); // return expression to the todo list
                 }
@@ -339,7 +338,7 @@ pub fn analyze_for_serialization(
                 });
             }
         }
-        visited.insert(expr_ref, true);
+        visited.insert(expr_ref);
     }
 
     SerializeMeta { signal_order }

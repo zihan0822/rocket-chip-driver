@@ -4,8 +4,8 @@
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
 use super::{
-    do_transform_expr, BVLitValue, Context, Expr, ExprMetaData, ExprRef, SparseExprMetaData,
-    TypeCheck, WidthInt,
+    do_transform_expr, BVLitValue, Context, Expr, ExprMap, ExprRef, SparseExprMap, TypeCheck,
+    WidthInt,
 };
 use crate::expr::meta::get_fixed_point;
 use crate::expr::transform::ExprTransformMode;
@@ -14,16 +14,16 @@ use smallvec::{smallvec, SmallVec};
 
 /// Applies simplifications to a single expression.
 pub fn simplify_single_expression(ctx: &mut Context, expr: ExprRef) -> ExprRef {
-    let mut simplifier = Simplifier::new(SparseExprMetaData::default());
+    let mut simplifier = Simplifier::new(SparseExprMap::default());
     simplifier.simplify(ctx, expr)
 }
 
 /// Performs simplification and canonicalization on expressions and caches the results.
-pub struct Simplifier<T: ExprMetaData<Option<ExprRef>>> {
+pub struct Simplifier<T: ExprMap<Option<ExprRef>>> {
     cache: T,
 }
 
-impl<T: ExprMetaData<Option<ExprRef>>> Simplifier<T> {
+impl<T: ExprMap<Option<ExprRef>>> Simplifier<T> {
     pub fn new(cache: T) -> Self {
         Self { cache }
     }

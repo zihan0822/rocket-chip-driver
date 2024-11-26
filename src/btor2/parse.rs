@@ -218,7 +218,7 @@ impl<'a> Parser<'a> {
             };
             // add name if available
             if let Some(name) = name {
-                self.sys.names.insert(e, Some(name));
+                self.sys.names[e] = Some(name);
             }
         }
         Ok(())

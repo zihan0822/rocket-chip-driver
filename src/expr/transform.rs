@@ -12,7 +12,7 @@ pub enum ExprTransformMode {
 }
 
 #[inline]
-pub(crate) fn do_transform_expr<T: ExprMetaData<Option<ExprRef>>>(
+pub(crate) fn do_transform_expr<T: ExprMap<Option<ExprRef>>>(
     ctx: &mut Context,
     mode: ExprTransformMode,
     transformed: &mut T,
@@ -67,7 +67,7 @@ pub(crate) fn do_transform_expr<T: ExprMetaData<Option<ExprRef>>>(
             }
         };
         // remember the transformed version
-        transformed.insert(expr_ref, Some(new_expr_ref));
+        transformed[expr_ref] = Some(new_expr_ref);
 
         // in fixed point mode, we might not be done yet
         let is_at_fixed_point = expr_ref == new_expr_ref;

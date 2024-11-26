@@ -2,7 +2,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 
-use crate::expr::{Context, ExprMetaData, ExprRef, SparseExprMetaData, StringRef};
+use crate::expr::{Context, ExprRef, SparseExprMap, StringRef};
 use rustc_hash::{FxHashMap, FxHashSet};
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -44,7 +44,7 @@ pub struct TransitionSystem {
     pub outputs: Vec<Output>,
     pub bad_states: Vec<ExprRef>,
     pub constraints: Vec<ExprRef>,
-    pub names: SparseExprMetaData<Option<StringRef>>,
+    pub names: SparseExprMap<Option<StringRef>>,
 }
 
 impl TransitionSystem {
@@ -56,7 +56,7 @@ impl TransitionSystem {
             outputs: Vec::default(),
             bad_states: Vec::default(),
             constraints: Vec::default(),
-            names: SparseExprMetaData::default(),
+            names: SparseExprMap::default(),
         }
     }
 
@@ -68,8 +68,8 @@ impl TransitionSystem {
         if old != new {
             if let Some(old_name) = self.names[old] {
                 if self.names[new].is_none() {
-                    self.names.insert(new, Some(old_name));
-                    self.names.insert(old, None);
+                    self.names[new] = Some(old_name);
+                    self.names[old] = None;
                 }
             }
         }
@@ -79,7 +79,7 @@ impl TransitionSystem {
         assert!(ctx.get(symbol).is_symbol());
         let name = ctx.get(symbol).get_symbol_name_ref();
         self.inputs.push(symbol);
-        self.names.insert(symbol, name);
+        self.names[symbol] = name;
     }
 
     pub fn add_state(&mut self, ctx: &Context, state: impl Into<State>) -> StateRef {
@@ -87,7 +87,7 @@ impl TransitionSystem {
         assert!(ctx.get(state.symbol).is_symbol());
         // also add as a signal
         let name = ctx.get(state.symbol).get_symbol_name_ref();
-        self.names.insert(state.symbol, name);
+        self.names[state.symbol] = name;
         let id = self.states.len();
         self.states.push(state);
         StateRef(id)
