@@ -488,7 +488,7 @@ impl TransitionSystemEncoding for UnrollSmtEncoding {
 
         if step == 0 {
             // define signals that are used to calculate init expressions
-            self.define_signals(ctx, smt_ctx, 0, &|info: &SmtSignalInfo| info.uses.init)?;
+            self.define_signals(ctx, smt_ctx, 0, &|info: &SmtSignalInfo| info.uses.init > 0)?;
         }
 
         // declare/define initial states
@@ -514,11 +514,11 @@ impl TransitionSystemEncoding for UnrollSmtEncoding {
         // define other signals including inputs
         if step == 0 {
             self.define_signals(ctx, smt_ctx, step, &|info: &SmtSignalInfo| {
-                (info.uses.other || info.is_input) && !info.uses.init
+                (info.uses.other > 0 || info.is_input) && !info.uses.init > 0
             })?;
         } else {
             self.define_signals(ctx, smt_ctx, step, &|info: &SmtSignalInfo| {
-                info.uses.other || info.is_input
+                info.uses.other > 0 || info.is_input
             })?;
         }
 
@@ -532,7 +532,7 @@ impl TransitionSystemEncoding for UnrollSmtEncoding {
 
         // define next state signals for previous state
         self.define_signals(ctx, smt_ctx, prev_step, &|info: &SmtSignalInfo| {
-            info.uses.next && !info.uses.other && !info.is_input
+            info.uses.next > 0 && !info.uses.other > 0 && !info.is_input
         })?;
 
         // define next state
@@ -558,7 +558,7 @@ impl TransitionSystemEncoding for UnrollSmtEncoding {
         // we always define all inputs, even if they are only used in the "next" expression
         // since our witness extraction relies on them being available
         self.define_signals(ctx, smt_ctx, next_step, &|info: &SmtSignalInfo| {
-            info.uses.other || info.is_input
+            info.uses.other > 0 || info.is_input
         })?;
 
         // update step count

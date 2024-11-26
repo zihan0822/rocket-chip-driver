@@ -4,10 +4,8 @@
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
 use super::{State, TransitionSystem};
-use crate::expr::traversal::TraversalCmd;
-use crate::expr::{
-    traversal, Context, DenseExprMetaData, DenseExprSet, ExprRef, ExprSet, ForEachChild,
-};
+use crate::expr::*;
+use rustc_hash::FxHashSet;
 
 pub type UseCountInt = u16;
 
@@ -135,27 +133,28 @@ fn cone_of_influence_impl(
     out
 }
 
-/// Checks whether expressions are used. This version _does not_ follow any state symbols.
-fn check_expr_use(ctx: &Context, roots: &[ExprRef]) -> impl ExprSet {
-    let mut is_used = DenseExprSet::default();
-    for &root in roots.iter() {
-        traversal::top_down(ctx, root, |_, e| {
-            if is_used.contains(&e) {
-                TraversalCmd::Stop
-            } else {
-                is_used.insert(e);
-                TraversalCmd::Continue
-            }
-        })
+/// Counts how often expressions are used. This version _does not_ follow any state symbols.
+fn simple_count_expr_uses(ctx: &Context, roots: Vec<ExprRef>) -> impl ExprMap<UseCountInt> {
+    let mut use_count = SparseExprMap::default();
+    let mut todo = roots;
+
+    // ensure that all roots start with count 1
+    for expr in todo.iter() {
+        use_count[*expr] = 1;
     }
-    is_used
+
+    while let Some(expr) = todo.pop() {
+        count_uses(ctx, expr, &mut use_count, &mut todo);
+    }
+
+    use_count
 }
 
 #[inline]
 fn count_uses(
     ctx: &Context,
     expr: ExprRef,
-    use_count: &mut DenseExprMetaData<UseCountInt>,
+    use_count: &mut impl ExprMap<UseCountInt>,
     todo: &mut Vec<ExprRef>,
 ) {
     ctx.get(expr).for_each_child(|child| {
@@ -187,30 +186,55 @@ pub enum SerializeSignalKind {
 }
 
 /// Indicates which context an expression is used in.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Copy, Default, Eq, PartialEq)]
 pub struct Uses {
-    pub next: bool,
-    pub init: bool,
-    pub other: bool,
+    pub next: UseCountInt,
+    pub init: UseCountInt,
+    pub other: UseCountInt,
 }
 
 impl Uses {
+    #[inline]
     pub fn is_used(&self) -> bool {
-        self.init || self.next || self.other
+        self.total() > 0
     }
+    #[inline]
+    pub fn total(&self) -> UseCountInt {
+        self.next
+            .saturating_add(self.init)
+            .saturating_add(self.other)
+    }
+}
 
-    pub fn new(
-        e: ExprRef,
-        init_used: &impl ExprSet,
-        next_used: &impl ExprSet,
-        other_used: &impl ExprSet,
-    ) -> Self {
-        Self {
-            next: next_used.contains(&e),
-            init: init_used.contains(&e),
-            other: other_used.contains(&e),
-        }
+/// analyzes expression uses to determine in what contexts the expression is used.
+fn determine_simples_uses(
+    ctx: &Context,
+    sys: &TransitionSystem,
+    include_output: bool,
+) -> impl ExprMap<Uses> {
+    let init = simple_count_expr_uses(ctx, sys.get_init_exprs());
+    let next = simple_count_expr_uses(ctx, sys.get_next_exprs());
+    let other = if include_output {
+        simple_count_expr_uses(ctx, sys.get_assert_assume_output_exprs())
+    } else {
+        simple_count_expr_uses(ctx, sys.get_assert_assume_exprs())
+    };
+
+    // collect all expressions
+    let mut all_expr = FxHashSet::from_iter(other.non_default_value_keys());
+    all_expr.extend(init.non_default_value_keys());
+    all_expr.extend(next.non_default_value_keys());
+
+    // generate combined map
+    let mut out = SparseExprMap::default();
+    for expr in all_expr.into_iter() {
+        out[expr] = Uses {
+            next: next[expr],
+            init: init[expr],
+            other: other[expr],
+        };
     }
+    out
 }
 
 /// Meta-data that helps with serialization, no matter if serializing to btor, our custom
@@ -225,26 +249,14 @@ pub fn analyze_for_serialization(
     sys: &TransitionSystem,
     include_outputs: bool,
 ) -> SerializeMeta {
-    let init_exprs = sys.get_init_exprs();
-    let next_exprs = sys.get_next_exprs();
-    let other_exprs = if include_outputs {
-        sys.get_assert_assume_output_exprs()
-    } else {
-        sys.get_assert_assume_exprs()
-    };
+    let uses = determine_simples_uses(ctx, sys, include_outputs);
 
-    // count how often the signal is used in different situations
-    let init_used = check_expr_use(ctx, &init_exprs);
-    let next_used = check_expr_use(ctx, &next_exprs);
-    let mut other_used = check_expr_use(ctx, &other_exprs);
-
-    // always add all inputs to the signal order
+    // always add all inputs first to the signal order
     let mut signal_order = Vec::new();
     for &input in sys.inputs.iter() {
-        let uses = Uses::new(input, &init_used, &next_used, &other_used);
         signal_order.push(RootInfo {
             expr: input,
-            uses,
+            uses: uses[input],
             kind: SerializeSignalKind::Input,
         });
     }
@@ -253,17 +265,16 @@ pub fn analyze_for_serialization(
     let mut visited = DenseExprSet::default();
 
     // add all roots and give them a large other count
-    let mut todo: Vec<(ExprRef, SerializeSignalKind)> =
-        Vec::with_capacity(init_exprs.len() + next_exprs.len() + other_exprs.len());
-    todo.extend(
-        sys.constraints
-            .iter()
-            .map(|&e| (e, SerializeSignalKind::Constraint)),
-    );
+    let mut todo: Vec<(ExprRef, SerializeSignalKind)> = vec![];
     todo.extend(
         sys.bad_states
             .iter()
             .map(|&e| (e, SerializeSignalKind::BadState)),
+    );
+    todo.extend(
+        sys.constraints
+            .iter()
+            .map(|&e| (e, SerializeSignalKind::Constraint)),
     );
     if include_outputs {
         todo.extend(
@@ -272,19 +283,15 @@ pub fn analyze_for_serialization(
                 .map(|o| (o.expr, SerializeSignalKind::Output)),
         );
     }
-    // ensure that non-state root expressions are always serialized
-    for (expr, _) in todo.iter() {
-        other_used.insert(*expr);
-    }
 
     // add state root expressions
     todo.extend(
-        init_exprs
+        sys.get_init_exprs()
             .iter()
             .map(|&e| (e, SerializeSignalKind::StateInit)),
     );
     todo.extend(
-        next_exprs
+        sys.get_next_exprs()
             .iter()
             .map(|&e| (e, SerializeSignalKind::StateNext)),
     );
@@ -320,20 +327,20 @@ pub fn analyze_for_serialization(
         }
 
         // add to signal order if applicable
-        if num_children > 0
-            || matches!(
-                kind,
-                SerializeSignalKind::Input
-                    | SerializeSignalKind::Output
-                    | SerializeSignalKind::Constraint
-                    | SerializeSignalKind::BadState
-            )
-        {
-            let uses = Uses::new(expr_ref, &init_used, &next_used, &other_used);
-            if uses.other {
+        let is_output_like = matches!(
+            kind,
+            SerializeSignalKind::Output
+                | SerializeSignalKind::Constraint
+                | SerializeSignalKind::BadState
+        );
+        let is_input = kind == SerializeSignalKind::Input;
+        if num_children > 0 || is_output_like || is_input {
+            let expr_uses = uses[expr_ref];
+            let used_multiple_times = uses[expr_ref].total() > 1;
+            if is_output_like || used_multiple_times {
                 signal_order.push(RootInfo {
                     expr: expr_ref,
-                    uses,
+                    uses: expr_uses,
                     kind,
                 });
             }

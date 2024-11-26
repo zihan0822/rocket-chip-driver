@@ -20,6 +20,8 @@ where
     fn iter<'a>(&'a self) -> impl Iterator<Item = (ExprRef, &'a T)>
     where
         T: 'a;
+
+    fn non_default_value_keys(&self) -> impl Iterator<Item = ExprRef>;
 }
 
 /// finds the fixed point value and updates values it discovers along the way
@@ -77,6 +79,14 @@ impl<T: Default + Clone + Debug + PartialEq> ExprMap<T> for SparseExprMap<T> {
     {
         self.inner.iter().map(|(k, v)| (*k, v))
     }
+
+    #[inline]
+    fn non_default_value_keys(&self) -> impl Iterator<Item = ExprRef> {
+        self.inner
+            .iter()
+            .filter(|(_, v)| **v != T::default())
+            .map(|(k, _)| *k)
+    }
 }
 
 /// A dense hash map to store meta-data related to each expression
@@ -123,6 +133,12 @@ impl<T: Default + Clone + Debug + PartialEq> ExprMap<T> for DenseExprMetaData<T>
             inner: self.inner.iter(),
             index: 0,
         }
+    }
+
+    fn non_default_value_keys(&self) -> impl Iterator<Item = ExprRef> {
+        self.iter()
+            .filter(|(_, v)| **v != T::default())
+            .map(|(k, _)| k)
     }
 }
 
