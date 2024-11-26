@@ -218,6 +218,11 @@ impl<'a> Parser<'a> {
             };
             // add name if available
             if let Some(name) = name {
+                println!(
+                    "{}: {}",
+                    self.ctx.get_str(name),
+                    self.ctx.get(e).serialize_to_str(self.ctx)
+                );
                 self.sys.names[e] = Some(name);
             }
         }
@@ -568,7 +573,8 @@ impl<'a> Parser<'a> {
             "consth" => self.parse_bv_lit_str(line, tokens[3], 16, width),
             other => panic!("Did not expect {other} as a possible format op!"),
         }?;
-        Ok((res, 3))
+        let tokens = if op.starts_with("const") { 4 } else { 3 };
+        Ok((res, tokens))
     }
 
     fn parse_bv_lit_str(
