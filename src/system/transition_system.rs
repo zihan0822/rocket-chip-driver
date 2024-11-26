@@ -2,7 +2,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@berkeley.edu>
 
-use crate::expr::{Context, ExprRef, SparseExprMap, StringRef};
+use crate::expr::{Context, ExprMap, ExprRef, SparseExprMap, StringRef};
 use rustc_hash::{FxHashMap, FxHashSet};
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -127,12 +127,23 @@ impl TransitionSystem {
             *old = update(*old).unwrap_or(*old);
         }
         for output in self.outputs.iter_mut() {
+            let old = output.expr;
             output.expr = update(output.expr).unwrap_or(output.expr);
         }
         for state in self.states.iter_mut() {
             state.symbol = update(state.symbol).unwrap_or(state.symbol);
-            state.init = state.init.and_then(|old| update(old));
-            state.next = state.next.and_then(|old| update(old));
+            state.init = state.init.and_then(&mut update);
+            state.next = state.next.and_then(&mut update);
+        }
+
+        // update names
+        let old_name_exprs = self.names.non_default_value_keys().collect::<Vec<_>>();
+        for old_expr in old_name_exprs.into_iter() {
+            if let Some(new_expr) = update(old_expr) {
+                if new_expr != old_expr {
+                    self.names[new_expr] = self.names[old_expr];
+                }
+            }
         }
     }
 

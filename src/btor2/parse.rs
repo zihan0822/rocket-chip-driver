@@ -66,6 +66,8 @@ type LineId = u32;
 pub const DEFAULT_INPUT_PREFIX: &str = "_input";
 pub const DEFAULT_STATE_PREFIX: &str = "_state";
 pub const DEFAULT_OUTPUT_PREFIX: &str = "_output";
+pub const DEFAULT_BAD_STATE_PREFIX: &str = "_bad";
+pub const DEFAULT_CONSTRAINT_PREFIX: &str = "_constraint";
 
 impl<'a> Parser<'a> {
     fn new(ctx: &'a mut Context) -> Self {
@@ -86,8 +88,15 @@ impl<'a> Parser<'a> {
         backup_name: Option<&str>,
     ) -> Result<TransitionSystem, Errors> {
         // ensure that default input and state names are reserved in order to get nicer names
-        self.ctx.string(DEFAULT_INPUT_PREFIX.into());
-        self.ctx.string(DEFAULT_STATE_PREFIX.into());
+        for prefix in [
+            DEFAULT_CONSTRAINT_PREFIX,
+            DEFAULT_OUTPUT_PREFIX,
+            DEFAULT_BAD_STATE_PREFIX,
+            DEFAULT_INPUT_PREFIX,
+            DEFAULT_STATE_PREFIX,
+        ] {
+            self.ctx.string(prefix.into());
+        }
 
         for line_res in input.lines() {
             let line = line_res.expect("failed to read line");
@@ -182,17 +191,28 @@ impl<'a> Parser<'a> {
                 }
                 "output" | "bad" | "constraint" | "fair" => {
                     let expr = self.get_expr_from_line_id(line, tokens[2])?;
-                    match op {
+                    let name = match op {
                         "output" => {
                             let name = self.get_label_name(&cont, DEFAULT_OUTPUT_PREFIX);
                             self.sys.outputs.push(Output { name, expr });
+                            name
                         }
-                        "bad" => self.sys.bad_states.push(expr),
-                        "constraint" => self.sys.constraints.push(expr),
+                        "bad" => {
+                            self.sys.bad_states.push(expr);
+                            self.get_label_name(&cont, DEFAULT_BAD_STATE_PREFIX)
+                        }
+                        "constraint" => {
+                            self.sys.constraints.push(expr);
+                            self.get_label_name(&cont, DEFAULT_CONSTRAINT_PREFIX)
+                        }
                         "fair" => todo!("support fairness constraints"),
                         _ => unreachable!(),
-                    }
-                    Some((expr, 3))
+                    };
+
+                    // we add the name here directly to avoid calling add_unique_str twice
+                    self.sys.names[expr] = Some(name);
+
+                    None
                 }
                 other => {
                     if OTHER_OPS_SET.contains(other) {
@@ -218,11 +238,6 @@ impl<'a> Parser<'a> {
             };
             // add name if available
             if let Some(name) = name {
-                println!(
-                    "{}: {}",
-                    self.ctx.get_str(name),
-                    self.ctx.get(e).serialize_to_str(self.ctx)
-                );
                 self.sys.names[e] = Some(name);
             }
         }

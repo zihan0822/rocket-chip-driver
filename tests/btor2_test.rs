@@ -50,7 +50,6 @@ fn serialize_quiz1() {
 fn parse_instrumented_decoder() {
     let (ctx, sys) = btor2::parse_file("inputs/repair/decoder_3_to_8.instrumented.btor").unwrap();
     insta::assert_snapshot!(sys.serialize_to_str(&ctx));
-    println!("{}", sys.serialize_to_str(&ctx));
 }
 
 #[test]

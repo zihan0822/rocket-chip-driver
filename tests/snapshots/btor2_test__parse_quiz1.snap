@@ -6,8 +6,8 @@ Quiz1
 input reset : bv<1>
 node %15 : bv<1> = ugte(_resetCount, 1'b1)
 node %16 : bv<1> = not(%15)
-constraint %19 : bv<1> = implies(%16, reset)
-bad %18 : bv<1> = not(implies(not(reset), not(ugt(counter, zext(4'b1010, 12)))))
+constraint _constraint_0 : bv<1> = implies(%16, reset)
+bad _bad_0 : bv<1> = not(implies(not(reset), not(ugt(counter, zext(4'b1010, 12)))))
 state counter : bv<16>
   [next] ite(reset, 16'x0000, add(zext(counter, 1), zext(1'b1, 16))[15:0])
 state _resetCount : bv<1>
