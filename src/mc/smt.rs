@@ -18,15 +18,15 @@ use std::collections::HashSet;
 pub struct SmtSolverCmd {
     pub name: &'static str,
     pub args: &'static [&'static str],
+    pub options: &'static [&'static str],
     pub supports_uf: bool,
     pub supports_check_assuming: bool,
 }
 
 pub const BITWUZLA_CMD: SmtSolverCmd = SmtSolverCmd {
     name: "bitwuzla",
-    // args: &["--smt2", "--incremental"],
-    // TODO: arguments depend on the version of bitwuzla!
     args: &[],
+    options: &["incremental"],
     supports_uf: false,
     supports_check_assuming: true,
 };
@@ -34,6 +34,7 @@ pub const BITWUZLA_CMD: SmtSolverCmd = SmtSolverCmd {
 pub const YICES2_CMD: SmtSolverCmd = SmtSolverCmd {
     name: "yices-smt2",
     args: &["--incremental"],
+    options: &[],
     supports_uf: false, // actually true, but ignoring for now
     supports_check_assuming: false,
 };
@@ -76,6 +77,11 @@ impl SmtModelChecker {
             .solver(self.solver.name, self.solver.args)
             .replay_file(replay_file)
             .build()?;
+
+        // older versions of bitwuzla need incremental to be set with an option
+        for opt in self.solver.options.iter() {
+            smt_ctx.set_option(format!(":{}", *opt), smt_ctx.true_())?;
+        }
 
         // z3 only supports the non-standard as-const array syntax when the logic is set to ALL
         let logic = if self.solver.name == "z3" {
