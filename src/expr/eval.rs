@@ -257,10 +257,7 @@ fn eval_expr_internal(
             Expr::BVSymbol { name, width } => {
                 // we should not get here
                 // TODO: turn into return Err
-                panic!(
-                    "No value found for symbol: {} : bv<{width}>",
-                    ctx.get_str(*name)
-                );
+                panic!("No value found for symbol: {} : bv<{width}>", ctx[*name]);
             }
             Expr::BVLiteral(value) => bv_stack.push(value.get(ctx).into()),
             // unary
@@ -333,7 +330,7 @@ fn eval_expr_internal(
                 // TODO: turn into return Err
                 panic!(
                     "No value found for symbol: {} : bv<{index_width}> -> bv<{data_width}>",
-                    ctx.get_str(*name)
+                    ctx[*name]
                 );
             }
             Expr::ArrayConstant { index_width, .. } => {

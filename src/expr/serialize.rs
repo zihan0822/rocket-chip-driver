@@ -38,7 +38,7 @@ where
     W: Write,
 {
     match expr {
-        Expr::BVSymbol { name, .. } => write!(writer, "{}", ctx.get_str(*name)),
+        Expr::BVSymbol { name, .. } => write!(writer, "{}", ctx[*name]),
         Expr::BVLiteral(value) => {
             if value.width() <= 8 {
                 write!(writer, "{}'b{}", value.width(), value.get(ctx).to_bit_str())
@@ -342,7 +342,7 @@ where
             }
             write!(writer, ")")
         }
-        Expr::ArraySymbol { name, .. } => write!(writer, "{}", ctx.get_str(*name)),
+        Expr::ArraySymbol { name, .. } => write!(writer, "{}", ctx[*name]),
         Expr::ArrayConstant { e, index_width, .. } => {
             write!(writer, "([")?;
             if (serialize_child)(e, writer)? {

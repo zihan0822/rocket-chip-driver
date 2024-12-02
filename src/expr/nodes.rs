@@ -164,7 +164,7 @@ impl Expr {
     }
 
     pub fn get_symbol_name<'a>(&self, ctx: &'a Context) -> Option<&'a str> {
-        self.get_symbol_name_ref().map(|r| ctx.get_str(r))
+        self.get_symbol_name_ref().map(|r| ctx[r].as_str())
     }
 
     pub fn is_true(&self) -> bool {

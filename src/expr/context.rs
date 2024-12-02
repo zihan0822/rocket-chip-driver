@@ -105,12 +105,6 @@ impl Context {
         ExprRef::from_index(index)
     }
 
-    pub(crate) fn get_str(&self, reference: StringRef) -> &str {
-        self.strings
-            .get_index((reference.0.get() as usize) - 1)
-            .expect("Invalid StringRef!")
-    }
-
     pub(crate) fn string(&mut self, value: std::borrow::Cow<str>) -> StringRef {
         if let Some(index) = self.strings.get_index_of(value.as_ref()) {
             StringRef::from_index(index)
@@ -132,6 +126,16 @@ impl Index<ExprRef> for Context {
         self.exprs
             .get_index(index.index())
             .expect("Invalid ExprRef!")
+    }
+}
+
+impl Index<StringRef> for Context {
+    type Output = String;
+
+    fn index(&self, index: StringRef) -> &Self::Output {
+        self.strings
+            .get_index(index.index())
+            .expect("Invalid StringRef!")
     }
 }
 

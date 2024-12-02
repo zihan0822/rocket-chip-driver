@@ -32,7 +32,7 @@ fn serialize_transition_system<W: Write>(
             .map(|n| n.to_string())
             .unwrap_or_else(|| {
                 sys.names[root.expr]
-                    .map(|n| ctx.get_str(n).to_string())
+                    .map(|n| ctx[n].clone())
                     .unwrap_or(format!("%{}", root.expr.index()))
             });
         names[root.expr] = Some(name);

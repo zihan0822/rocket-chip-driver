@@ -405,7 +405,7 @@ impl UnrollSmtEncoding {
             let skip = !(filter)(info);
             if !skip {
                 let tpe = convert_tpe(smt_ctx, expr.get_type(ctx));
-                let name = name_at(ctx.get_str(info.name), step);
+                let name = name_at(&ctx[info.name], step);
                 if ctx[*expr].is_symbol() {
                     smt_ctx.declare_const(escape_smt_identifier(&name), tpe)?;
                 } else {
@@ -431,7 +431,7 @@ impl UnrollSmtEncoding {
             let name_ref = if info.is_const {
                 info.name
             } else {
-                let name = name_at(ctx.get_str(info.name), step);
+                let name = name_at(&ctx[info.name], step);
                 ctx.string(name.into())
             };
             let tpe = signal.get_type(ctx);
