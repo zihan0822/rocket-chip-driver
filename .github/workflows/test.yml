@@ -39,9 +39,27 @@ jobs:
           - yices2
 
     steps:
-      - uses: YosysHQ/setup-oss-cad-suite@v3
-        with:
-          version: '2024-12-02'
+      - name: Install Yices2
+        if: ${{ matrix.solver == 'yices2' }}
+        run: |
+          mkdir /tmp/yices2
+          cd /tmp/yices2
+          wget -q https://yices.csl.sri.com/releases/2.6.5/yices-2.6.5-x86_64-pc-linux-gnu-static-gmp.tar.gz -O yices.tar.gz
+          tar -xf yices.tar.gz
+          mv yices-*/* .
+          echo "/tmp/yices2/bin" >> "$GITHUB_PATH"
+      - name: Install Bitwuzla
+        if: ${{ matrix.solver == 'bitwuzla' }}
+        run: |
+          mkdir /tmp/bitwuzla
+          cd /tmp/bitwuzla
+          wget -q https://github.com/bitwuzla/bitwuzla/archive/refs/tags/0.6.1.zip -O bitwuzla.zip
+          unzip -q bitwuzla.zip
+          mv bitwuzla-*/* .
+          ./configure.py
+          cd build
+          ninja
+          sudo ninja install
       - name: Update Rust to ${{ matrix.toolchain }}
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
       - uses: actions/checkout@v4
