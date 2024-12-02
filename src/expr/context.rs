@@ -93,12 +93,6 @@ impl Default for Context {
     }
 }
 
-impl Context {
-    fn is_interned(&self, value: &str) -> bool {
-        self.strings.get(value).is_some()
-    }
-}
-
 /// Adding and removing nodes.
 impl Context {
     pub fn get(&self, reference: ExprRef) -> &Expr {
