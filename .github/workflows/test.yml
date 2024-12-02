@@ -20,7 +20,7 @@ jobs:
     steps:
     - name: Update Rust to ${{ matrix.toolchain }}
       run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Build
       run: cargo build --verbose
     - name: Run tests
@@ -39,12 +39,12 @@ jobs:
           - yices2
 
     steps:
-      - uses: YosysHQ/setup-oss-cad-suite@v2
+      - uses: YosysHQ/setup-oss-cad-suite@v3
         with:
-          version: '2023-11-15'
+          version: '2024-12-02'
       - name: Update Rust to ${{ matrix.toolchain }}
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Build
         run: cargo build --verbose --examples --release
       - name: bmc Quiz1
@@ -86,7 +86,7 @@ jobs:
     steps:
       - name: Update Rust to ${{ matrix.toolchain }}
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Build
         run: cargo build --verbose --examples --release
       - name: simulate mux
@@ -140,7 +140,7 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: obi1kenobi/cargo-semver-checks-action@v2
 
   format:
@@ -149,5 +149,5 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: cargo fmt --check
