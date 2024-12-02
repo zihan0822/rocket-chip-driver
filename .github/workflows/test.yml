@@ -29,7 +29,7 @@ jobs:
   bmc:
     name: Test BMC Example
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 15
     strategy:
       matrix:
         toolchain:
@@ -61,6 +61,16 @@ jobs:
           cd build
           ninja
           sudo ninja install
+      - name: Install btor sim
+        run: |
+          mkdir /tmp/btor
+          cd /tmp/btor
+          git clone https://github.com/hwmcc/btor2tools.git
+          cd btor2tools
+          ./configure.sh
+          cd build
+          make
+          echo "/tmp/btor/btor2tools/build/bin/" >> "$GITHUB_PATH"
       - name: Update Rust to ${{ matrix.toolchain }}
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
       - uses: actions/checkout@v4
