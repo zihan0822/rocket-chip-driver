@@ -34,6 +34,22 @@ fn serialize_count2() {
     insta::assert_snapshot!(skip_first_line(&btor2::serialize_to_str(&ctx, &sys)));
 }
 
+const PASS_THROUGH: &str = r#"
+1 sort bitvec 1
+2 input 1 i
+3 output 2 o
+"#;
+
+#[test]
+fn serialize_pass_through() {
+    let mut ctx = Context::default();
+    let sys = btor2::parse_str(&mut ctx, PASS_THROUGH, Some("pass")).unwrap();
+    let out = btor2::serialize_to_str(&ctx, &sys);
+    // println!("{}", out);
+    // println!("{}", skip_first_line(&btor2::serialize_to_str(&ctx, &sys)));
+    // insta::assert_snapshot!(skip_first_line(&btor2::serialize_to_str(&ctx, &sys)));
+}
+
 #[test]
 fn parse_quiz1() {
     let (ctx, sys) = btor2::parse_file("inputs/chiseltest/Quiz1.btor").unwrap();
