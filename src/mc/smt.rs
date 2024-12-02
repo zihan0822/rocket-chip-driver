@@ -24,7 +24,9 @@ pub struct SmtSolverCmd {
 
 pub const BITWUZLA_CMD: SmtSolverCmd = SmtSolverCmd {
     name: "bitwuzla",
-    args: &["--smt2", "--incremental"],
+    // args: &["--smt2", "--incremental"],
+    // TODO: arguments depend on the version of bitwuzla!
+    args: &[],
     supports_uf: false,
     supports_check_assuming: true,
 };
@@ -532,7 +534,7 @@ impl TransitionSystemEncoding for UnrollSmtEncoding {
 
         // define next state signals for previous state
         self.define_signals(ctx, smt_ctx, prev_step, &|info: &SmtSignalInfo| {
-            info.uses.next > 0 && !info.uses.other > 0 && !info.is_input
+            info.uses.next > 0 && info.uses.other == 0 && !info.is_input
         })?;
 
         // define next state
