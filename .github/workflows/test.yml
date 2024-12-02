@@ -51,6 +51,7 @@ jobs:
       - name: Install Bitwuzla
         if: ${{ matrix.solver == 'bitwuzla' }}
         run: |
+          sudo apt-get install -y meson
           mkdir /tmp/bitwuzla
           cd /tmp/bitwuzla
           wget -q https://github.com/bitwuzla/bitwuzla/archive/refs/tags/0.6.1.zip -O bitwuzla.zip
