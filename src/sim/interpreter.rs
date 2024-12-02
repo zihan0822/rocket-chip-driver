@@ -40,7 +40,7 @@ impl<'a> Interpreter<'a> {
 }
 
 fn set_signal_to_zero(ctx: &Context, state: &mut SymbolValueStore, symbol: ExprRef) {
-    let tpe = ctx.get(symbol).get_type(ctx);
+    let tpe = ctx[symbol].get_type(ctx);
     match tpe {
         Type::BV(bits) => {
             state.define_bv(symbol, &BitVecValue::zero(bits));
@@ -107,7 +107,7 @@ impl<'a> Simulator for Interpreter<'a> {
     }
 
     fn get(&self, expr: ExprRef) -> Option<BitVecValue> {
-        if !self.ctx.get(expr).is_bv_type() {
+        if !self.ctx[expr].is_bv_type() {
             return None;
         }
         Some(eval_bv_expr(self.ctx, &self.data, expr))

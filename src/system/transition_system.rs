@@ -76,17 +76,17 @@ impl TransitionSystem {
     }
 
     pub fn add_input(&mut self, ctx: &Context, symbol: ExprRef) {
-        assert!(ctx.get(symbol).is_symbol());
-        let name = ctx.get(symbol).get_symbol_name_ref();
+        assert!(ctx[symbol].is_symbol());
+        let name = ctx[symbol].get_symbol_name_ref();
         self.inputs.push(symbol);
         self.names[symbol] = name;
     }
 
     pub fn add_state(&mut self, ctx: &Context, state: impl Into<State>) -> StateRef {
         let state = state.into();
-        assert!(ctx.get(state.symbol).is_symbol());
+        assert!(ctx[state.symbol].is_symbol());
         // also add as a signal
-        let name = ctx.get(state.symbol).get_symbol_name_ref();
+        let name = ctx[state.symbol].get_symbol_name_ref();
         self.names[state.symbol] = name;
         let id = self.states.len();
         self.states.push(state);

@@ -114,7 +114,7 @@ pub fn to_arith(ctx: &Context, e: ExprRef) -> egg::RecExpr<Arith> {
                 children.push(remove_ext(ctx, *c).0);
             });
         },
-        |_ctx, expr, children| match ctx.get(expr).clone() {
+        |_ctx, expr, children| match ctx[expr].clone() {
             Expr::BVSymbol { name, width } => out.add(Arith::Symbol(name, width)),
             Expr::BVAdd(a, b, width) => out.add(convert_bin_op(
                 ctx,
@@ -205,9 +205,9 @@ fn convert_bin_op(
 
 /// Removes any sign or zero extend expressions and returns whether the removed extension was signed.
 fn remove_ext(ctx: &Context, e: ExprRef) -> (ExprRef, bool) {
-    match ctx.get(e) {
-        Expr::BVZeroExt { e, .. } => (remove_ext(ctx, *e).0, false),
-        Expr::BVSignExt { e, .. } => (remove_ext(ctx, *e).0, true),
+    match ctx[e] {
+        Expr::BVZeroExt { e, .. } => (remove_ext(ctx, e).0, false),
+        Expr::BVSignExt { e, .. } => (remove_ext(ctx, e).0, true),
         _ => (e, false),
     }
 }

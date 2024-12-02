@@ -26,7 +26,7 @@ pub(crate) fn do_transform_expr<T: ExprMap<Option<ExprRef>>>(
         children.clear();
         let mut children_changed = false; // track whether any of the children changed
         let mut all_transformed = true; // tracks whether all children have been transformed or if there is more work to do
-        ctx.get(expr_ref).for_each_child(|c| {
+        ctx[expr_ref].for_each_child(|c| {
             let transformed_child = if mode == ExprTransformMode::FixedPoint {
                 get_fixed_point(transformed, *c)
             } else {
@@ -82,7 +82,7 @@ pub(crate) fn do_transform_expr<T: ExprMap<Option<ExprRef>>>(
 }
 
 fn update_expr_children(ctx: &mut Context, expr_ref: ExprRef, children: &[ExprRef]) -> ExprRef {
-    let new_expr = match (ctx.get(expr_ref), children) {
+    let new_expr = match (&ctx[expr_ref], children) {
         (Expr::BVSymbol { .. }, _) => panic!("No children, should never get here."),
         (Expr::BVLiteral { .. }, _) => panic!("No children, should never get here."),
         (Expr::BVZeroExt { by, width, .. }, [e]) => Expr::BVZeroExt {

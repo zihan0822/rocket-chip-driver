@@ -58,13 +58,13 @@ impl GuardCtx {
                 // check to see if we are going to convert this expression, if we are not, then
                 // we do not want to visit the children at all
                 expr.for_each_child(|c| children.push(*c));
-                let all_bool_children = children.iter().all(|e| ctx.get(*e).is_bool(ctx));
+                let all_bool_children = children.iter().all(|e| ctx[*e].is_bool(ctx));
                 if !all_bool_children {
                     children.clear(); // we do not want to include the children
                 }
             },
             |ctx, expr, children| {
-                match ctx.get(expr) {
+                match &ctx[expr] {
                     Expr::BVLiteral(v) => self.bdd.constant(v.is_true()),
                     Expr::BVNot(_, _) => self.bdd.not(children[0]),
                     Expr::BVAnd(_, _, _) => self.bdd.and(children[0], children[1]),
@@ -388,17 +388,17 @@ impl Value for ExprRef {
     type Context = Context;
 
     fn is_true(&self, ec: &Context) -> bool {
-        ec.get(*self).is_true()
+        ec[*self].is_true()
     }
 
     fn is_false(&self, ec: &Context) -> bool {
-        ec.get(*self).is_false()
+        ec[*self].is_false()
     }
 }
 
 impl ToGuard for ExprRef {
     fn can_be_guard(&self, ec: &Self::Context) -> bool {
-        ec.get(*self).is_bool(ec)
+        ec[*self].is_bool(ec)
     }
 
     fn to_guard(&self, ec: &Context, gc: &mut GuardCtx) -> GuardResult<Self> {

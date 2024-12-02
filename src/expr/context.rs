@@ -21,6 +21,7 @@ use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::fmt::{Debug, Formatter};
 use std::num::{NonZeroU16, NonZeroU32};
+use std::ops::Index;
 
 /// Uniquely identifies a [`String`] stored in a [`Context`].
 #[derive(PartialEq, Eq, Clone, Copy, Hash, PartialOrd, Ord)]
@@ -95,14 +96,8 @@ impl Default for Context {
 
 /// Adding and removing nodes.
 impl Context {
-    pub fn get(&self, reference: ExprRef) -> &Expr {
-        self.exprs
-            .get_index((reference.0.get() as usize) - 1)
-            .expect("Invalid ExprRef!")
-    }
-
     pub fn get_symbol_name(&self, reference: ExprRef) -> Option<&str> {
-        self.get(reference).get_symbol_name(self)
+        self[reference].get_symbol_name(self)
     }
 
     pub(crate) fn add_expr(&mut self, value: Expr) -> ExprRef {
@@ -127,6 +122,16 @@ impl Context {
 
     pub(crate) fn get_bv_value(&self, index: impl Borrow<BitVecValueIndex>) -> BitVecValueRef<'_> {
         self.values.words().get_ref(index)
+    }
+}
+
+impl Index<ExprRef> for Context {
+    type Output = Expr;
+
+    fn index(&self, index: ExprRef) -> &Self::Output {
+        self.exprs
+            .get_index(index.index())
+            .expect("Invalid ExprRef!")
     }
 }
 

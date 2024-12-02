@@ -98,7 +98,7 @@ fn cone_of_influence_impl(
         }
 
         // make sure children are visited
-        let expr = ctx.get(expr_ref);
+        let expr = &ctx[expr_ref];
         expr.for_each_child(|c| {
             if !visited.contains(c) {
                 todo.push(*c);
@@ -157,7 +157,7 @@ fn count_uses(
     use_count: &mut impl ExprMap<UseCountInt>,
     todo: &mut Vec<ExprRef>,
 ) {
-    ctx.get(expr).for_each_child(|child| {
+    ctx[expr].for_each_child(|child| {
         let count = use_count[*child];
         let is_first_use = count == 0;
         use_count[*child] = count.saturating_add(1);
@@ -305,7 +305,7 @@ pub fn analyze_for_serialization(
             continue;
         }
 
-        let expr = ctx.get(expr_ref);
+        let expr = &ctx[expr_ref];
 
         // check to see if all children are done
         let mut all_done = true;

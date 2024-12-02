@@ -835,7 +835,7 @@ fn improve_state_names(ctx: &mut Context, sys: &mut TransitionSystem) {
         // since the alias signal refers to the same expression as the state symbol,
         // it will generate a signal info with the better name
         if let Some(name_ref) = sys.names[state.symbol] {
-            let old_name_ref = ctx.get(state.symbol).get_symbol_name_ref().unwrap();
+            let old_name_ref = ctx[state.symbol].get_symbol_name_ref().unwrap();
             if old_name_ref != name_ref {
                 renames.insert(state.symbol, name_ref);
             }

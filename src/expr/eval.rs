@@ -167,9 +167,9 @@ pub fn eval_bv_expr(
     expr: ExprRef,
 ) -> BitVecValue {
     debug_assert!(
-        ctx.get(expr).get_bv_type(ctx).is_some(),
+        ctx[expr].get_bv_type(ctx).is_some(),
         "Not a bit-vector expression: {:?}",
-        ctx.get(expr)
+        ctx[expr]
     );
     let (mut bv_stack, array_stack) = eval_expr_internal(ctx, symbols, expr);
     debug_assert!(array_stack.is_empty());
@@ -183,9 +183,9 @@ pub fn eval_array_expr(
     expr: ExprRef,
 ) -> ArrayValue {
     debug_assert!(
-        ctx.get(expr).get_array_type(ctx).is_some(),
+        ctx[expr].get_array_type(ctx).is_some(),
         "Not an array expression: {:?}",
-        ctx.get(expr)
+        ctx[expr]
     );
     let (bv_stack, mut array_stack) = eval_expr_internal(ctx, symbols, expr);
     debug_assert!(bv_stack.is_empty());
@@ -197,11 +197,11 @@ pub fn eval_expr(ctx: &Context, symbols: &(impl GetExprValue + ?Sized), expr: Ex
     let (mut bv_stack, mut array_stack) = eval_expr_internal(ctx, symbols, expr);
     debug_assert_eq!(bv_stack.len() + array_stack.len(), 1);
     if let Some(value) = bv_stack.pop() {
-        debug_assert!(ctx.get(expr).is_bv_type());
+        debug_assert!(ctx[expr].is_bv_type());
         Value::BitVec(value)
     } else {
         let value = array_stack.pop().unwrap();
-        debug_assert!(ctx.get(expr).is_array_type());
+        debug_assert!(ctx[expr].is_array_type());
         Value::Array(value)
     }
 }
@@ -217,7 +217,7 @@ fn eval_expr_internal(
 
     todo.push((expr, false));
     while let Some((e, args_available)) = todo.pop() {
-        let expr = ctx.get(e);
+        let expr = &ctx[e];
 
         // Check if there are children that we need to compute first.
         if !args_available {
@@ -300,7 +300,7 @@ fn eval_expr_internal(
             | Expr::BVSignedMod(_, _, _)
             | Expr::BVSignedRem(_, _, _)
             | Expr::BVUnsignedRem(_, _, _) => {
-                todo!("implement eval support for {:?}", ctx.get(e))
+                todo!("implement eval support for {:?}", ctx[e])
             }
             Expr::BVSub(_, _, _) => bin_op(&mut bv_stack, |a, b| a.sub(&b)),
             // BVArrayRead needs array support!

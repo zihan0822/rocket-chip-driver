@@ -37,7 +37,7 @@ pub fn bottom_up_multi_pat<R>(
     let mut child_vec = Vec::with_capacity(4);
 
     while let Some((e, bottom_up)) = todo.pop() {
-        let expr = ctx.get(e);
+        let expr = &ctx[e];
 
         // Check if there are children that we need to compute first.
         if !bottom_up {
@@ -82,7 +82,7 @@ pub fn top_down(
     while let Some(e) = todo.pop() {
         let do_continue = f(ctx, e) == TraversalCmd::Continue;
         if do_continue {
-            ctx.get(e).for_each_child(|&c| todo.push(c));
+            ctx[e].for_each_child(|&c| todo.push(c));
         }
     }
 }

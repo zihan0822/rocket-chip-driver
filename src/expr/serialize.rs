@@ -405,12 +405,12 @@ where
     F: Fn(&ExprRef, &mut W) -> std::io::Result<bool>,
     W: Write,
 {
-    serialize_expr(ctx.get(*expr), ctx, writer, serialize_child)
+    serialize_expr(&ctx[*expr], ctx, writer, serialize_child)
 }
 
 impl SerializableIrNode for ExprRef {
     fn serialize<W: Write>(&self, ctx: &Context, writer: &mut W) -> std::io::Result<()> {
-        ctx.get(*self).serialize(ctx, writer)
+        ctx[*self].serialize(ctx, writer)
     }
 }
 

@@ -51,7 +51,7 @@ fn serialize_transition_system<W: Write>(
     // signals
     for root in signals.iter() {
         let name = names[root.expr].as_ref().unwrap();
-        let expr = ctx.get(root.expr);
+        let expr = &ctx[root.expr];
 
         // print the kind and name
         let kind = kind_to_string(root.kind);

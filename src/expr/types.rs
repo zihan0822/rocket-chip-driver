@@ -375,10 +375,10 @@ impl TypeCheck for Expr {
 }
 impl TypeCheck for ExprRef {
     fn type_check(&self, ctx: &Context) -> std::result::Result<Type, TypeCheckError> {
-        ctx.get(*self).type_check(ctx)
+        ctx[*self].type_check(ctx)
     }
 
     fn get_type(&self, ctx: &Context) -> Type {
-        ctx.get(*self).get_type(ctx)
+        ctx[*self].get_type(ctx)
     }
 }

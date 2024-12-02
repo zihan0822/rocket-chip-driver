@@ -131,7 +131,7 @@ impl<'a> Parser<'a> {
                 let new_sym = self.ctx.bv_symbol(name, width);
                 // compare width
                 if let Some(other) = self.symbols.get(name) {
-                    let other_width = self.ctx.get(*other).get_bv_type(self.ctx).unwrap();
+                    let other_width = self.ctx[*other].get_bv_type(self.ctx).unwrap();
                     assert_eq!(
                         width, other_width,
                         "Two symbols with same name {name} have different widths!"
@@ -147,7 +147,7 @@ impl<'a> Parser<'a> {
                     .symbols
                     .get(name)
                     .unwrap_or_else(|| panic!("symbol of unknown type: `{name}` @ {}", self.inp));
-                let width = self.ctx.get(other).get_bv_type(self.ctx).unwrap();
+                let width = self.ctx[other].get_bv_type(self.ctx).unwrap();
                 self.consume_c(&c);
                 Some(self.ctx.bv_symbol(name, width))
             }

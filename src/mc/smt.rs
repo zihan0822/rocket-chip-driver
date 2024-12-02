@@ -368,7 +368,7 @@ impl UnrollSmtEncoding {
             let id = (id + signal_order.len()) as u16;
             let info = SmtSignalInfo {
                 id,
-                name: ctx.get(state.symbol).get_symbol_name_ref().unwrap(),
+                name: ctx[state.symbol].get_symbol_name_ref().unwrap(),
                 uses: Uses::default(), // irrelevant
                 is_state: true,
                 is_input: false,
@@ -406,7 +406,7 @@ impl UnrollSmtEncoding {
             if !skip {
                 let tpe = convert_tpe(smt_ctx, expr.get_type(ctx));
                 let name = name_at(ctx.get_str(info.name), step);
-                if ctx.get(*expr).is_symbol() {
+                if ctx[*expr].is_symbol() {
                     smt_ctx.declare_const(escape_smt_identifier(&name), tpe)?;
                 } else {
                     let value = self.expr_in_step(ctx, smt_ctx, *expr, step);
@@ -458,7 +458,7 @@ impl UnrollSmtEncoding {
         expr: ExprRef,
         step: u64,
     ) -> smt::SExpr {
-        let expr_is_symbol = ctx.get(expr).is_symbol();
+        let expr_is_symbol = ctx[expr].is_symbol();
         let patch = |e: &ExprRef| -> Option<ExprRef> {
             // If the expression we are trying to serialize is not a symbol, then wo
             // do not just want to replace it with one, as that would lead us to a tautology!
