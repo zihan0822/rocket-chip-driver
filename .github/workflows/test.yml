@@ -28,7 +28,7 @@ jobs:
 
   bmc:
     name: Test BMC Example
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.02
     timeout-minutes: 5
     strategy:
       matrix:
