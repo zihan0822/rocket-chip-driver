@@ -10,7 +10,7 @@ env:
 jobs:
   tests:
     name: Unit Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     strategy:
       matrix:
@@ -28,7 +28,7 @@ jobs:
 
   bmc:
     name: Test BMC Example
-    runs-on: ubuntu-24.02
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     strategy:
       matrix:
@@ -95,7 +95,7 @@ jobs:
 
   sim:
     name: Test SIM Example
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     strategy:
       matrix:
@@ -155,7 +155,7 @@ jobs:
 
   semver:
     name: Check Semantic Versioning
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
 
     steps:
@@ -164,7 +164,7 @@ jobs:
 
   format:
     name: Check Formatting
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
 
     steps:
