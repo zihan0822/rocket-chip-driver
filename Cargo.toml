@@ -17,9 +17,6 @@ codespan-reporting = "0.11.1"
 fuzzy-matcher = "0.3.7"
 lazy_static = "1.4.0"
 easy-smt = "0.2.1"
-# used for simulator initialization
-rand = { version = "0.8.5", default-features = false }
-rand_xoshiro = "0.6.0"
 smallvec = { version = "1.x", features = ["union"] }
 baa = "0.14.5"
 boolean_expression = "0.4.4"
