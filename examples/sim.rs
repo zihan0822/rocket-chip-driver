@@ -8,7 +8,7 @@ use patronus::expr::*;
 use patronus::sim::*;
 use patronus::system::*;
 use patronus::*;
-use std::collections::{HashMap, HashSet};
+use rustc_hash::FxHashMap;
 use std::io::BufRead;
 
 #[derive(Parser, Debug)]
@@ -91,7 +91,7 @@ fn main() {
         std::fs::File::open(testbench_file).expect("Failed to load testbench file"),
     );
 
-    let name_to_ref: HashMap<String, ExprRef> = todo!(); // sys.generate_name_to_ref(&ctx);
+    let name_to_ref = sys.get_name_map(&ctx);
     let (inputs, outputs) =
         read_header(&mut tb, &name_to_ref, &sys, &ctx).expect("Failed to read testbench header");
     if args.verbose {
@@ -131,7 +131,7 @@ type IOInfo = Vec<(usize, ExprRef, String, WidthInt)>;
 /// Correlates the header with the inputs and outputs of the system.
 fn read_header(
     input: &mut impl BufRead,
-    name_to_ref: &HashMap<String, ExprRef>,
+    name_to_ref: &FxHashMap<String, ExprRef>,
     sys: &TransitionSystem,
     ctx: &Context,
 ) -> std::io::Result<(IOInfo, IOInfo)> {
@@ -143,14 +143,11 @@ fn read_header(
         let name = cell.trim();
         if let Some(signal_ref) = name_to_ref.get(name) {
             let width = signal_ref.get_bv_type(ctx).unwrap();
-            todo!();
-            // let signal = sys.get_signal(*signal_ref).unwrap();
-            // if signal.is_input() {
-            //     inputs.push((cell_id, *signal_ref, name.to_string(), width));
-            // }
-            // if signal.is_output() {
-            //     outputs.push((cell_id, *signal_ref, name.to_string(), width));
-            // }
+            if let Some(signal_ref) = sys.lookup_input(ctx, name) {
+                inputs.push((cell_id, signal_ref, name.to_string(), width));
+            } else if let Some(signal_ref) = sys.lookup_output(ctx, name) {
+                outputs.push((cell_id, signal_ref, name.to_string(), width));
+            }
         }
     }
     Ok((inputs, outputs))
@@ -191,7 +188,7 @@ fn do_step(
     // calculate the output values
     sim.update();
 
-    // print values if the option is enables
+    // print values if the option is enabled
     if !signal_to_print.is_empty() {
         println!();
         for (name, expr) in signal_to_print.iter() {

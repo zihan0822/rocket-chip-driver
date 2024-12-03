@@ -196,4 +196,48 @@ impl TransitionSystem {
 
         out
     }
+
+    /// Creates a map from signal name to expression
+    pub fn get_name_map(&self, ctx: &Context) -> FxHashMap<String, ExprRef> {
+        let mut m = FxHashMap::default();
+        for out in self.outputs.iter() {
+            m.insert(ctx[out.name].to_string(), out.expr);
+        }
+        for &e in self
+            .bad_states
+            .iter()
+            .chain(self.constraints.iter())
+            .chain(self.inputs.iter())
+            .chain(self.states.iter().map(|s| &s.symbol))
+        {
+            if let Some(name) = ctx[e].get_symbol_name(ctx) {
+                m.insert(name.to_string(), e);
+            }
+            if let Some(name) = self.names[e] {
+                m.insert(ctx[name].to_string(), e);
+            }
+        }
+        m
+    }
+
+    /// Returns input by name.
+    pub fn lookup_input(&self, ctx: &Context, name: &str) -> Option<ExprRef> {
+        self.inputs
+            .iter()
+            .find(|&&i| {
+                ctx[i]
+                    .get_symbol_name(ctx)
+                    .map(|i_name| i_name == name)
+                    .unwrap_or(false)
+            })
+            .cloned()
+    }
+
+    /// Returns output by name.
+    pub fn lookup_output(&self, ctx: &Context, name: &str) -> Option<ExprRef> {
+        self.outputs
+            .iter()
+            .find(|&&o| ctx[o.name] == name)
+            .map(|o| o.expr)
+    }
 }
