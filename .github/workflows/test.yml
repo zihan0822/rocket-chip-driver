@@ -66,10 +66,12 @@ jobs:
         with:
           key: bitwuzla-${{ runner.os }}-${{ env.BITWUZLA_VERSION }}
           path: /tmp/bitwuzla
+      - name: Install Meson for Bitwuzla
+        if: ${{ matrix.solver == 'bitwuzla' }}
+        run: sudo apt-get install -y meson
       - name: Download and Compile Bitwuzla
         if: ${{ matrix.solver == 'bitwuzla' && steps.cache-bitwuzla.outputs.cache-hit != 'true'  }}
         run: |
-          sudo apt-get install -y meson
           mkdir /tmp/bitwuzla
           cd /tmp/bitwuzla
           wget -q https://github.com/bitwuzla/bitwuzla/archive/refs/tags/${{ env.BITWUZLA_VERSION }}.zip -O bitwuzla.zip
