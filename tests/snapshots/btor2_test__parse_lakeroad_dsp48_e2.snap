@@ -3074,7 +3074,7 @@ node pdet_o : bv<1> = eq(%12340, 48'xffffffffffff)
 node pdet_o_mux : bv<1> = ite(PREG_BIN, pdet_o_reg1, pdet_o)
 node %18748 : bv<1> = or(pdet_o_mux, PATTERNBDETECT)
 output UNDERFLOW : bv<1> = and(USE_PATTERN_DETECT_BIN, and(%18748, ite(PREG_BIN, pdetb_o_reg2, pdetb_o)))
-output P : bv<48> = ite(PREG_BIN, P_FDBK_in, ALU_OUT_in)
+output PCOUT : bv<48> = ite(PREG_BIN, P_FDBK_in, ALU_OUT_in)
 node overflow_data : bv<1> = ite(PREG_BIN, pdet_o_reg2, pdet_o)
 output OVERFLOW : bv<1> = and(USE_PATTERN_DETECT_BIN, and(%18748, overflow_data))
 node %11533 : bv<14> = concat(13'x0000, intc3)
@@ -3197,4 +3197,3 @@ state pdet_o_reg2 : bv<1>
   [next] and(%12416, ite(%1032, pdet_o_reg1, pdet_o_reg2))
 state MULTSIGN_ALU_reg : bv<1>
   [next] and(%12416, ite(%1032, MULTSIGN_ALU_in, MULTSIGN_ALU_reg))
-

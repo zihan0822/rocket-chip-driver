@@ -2,4 +2,4 @@
 source: tests/btor2_test.rs
 expression: "skip_first_line(&btor2::serialize_to_str(&ctx, &sys))"
 ---
-
+; TODO: implement the btor2 serialization!

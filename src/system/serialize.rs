@@ -23,19 +23,15 @@ fn serialize_transition_system<W: Write>(
     let signals = analyze_for_serialization(ctx, sys, true).signal_order;
     let mut names: SparseExprMap<Option<String>> = SparseExprMap::default();
     for root in signals.iter() {
-        // try names in this order:
-        // - symbol name
-        // - signal name
-        // - %{id}
-        let name = ctx
-            .get_symbol_name(root.expr)
-            .map(|n| n.to_string())
-            .unwrap_or_else(|| {
-                sys.names[root.expr]
-                    .map(|n| ctx[n].clone())
-                    .unwrap_or(format!("%{}", root.expr.index()))
-            });
-        names[root.expr] = Some(name);
+        let name = root.name.map(|n| ctx[n].to_string()).unwrap_or_else(|| {
+            sys.names[root.expr]
+                .map(|n| ctx[n].clone())
+                .unwrap_or(format!("%{}", root.expr.index()))
+        });
+        // outputs should not overwrite other names
+        if root.kind != SerializeSignalKind::Output || names[root.expr].is_none() {
+            names[root.expr] = Some(name);
+        }
     }
 
     // this closure allows us to use node names instead of serializing all sub-expressions
@@ -50,7 +46,10 @@ fn serialize_transition_system<W: Write>(
 
     // signals
     for root in signals.iter() {
-        let name = names[root.expr].as_ref().unwrap();
+        let name = root
+            .name
+            .map(|n| &ctx[n])
+            .unwrap_or_else(|| names[root.expr].as_ref().unwrap());
         let expr = &ctx[root.expr];
 
         // print the kind and name

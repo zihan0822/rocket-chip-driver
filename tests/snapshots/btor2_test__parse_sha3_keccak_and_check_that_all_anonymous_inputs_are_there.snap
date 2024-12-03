@@ -23,7 +23,7 @@ input _input_10 : bv<1>
 input _input_11 : bv<24>
 output out_ready : bv<1> = i[22]
 output out : bv<512> = concat(f_out[1543:1536], concat(f_out[1551:1544], concat(f_out[1559:1552], concat(f_out[1567:1560], concat(f_out[1575:1568], concat(f_out[1583:1576], concat(f_out[1591:1584], concat(f_out[1599:1592], concat(f_out[1479:1472], concat(f_out[1487:1480], concat(f_out[1495:1488], concat(f_out[1503:1496], concat(f_out[1511:1504], concat(f_out[1519:1512], concat(f_out[1527:1520], concat(f_out[1535:1528], concat(f_out[1415:1408], concat(f_out[1423:1416], concat(f_out[1431:1424], concat(f_out[1439:1432], concat(f_out[1447:1440], concat(f_out[1455:1448], concat(f_out[1463:1456], concat(f_out[1471:1464], concat(f_out[1351:1344], concat(f_out[1359:1352], concat(f_out[1367:1360], concat(f_out[1375:1368], concat(f_out[1383:1376], concat(f_out[1391:1384], concat(f_out[1399:1392], concat(f_out[1407:1400], concat(f_out[1287:1280], concat(f_out[1295:1288], concat(f_out[1303:1296], concat(f_out[1311:1304], concat(f_out[1319:1312], concat(f_out[1327:1320], concat(f_out[1335:1328], concat(f_out[1343:1336], concat(f_out[1223:1216], concat(f_out[1231:1224], concat(f_out[1239:1232], concat(f_out[1247:1240], concat(f_out[1255:1248], concat(f_out[1263:1256], concat(f_out[1271:1264], concat(f_out[1279:1272], concat(f_out[1159:1152], concat(f_out[1167:1160], concat(f_out[1175:1168], concat(f_out[1183:1176], concat(f_out[1191:1184], concat(f_out[1199:1192], concat(f_out[1207:1200], concat(f_out[1215:1208], concat(f_out[1095:1088], concat(f_out[1103:1096], concat(f_out[1111:1104], concat(f_out[1119:1112], concat(f_out[1127:1120], concat(f_out[1135:1128], concat(f_out[1143:1136], f_out[1151:1144])))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
-output _input_0 : bv<1>
+output buffer_full : bv<1> = _input_0
 node f_permutation_.accept : bv<1> = ite(__synth_change_variable_19, ite(__synth_variable_135, _input_3, ite(__synth_variable_134, _input_1, ite(__synth_variable_133, state, ite(__synth_variable_132, out_ready, ite(__synth_variable_131, _input_0, ite(__synth_variable_130, is_last, ite(__synth_variable_129, in_ready, ite(__synth_variable_128, reset, clk)))))))), _input_2)
 node f_permutation_.round_.in : bv<1600> = ite(f_permutation_.accept, concat(xor(ite(__synth_change_variable_17, _input_5, _input_4), f_out[1599:1024]), f_out[1023:0]), f_out)
 node f_permutation_.round_.a[24] : bv<64> = f_permutation_.round_.in[63:0]
@@ -487,4 +487,3 @@ state __synth_change_variable_1 : bv<1>
   [next] __synth_change_variable_1
 state __synth_change_variable_0 : bv<1>
   [next] __synth_change_variable_0
-

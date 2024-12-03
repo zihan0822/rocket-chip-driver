@@ -170,8 +170,20 @@ fn count_uses(
 #[derive(Debug, Clone)]
 pub struct RootInfo {
     pub expr: ExprRef,
+    pub name: Option<StringRef>,
     pub uses: Uses,
     pub kind: SerializeSignalKind,
+}
+
+impl RootInfo {
+    fn new(expr: ExprRef, name: Option<StringRef>, uses: Uses, kind: SerializeSignalKind) -> Self {
+        Self {
+            expr,
+            name,
+            uses,
+            kind,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -254,58 +266,74 @@ pub fn analyze_for_serialization(
     // always add all inputs first to the signal order
     let mut signal_order = Vec::new();
     for &input in sys.inputs.iter() {
-        signal_order.push(RootInfo {
-            expr: input,
-            uses: uses[input],
-            kind: SerializeSignalKind::Input,
-        });
+        signal_order.push(RootInfo::new(
+            input,
+            Some(ctx[input].get_symbol_name_ref().unwrap()),
+            uses[input],
+            SerializeSignalKind::Input,
+        ));
     }
 
     // keep track of which signals have been processed
     let mut visited = DenseExprSet::default();
 
     // add all roots and give them a large other count
-    let mut todo: Vec<(ExprRef, SerializeSignalKind)> = vec![];
+    let mut todo: Vec<RootInfo> = vec![];
     if include_outputs {
-        todo.extend(
-            sys.outputs
-                .iter()
-                .map(|o| (o.expr, SerializeSignalKind::Output)),
-        );
+        todo.extend(sys.outputs.iter().map(|o| {
+            RootInfo::new(
+                o.expr,
+                Some(o.name),
+                uses[o.expr],
+                SerializeSignalKind::Output,
+            )
+        }));
     }
-    todo.extend(
-        sys.constraints
-            .iter()
-            .map(|&e| (e, SerializeSignalKind::Constraint)),
-    );
-    todo.extend(
-        sys.bad_states
-            .iter()
-            .map(|&e| (e, SerializeSignalKind::BadState)),
-    );
+    todo.extend(sys.constraints.iter().map(|&e| {
+        RootInfo::new(
+            e,
+            find_name(ctx, sys, e),
+            uses[e],
+            SerializeSignalKind::Constraint,
+        )
+    }));
+    todo.extend(sys.bad_states.iter().map(|&e| {
+        RootInfo::new(
+            e,
+            find_name(ctx, sys, e),
+            uses[e],
+            SerializeSignalKind::BadState,
+        )
+    }));
 
     // add state root expressions
-    todo.extend(
-        sys.get_init_exprs()
-            .iter()
-            .map(|&e| (e, SerializeSignalKind::StateInit)),
-    );
-    todo.extend(
-        sys.get_next_exprs()
-            .iter()
-            .map(|&e| (e, SerializeSignalKind::StateNext)),
-    );
+    todo.extend(sys.get_init_exprs().iter().map(|&e| {
+        RootInfo::new(
+            e,
+            find_name(ctx, sys, e),
+            uses[e],
+            SerializeSignalKind::StateInit,
+        )
+    }));
+    todo.extend(sys.get_next_exprs().iter().map(|&e| {
+        RootInfo::new(
+            e,
+            find_name(ctx, sys, e),
+            uses[e],
+            SerializeSignalKind::StateNext,
+        )
+    }));
 
     // visit roots in the order in which they were declared
     todo.reverse();
 
     // visit expressions
-    while let Some((expr_ref, kind)) = todo.pop() {
-        if visited.contains(&expr_ref) {
+    while let Some(info) = todo.pop() {
+        if visited.contains(&info.expr) {
             continue;
         }
 
-        let expr = &ctx[expr_ref];
+        let expr = &ctx[info.expr];
 
         // check to see if all children are done
         let mut all_done = true;
@@ -313,11 +341,12 @@ pub fn analyze_for_serialization(
         expr.for_each_child(|c| {
             if !visited.contains(c) {
                 if all_done {
-                    todo.push((expr_ref, kind)); // return expression to the todo list
+                    todo.push(info.clone()); // return expression to the todo list
                 }
                 all_done = false;
                 // we need to visit the child first
-                todo.push((*c, SerializeSignalKind::None));
+                let child_info = RootInfo::new(*c, None, uses[*c], SerializeSignalKind::None);
+                todo.push(child_info);
             }
             num_children += 1;
         });
@@ -328,27 +357,27 @@ pub fn analyze_for_serialization(
 
         // add to signal order if applicable
         let is_output_like = matches!(
-            kind,
+            info.kind,
             SerializeSignalKind::Output
                 | SerializeSignalKind::Constraint
                 | SerializeSignalKind::BadState
         );
-        let is_input = kind == SerializeSignalKind::Input;
+        let is_input = info.kind == SerializeSignalKind::Input;
         if num_children > 0 || is_output_like || is_input {
-            let expr_uses = uses[expr_ref];
-            let used_multiple_times = uses[expr_ref].total() > 1;
+            let used_multiple_times = info.uses.total() > 1;
             if is_output_like || used_multiple_times {
-                signal_order.push(RootInfo {
-                    expr: expr_ref,
-                    uses: expr_uses,
-                    kind,
-                });
+                signal_order.push(info.clone());
             }
         }
-        visited.insert(expr_ref);
+        visited.insert(info.expr);
     }
 
     SerializeMeta { signal_order }
+}
+
+#[inline]
+fn find_name(ctx: &Context, sys: &TransitionSystem, e: ExprRef) -> Option<StringRef> {
+    ctx[e].get_symbol_name_ref().or_else(|| sys.names[e])
 }
 
 impl ForEachChild<ExprRef> for State {
