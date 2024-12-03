@@ -6,6 +6,8 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  BITWUZLA_VERSION: 0.6.1
+  YICES_VERSION: 2.6.5
 
 jobs:
   tests:
@@ -44,7 +46,7 @@ jobs:
         run: |
           mkdir /tmp/yices2
           cd /tmp/yices2
-          wget -q https://yices.csl.sri.com/releases/2.6.5/yices-2.6.5-x86_64-pc-linux-gnu-static-gmp.tar.gz -O yices.tar.gz
+          wget -q https://yices.csl.sri.com/releases/${{ env.YICES_VERSION }}/yices-${{ env.YICES_VERSION }}-x86_64-pc-linux-gnu-static-gmp.tar.gz -O yices.tar.gz
           tar -xf yices.tar.gz
           mv yices-*/* .
           echo "/tmp/yices2/bin" >> "$GITHUB_PATH"
@@ -54,7 +56,7 @@ jobs:
           sudo apt-get install -y meson
           mkdir /tmp/bitwuzla
           cd /tmp/bitwuzla
-          wget -q https://github.com/bitwuzla/bitwuzla/archive/refs/tags/0.6.1.zip -O bitwuzla.zip
+          wget -q https://github.com/bitwuzla/bitwuzla/archive/refs/tags/${{ env.BITWUZLA_VERSION }}.zip -O bitwuzla.zip
           unzip -q bitwuzla.zip
           mv bitwuzla-*/* .
           ./configure.py
