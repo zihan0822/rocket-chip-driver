@@ -5,6 +5,7 @@
 
 mod parse;
 mod serialize;
+mod solver;
 
 pub use parse::{parse_smt_array, parse_smt_bit_vec};
 pub use serialize::{convert_expr, convert_tpe, escape_smt_identifier};
