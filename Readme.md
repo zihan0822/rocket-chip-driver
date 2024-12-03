@@ -13,10 +13,6 @@ Some things we will hopefully get to one day.
 
 - simulator
   - JIT based implementation
-  - `get` for any expression
   - better debugging, add option to print expressions with trace
   - waveform generation
   - quickly update only parts of the circuit
-- use [baa](https://github.com/ekiwi/baa) to represent and compute with concrete values
-  - this will allow us to implement a more efficient witness struct
-
