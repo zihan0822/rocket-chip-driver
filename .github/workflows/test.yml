@@ -50,6 +50,12 @@ jobs:
           tar -xf yices.tar.gz
           mv yices-*/* .
           echo "/tmp/yices2/bin" >> "$GITHUB_PATH"
+      - name: Cache Yices
+        uses: actions/cache@v3
+        if: ${{ matrix.solver == 'yices2' }}
+        with:
+          key: yices-${{ runner.os }}-${{ env.YICES_VERSION }}
+          path: /tmp/yices2
       - name: Install Bitwuzla
         if: ${{ matrix.solver == 'bitwuzla' }}
         run: |
@@ -63,6 +69,12 @@ jobs:
           cd build
           ninja
           sudo ninja install
+      - name: Cache Bitwuzla
+        uses: actions/cache@v3
+        if: ${{ matrix.solver == 'bitwuzla' }}
+        with:
+          key: bitwuzla-${{ runner.os }}-${{ env.BITWUZLA_VERSION }}
+          path: /tmp/bitwuzla
       - name: Install btor sim
         run: |
           mkdir /tmp/btor
