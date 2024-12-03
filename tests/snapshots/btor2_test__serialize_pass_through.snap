@@ -1,5 +1,7 @@
 ---
 source: tests/btor2_test.rs
-expression: "skip_first_line(&btor2::serialize_to_str(&ctx, &sys))"
+expression: sys.serialize_to_str(&ctx)
 ---
-
+pass
+input i : bv<1>
+output o : bv<1> = i

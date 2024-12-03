@@ -45,10 +45,7 @@ const PASS_THROUGH: &str = r#"
 fn serialize_pass_through() {
     let mut ctx = Context::default();
     let sys = btor2::parse_str(&mut ctx, PASS_THROUGH, Some("pass")).unwrap();
-    let out = sys.serialize_to_str(&ctx);
-    println!("{}", out);
-    // println!("{}", skip_first_line(&btor2::serialize_to_str(&ctx, &sys)));
-    // insta::assert_snapshot!(skip_first_line(&btor2::serialize_to_str(&ctx, &sys)));
+    insta::assert_snapshot!(sys.serialize_to_str(&ctx));
 }
 
 #[test]
