@@ -48,7 +48,7 @@ jobs:
         with:
           key: yices-${{ runner.os }}-${{ env.YICES_VERSION }}
           path: /tmp/yices2
-      - name: Install Yices2
+      - name: Download Yices2
         if: ${{ matrix.solver == 'yices2' && steps.cache-yices.outputs.cache-hit != 'true' }}
         run: |
           mkdir /tmp/yices2
@@ -56,7 +56,9 @@ jobs:
           wget -q https://yices.csl.sri.com/releases/${{ env.YICES_VERSION }}/yices-${{ env.YICES_VERSION }}-x86_64-pc-linux-gnu-static-gmp.tar.gz -O yices.tar.gz
           tar -xf yices.tar.gz
           mv yices-*/* .
-          echo "/tmp/yices2/bin" >> "$GITHUB_PATH"
+      - name: Add Yices to Path
+        if: ${{ matrix.solver == 'yices2' }}
+        run: echo "/tmp/yices2/bin" >> "$GITHUB_PATH"
       - name: Cache Bitwuzla
         id: cache-bitwuzla
         uses: actions/cache@v3
@@ -64,7 +66,7 @@ jobs:
         with:
           key: bitwuzla-${{ runner.os }}-${{ env.BITWUZLA_VERSION }}
           path: /tmp/bitwuzla
-      - name: Install Bitwuzla
+      - name: Download and Compile Bitwuzla
         if: ${{ matrix.solver == 'bitwuzla' && steps.cache-bitwuzla.outputs.cache-hit != 'true'  }}
         run: |
           sudo apt-get install -y meson
@@ -76,7 +78,9 @@ jobs:
           ./configure.py
           cd build
           ninja
-          sudo ninja install
+      - name: Install Bitwuzla
+        if: ${{ matrix.solver == 'bitwuzla' }}
+        run: cd /tmp/bitwuzla/build && sudo ninja install
       - name: Install btor sim
         run: |
           mkdir /tmp/btor
