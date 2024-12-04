@@ -181,8 +181,8 @@ fn simplify_bv_equal(ctx: &mut Context, a: ExprRef, b: ExprRef) -> Option<ExprRe
         let b_width = ctx[concat_b].get_bv_type(ctx).unwrap();
         let width = a_width + b_width;
         debug_assert_eq!(width, other.get_bv_type(ctx).unwrap());
-        let eq_a = ctx.build(|c| c.bv_equal(concat_a, c.slice(other, width - 1, width - a_width)));
-        let eq_b = ctx.build(|c| c.bv_equal(concat_b, c.slice(other, b_width - 1, 0)));
+        let eq_a = ctx.build(|c| c.equal(concat_a, c.slice(other, width - 1, width - a_width)));
+        let eq_b = ctx.build(|c| c.equal(concat_b, c.slice(other, b_width - 1, 0)));
         return Some(ctx.and(eq_a, eq_b));
     }
 
@@ -447,7 +447,7 @@ fn simplify_bv_slice(ctx: &mut Context, e: ExprRef, hi: WidthInt, lo: WidthInt) 
         }
         // slice of ite
         Expr::BVIte { cond, tru, fals } => {
-            Some(ctx.build(|c| c.bv_ite(cond, c.slice(tru, hi, lo), c.slice(fals, hi, lo))))
+            Some(ctx.build(|c| c.ite(cond, c.slice(tru, hi, lo), c.slice(fals, hi, lo))))
         }
         // slice of not
         Expr::BVNot(e, _) => Some(ctx.build(|c| c.not(c.slice(e, hi, lo)))),

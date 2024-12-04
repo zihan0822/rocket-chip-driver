@@ -405,7 +405,7 @@ mod tests {
         let a = c.bv_symbol("a", 128);
         let b = c.bv_symbol("b", 128);
         let expr = c.build(|c| {
-            c.bv_ite(
+            c.ite(
                 c.greater_signed(a, c.bv_lit(&BitVecValue::from_u64(0, 128))),
                 c.sub(b, a),
                 c.add(b, a),

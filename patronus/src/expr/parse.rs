@@ -162,7 +162,7 @@ impl<'a> Parser<'a> {
             (1, [Arg::E(e), Arg::C(by)]) => self.ctx.sign_extend(*e, *by),
             (2, [Arg::E(e)]) => self.ctx.not(*e),
             (3, [Arg::E(e)]) => self.ctx.negate(*e),
-            (4, [Arg::E(a), Arg::E(b)]) => self.ctx.bv_equal(*a, *b),
+            (4, [Arg::E(a), Arg::E(b)]) => self.ctx.equal(*a, *b),
             (5, [Arg::E(a), Arg::E(b)]) => self.ctx.implies(*a, *b),
             (6, [Arg::E(a), Arg::E(b)]) => self.ctx.greater(*a, *b),
             (7, [Arg::E(a), Arg::E(b)]) => self.ctx.greater_signed(*a, *b),
@@ -183,7 +183,7 @@ impl<'a> Parser<'a> {
             (22, [Arg::E(a), Arg::E(b)]) => self.ctx.signed_remainder(*a, *b),
             (23, [Arg::E(a), Arg::E(b)]) => self.ctx.remainder(*a, *b),
             (24, [Arg::E(a), Arg::E(b)]) => self.ctx.sub(*a, *b),
-            (25, [Arg::E(a), Arg::E(b), Arg::E(c)]) => self.ctx.bv_ite(*a, *b, *c),
+            (25, [Arg::E(a), Arg::E(b), Arg::E(c)]) => self.ctx.ite(*a, *b, *c),
             _ => todo!("implement: {}({:?})", FUNCTIONS[fun_id], args),
         }
     }
@@ -381,7 +381,7 @@ mod tests {
 
         assert_eq!(
             parse_expr(&mut ctx, "ite(c : bv<1>, a: bv<10>, a)"),
-            ctx.build(|c| c.bv_ite(
+            ctx.build(|c| c.ite(
                 c.bv_symbol("c", 1),
                 c.bv_symbol("a", 10),
                 c.bv_symbol("a", 10)

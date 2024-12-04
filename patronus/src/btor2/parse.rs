@@ -340,7 +340,7 @@ impl<'a> Parser<'a> {
                 } else {
                     // redor is true iff at least one bit is a one
                     let zero = self.ctx.zero(width);
-                    let eq_zero = self.ctx.bv_equal(e, zero);
+                    let eq_zero = self.ctx.equal(e, zero);
                     (self.ctx.not(eq_zero), 4)
                 }
             }
@@ -351,7 +351,7 @@ impl<'a> Parser<'a> {
                 } else {
                     // redand is true iff all bits are one
                     let mask = self.ctx.ones(width);
-                    (self.ctx.bv_equal(e, mask), 4)
+                    (self.ctx.equal(e, mask), 4)
                 }
             }
             "redxor" => {
@@ -401,7 +401,7 @@ impl<'a> Parser<'a> {
                     tokens[4],
                     "iff expects a boolean argument",
                 )?;
-                self.ctx.bv_equal(a, b)
+                self.ctx.equal(a, b)
             }
             "implies" => self.ctx.implies(a, b),
             "sgt" => self.ctx.greater_signed(a, b),
@@ -446,9 +446,9 @@ impl<'a> Parser<'a> {
                 todo!("Add support for overflow operators")
             }
             "concat" => self.ctx.concat(a, b),
-            "eq" => self.ctx.bv_equal(a, b),
+            "eq" => self.ctx.equal(a, b),
             "neq" => {
-                let inner = self.ctx.bv_equal(a, b);
+                let inner = self.ctx.equal(a, b);
                 self.check_expr_type(inner, line, tpe)?;
                 self.ctx.not(inner)
             }
@@ -470,13 +470,7 @@ impl<'a> Parser<'a> {
         let b = self.get_expr_from_line_id(line, tokens[4])?;
         let c = self.get_expr_from_line_id(line, tokens[5])?;
         let res: ExprRef = match tokens[1] {
-            "ite" => {
-                if tpe.is_bit_vector() {
-                    self.ctx.bv_ite(a, b, c)
-                } else {
-                    self.ctx.array_ite(a, b, c)
-                }
-            }
+            "ite" => self.ctx.ite(a, b, c),
             "write" => self.ctx.array_store(a, b, c),
             other => panic!("unexpected binary op: {other}"),
         };
