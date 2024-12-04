@@ -170,7 +170,7 @@ fn remove_ext(ctx: &Context, e: ExprRef) -> (ExprRef, bool) {
 }
 
 /// Convert from the arithmetic expression IR back to our internal SMTLib based IR.
-pub fn from_arith(ctx: &mut Context, expr: &egg::RecExpr<Arith>) -> ExprRef {
+pub fn from_arith(ctx: &mut Context, expr: &RecExpr<Arith>) -> ExprRef {
     let expressions = expr.as_ref();
     let mut todo = vec![(expressions.len() - 1, false)];
     let mut stack = Vec::with_capacity(4);

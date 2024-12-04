@@ -185,6 +185,25 @@ jobs:
         run: |
           cargo run --release -p sim -- --init=zero --testbench=inputs/repair/axi-stream-xlnx.original.tb.csv inputs/repair/axi-stream-xlnx.original.btor
 
+  rewrite-condition:
+    name: Test E-Graph Rewrite Condition Synthesizer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        toolchain:
+          - stable
+
+    steps:
+      - name: Update Rust to ${{ matrix.toolchain }}
+        run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+      - uses: actions/checkout@v4
+      - name: Build
+        run: cargo build --verbose --release -p patronus-egraphs-cond-synth
+      - name: synthesize commute-add condition
+        run: |
+          cargo run --release -p patronus-egraphs-cond-synth -- commute-add
+
   semver:
     name: Check Semantic Versioning of Patronus
     runs-on: ubuntu-24.04
