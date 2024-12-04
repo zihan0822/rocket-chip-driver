@@ -410,7 +410,7 @@ mod tests {
 
     #[test]
     fn test_cone_of_influence() {
-        let (ctx, sys) = btor2::parse_file("inputs/unittest/delay.btor").unwrap();
+        let (ctx, sys) = btor2::parse_file("../inputs/unittest/delay.btor").unwrap();
         let reg0 = sys.get_state_by_name(&ctx, "reg0").unwrap().symbol;
         let reg1 = sys.get_state_by_name(&ctx, "reg1").unwrap().symbol;
         let cone0 = cone_of_influence(&ctx, &sys, reg0);

@@ -78,7 +78,7 @@ fn interpret_count_2() {
 
 #[test]
 fn interpret_delay() {
-    let (ctx, sys) = btor2::parse_file("inputs/unittest/delay.btor").unwrap();
+    let (ctx, sys) = btor2::parse_file("../inputs/unittest/delay.btor").unwrap();
     let reg0 = sys.get_state_by_name(&ctx, "reg0").unwrap().symbol;
     let reg1 = sys.get_state_by_name(&ctx, "reg1").unwrap().symbol;
     let mut sim = Interpreter::new(&ctx, &sys);
@@ -104,7 +104,7 @@ fn interpret_delay() {
 
 #[test]
 fn interpret_swap() {
-    let (ctx, sys) = btor2::parse_file("inputs/unittest/swap.btor").unwrap();
+    let (ctx, sys) = btor2::parse_file("../inputs/unittest/swap.btor").unwrap();
     let a = sys.get_state_by_name(&ctx, "a").unwrap().symbol;
     let b = sys.get_state_by_name(&ctx, "b").unwrap().symbol;
     let mut sim = Interpreter::new(&ctx, &sys);

@@ -50,26 +50,27 @@ fn serialize_pass_through() {
 
 #[test]
 fn parse_quiz1() {
-    let (ctx, sys) = btor2::parse_file("inputs/chiseltest/Quiz1.btor").unwrap();
+    let (ctx, sys) = btor2::parse_file("../inputs/chiseltest/Quiz1.btor").unwrap();
     insta::assert_snapshot!(sys.serialize_to_str(&ctx));
 }
 
 #[test]
 fn serialize_quiz1() {
-    let (ctx, sys) = btor2::parse_file("inputs/chiseltest/Quiz1.btor").unwrap();
+    let (ctx, sys) = btor2::parse_file("../inputs/chiseltest/Quiz1.btor").unwrap();
     insta::assert_snapshot!(skip_first_line(&btor2::serialize_to_str(&ctx, &sys)));
 }
 
 #[test]
 fn parse_instrumented_decoder() {
-    let (ctx, sys) = btor2::parse_file("inputs/repair/decoder_3_to_8.instrumented.btor").unwrap();
+    let (ctx, sys) =
+        btor2::parse_file("../inputs/repair/decoder_3_to_8.instrumented.btor").unwrap();
     insta::assert_snapshot!(sys.serialize_to_str(&ctx));
 }
 
 #[test]
 fn parse_sdram() {
     let (mut ctx, mut sys) =
-        btor2::parse_file("inputs/repair/sdram_controller.original.btor").unwrap();
+        btor2::parse_file("../inputs/repair/sdram_controller.original.btor").unwrap();
     replace_anonymous_inputs_with_zero(&mut ctx, &mut sys);
     insta::assert_snapshot!(sys.serialize_to_str(&ctx));
 }
@@ -77,7 +78,7 @@ fn parse_sdram() {
 #[test]
 fn parse_sdram_and_remove_anonymous_inputs() {
     let (mut ctx, mut sys) =
-        btor2::parse_file("inputs/repair/sdram_controller.original.btor").unwrap();
+        btor2::parse_file("../inputs/repair/sdram_controller.original.btor").unwrap();
     replace_anonymous_inputs_with_zero(&mut ctx, &mut sys);
     insta::assert_snapshot!(sys.serialize_to_str(&ctx));
 }
@@ -85,7 +86,7 @@ fn parse_sdram_and_remove_anonymous_inputs() {
 #[test]
 fn parse_sdram_and_simplify_expressions() {
     let (mut ctx, mut sys) =
-        btor2::parse_file("inputs/repair/sdram_controller.original.btor").unwrap();
+        btor2::parse_file("../inputs/repair/sdram_controller.original.btor").unwrap();
     replace_anonymous_inputs_with_zero(&mut ctx, &mut sys);
     simplify_expressions(&mut ctx, &mut sys);
     // println!("{}", sys.serialize_to_str(&ctx));
@@ -97,7 +98,7 @@ fn parse_sdram_and_simplify_expressions() {
 #[test]
 fn parse_sha3_keccak_and_check_that_all_anonymous_inputs_are_there() {
     let (ctx, sys) =
-        btor2::parse_file("inputs/repair/sha3_keccak.w2.replace_variables.btor").unwrap();
+        btor2::parse_file("../inputs/repair/sha3_keccak.w2.replace_variables.btor").unwrap();
     insta::assert_snapshot!(sys.serialize_to_str(&ctx));
 }
 
@@ -106,7 +107,7 @@ fn parse_sha3_keccak_and_check_that_all_anonymous_inputs_are_there() {
 #[test]
 fn parse_sha3_keccak_and_replace_anonymous_inputs() {
     let (mut ctx, mut sys) =
-        btor2::parse_file("inputs/repair/sha3_keccak.w2.replace_variables.btor").unwrap();
+        btor2::parse_file("../inputs/repair/sha3_keccak.w2.replace_variables.btor").unwrap();
     replace_anonymous_inputs_with_zero(&mut ctx, &mut sys);
     insta::assert_snapshot!(sys.serialize_to_str(&ctx));
 }
@@ -120,7 +121,7 @@ fn skip_first_line(value: &str) -> &str {
 
 #[test]
 fn parse_lakeroad_dsp48_e2() {
-    let (mut ctx, mut sys) = btor2::parse_file("inputs/lakeroad/DSP48E2.btor").unwrap();
+    let (mut ctx, mut sys) = btor2::parse_file("../inputs/lakeroad/DSP48E2.btor").unwrap();
     replace_anonymous_inputs_with_zero(&mut ctx, &mut sys);
     simplify_expressions(&mut ctx, &mut sys);
     insta::assert_snapshot!(sys.serialize_to_str(&ctx));
