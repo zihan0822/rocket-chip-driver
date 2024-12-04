@@ -1,0 +1,16 @@
+[package]
+name = "sim"
+version = "0.1.0"
+description = "A btor simulator based on the patronus library."
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+readme.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+patronus = { path = "../patronus" }
+clap =  { version = "4.x", features = ["derive"] }
+rustc-hash.workspace = true
+baa.workspace = true

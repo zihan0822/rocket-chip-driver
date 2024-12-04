@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["patronus"]
+members = [ "bmc","patronus", "sim"]
 
 [workspace.package]
 edition = "2021"
@@ -10,6 +10,9 @@ readme = "Readme.md"
 license = "BSD-3-Clause"
 rust-version = "1.73.0"
 
+[workspace.dependencies]
+rustc-hash = "2.x"
+baa = "0.14.5"
 
 # speed up execution of tests using insta
 [profile.dev.package]
