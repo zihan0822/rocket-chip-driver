@@ -78,7 +78,7 @@ type Assignment = Vec<(Var, WidthInt)>;
 impl RuleInfo {
     fn merge(&self, other: &Self) -> Self {
         assert_eq!(self.width, other.width);
-        let children = merge_vecs(&self.children, &other.children);
+        let children = union_vecs(&self.children, &other.children);
         Self {
             width: self.width,
             children,
@@ -92,8 +92,15 @@ impl RuleInfo {
             max_width,
         }
     }
+
+    fn num_assignments(&self, max_width: WidthInt) -> u64 {
+        let cl = self.children.len() as u32;
+        let width_values = max_width as u64 + 1;
+        2u64.pow(cl) + width_values.pow(1 + cl)
+    }
 }
 
+/// An iterator over all possivle assignments in a rule.
 struct AssignmentIter<'a> {
     rule: &'a RuleInfo,
     index: u64,
@@ -104,9 +111,8 @@ impl<'a> Iterator for AssignmentIter<'a> {
     type Item = Assignment;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let cl = self.rule.children.len() as u32;
         let width_values = self.max_width as u64 + 1;
-        let max = 2u64.pow(cl) + width_values.pow(1 + cl);
+        let max = self.rule.num_assignments(self.max_width);
         if self.index == max {
             None
         } else {
@@ -131,7 +137,8 @@ impl<'a> Iterator for AssignmentIter<'a> {
     }
 }
 
-fn merge_vecs<T: Clone + PartialEq + Ord>(a: &[T], b: &[T]) -> Vec<T> {
+/// Merges to vecs together like they are sets.
+fn union_vecs<T: Clone + PartialEq + Ord>(a: &[T], b: &[T]) -> Vec<T> {
     let mut out = Vec::from(a);
     out.extend_from_slice(b);
     out.sort();
@@ -139,6 +146,9 @@ fn merge_vecs<T: Clone + PartialEq + Ord>(a: &[T], b: &[T]) -> Vec<T> {
     out
 }
 
+/// Extracts the output width and all children including width and sign from an [[`egg::PatternAst`]].
+/// Requires that the output width is name `?wo` and that the child width and sign are named like:
+/// `?w{name}` and `?s{name}`.
 fn analyze_pattern<L: Language>(pat: &PatternAst<L>) -> RuleInfo {
     let mut widths = FxHashMap::default();
     let mut signs = FxHashMap::default();
@@ -182,4 +192,27 @@ fn analyze_pattern<L: Language>(pat: &PatternAst<L>) -> RuleInfo {
         .collect::<Vec<_>>();
     children.sort();
     RuleInfo { width, children }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_assignment_iter() {
+        let rewrites = create_rewrites();
+        let rule = &rewrites[0];
+        let (lhs, rhs) =
+            extract_patterns(rule).expect("failed to extract patterns from rewrite rule");
+
+        // analyze rule patterns
+        let lhs_info = analyze_pattern(lhs);
+        let rhs_info = analyze_pattern(lhs);
+        let rule_info = lhs_info.merge(&rhs_info);
+
+        assert_eq!(
+            rule_info.iter_assignments(8).count() as u64,
+            rule_info.num_assignments(8)
+        );
+    }
 }
