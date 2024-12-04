@@ -350,7 +350,7 @@ impl<'a> Parser<'a> {
                     (e, 4)
                 } else {
                     // redand is true iff all bits are one
-                    let mask = self.ctx.mask(width);
+                    let mask = self.ctx.ones(width);
                     (self.ctx.bv_equal(e, mask), 4)
                 }
             }

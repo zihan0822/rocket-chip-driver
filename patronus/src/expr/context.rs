@@ -203,9 +203,6 @@ impl Context {
         self.fals_expr_ref
     }
 
-    pub fn mask(&mut self, width: WidthInt) -> ExprRef {
-        self.bv_lit(&BitVecValue::ones(width))
-    }
     pub fn one(&mut self, width: WidthInt) -> ExprRef {
         self.bv_lit(&BitVecValue::from_u64(1, width))
     }
@@ -404,9 +401,6 @@ impl<'a> Builder<'a> {
         self.ctx.borrow_mut().zero_array(tpe)
     }
 
-    pub fn mask(&self, width: WidthInt) -> ExprRef {
-        self.ctx.borrow_mut().mask(width)
-    }
     pub fn one(&self, width: WidthInt) -> ExprRef {
         self.ctx.borrow_mut().one(width)
     }
