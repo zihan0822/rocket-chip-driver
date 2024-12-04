@@ -1,0 +1,14 @@
+[package]
+name = "patronus-egraphs"
+version = "0.1.0"
+description = "egg and patronus integration"
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+readme.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+patronus = { path = "../patronus" }
+egg = "0.9.5"

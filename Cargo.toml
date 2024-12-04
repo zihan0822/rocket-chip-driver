@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = [ "bmc","patronus", "sim"]
+members = [ "bmc","patronus", "patronus-egraphs", "sim"]
 
 [workspace.package]
 edition = "2021"
