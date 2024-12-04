@@ -7,7 +7,7 @@
 
 use clap::Parser;
 use egg::*;
-use patronus::expr::Context;
+use patronus::expr::{Context, WidthInt};
 use patronus_egraphs::*;
 use rustc_hash::FxHashMap;
 
@@ -46,7 +46,10 @@ fn main() {
     let rule_info = lhs_info.merge(&rhs_info);
     println!("{:?}", rule_info);
 
-    let mut ctx = Context::default();
+    let num_assignments = rule_info.iter_assignments(8).count();
+    println!("There are {num_assignments} possible assignments for this rule.");
+
+    //let mut ctx = Context::default();
 }
 
 fn extract_patterns<L: Language>(
@@ -70,6 +73,8 @@ struct RuleChild {
     sign: Var,
 }
 
+type Assignment = Vec<(Var, WidthInt)>;
+
 impl RuleInfo {
     fn merge(&self, other: &Self) -> Self {
         assert_eq!(self.width, other.width);
@@ -77,6 +82,51 @@ impl RuleInfo {
         Self {
             width: self.width,
             children,
+        }
+    }
+
+    fn iter_assignments(&self, max_width: WidthInt) -> impl Iterator<Item = Assignment> + '_ {
+        AssignmentIter {
+            rule: self,
+            index: 0,
+            max_width,
+        }
+    }
+}
+
+struct AssignmentIter<'a> {
+    rule: &'a RuleInfo,
+    index: u64,
+    max_width: WidthInt,
+}
+
+impl<'a> Iterator for AssignmentIter<'a> {
+    type Item = Assignment;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let cl = self.rule.children.len() as u32;
+        let width_values = self.max_width as u64 + 1;
+        let max = 2u64.pow(cl) + width_values.pow(1 + cl);
+        if self.index == max {
+            None
+        } else {
+            let mut out = Vec::with_capacity(1 + 2 * self.rule.children.len());
+            let mut index = self.index;
+            for width_var in [self.rule.width]
+                .into_iter()
+                .chain(self.rule.children.iter().map(|c| c.width))
+            {
+                let value = (index % width_values) as WidthInt;
+                index /= width_values;
+                out.push((width_var, value))
+            }
+            for sign_var in self.rule.children.iter().map(|c| c.sign) {
+                let value = (index % 2) as WidthInt;
+                index /= 2;
+                out.push((sign_var, value))
+            }
+            self.index += 1;
+            Some(out)
         }
     }
 }
