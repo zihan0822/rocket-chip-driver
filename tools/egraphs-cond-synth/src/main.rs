@@ -7,7 +7,7 @@
 
 use clap::Parser;
 use egg::*;
-use patronus::expr::{Context, WidthInt};
+use patronus::expr::{Context, ExprRef, WidthInt};
 use patronus_egraphs::*;
 use rustc_hash::FxHashMap;
 
@@ -194,9 +194,36 @@ fn analyze_pattern<L: Language>(pat: &PatternAst<L>) -> RuleInfo {
     RuleInfo { width, children }
 }
 
+/// Generates a patronus SMT expression from a pattern, rule info and assignment.
+fn to_smt(
+    ctx: &mut Context,
+    pattern: &PatternAst<Arith>,
+    rule: &RuleInfo,
+    assignment: &Assignment,
+) -> ExprRef {
+    todo!()
+}
+
+/// Instantiates a pattern, replacing all vars with concrete e-nodes based on the given substitutions
+fn instantiate_pattern<L: Language>(
+    pattern: &PatternAst<L>,
+    subst: &FxHashMap<Var, L>,
+) -> RecExpr<L> {
+    let mut out = RecExpr::default();
+    for element in pattern.as_ref().iter() {
+        let node = match element {
+            ENodeOrVar::ENode(n) => n.clone(),
+            ENodeOrVar::Var(v) => subst[v].clone(),
+        };
+        out.add(node);
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use patronus::expr::TypeCheck;
 
     #[test]
     fn test_assignment_iter() {
@@ -213,6 +240,41 @@ mod tests {
         assert_eq!(
             rule_info.iter_assignments(8).count() as u64,
             rule_info.num_assignments(8)
+        );
+    }
+
+    #[test]
+    fn test_instantiate_pattern() {
+        use std::str::FromStr;
+        let rule: Rewrite<Arith, ()> = rewrite!("commute-add"; "(+ ?wo ?wa ?sa ?a ?wb ?sb ?b)" => "(+ ?wo ?wb ?sb ?b ?wa ?sa ?a)");
+        let (lhs, _rhs) =
+            extract_patterns(&rule).expect("failed to extract patterns from rewrite rule");
+        let mut ctx = Context::default();
+        let a = ctx.bv_symbol("a", 1);
+        let a_arith = ArithSymbol {
+            name: ctx[a].get_symbol_name_ref().unwrap(),
+            width: a.get_bv_type(&ctx).unwrap(),
+        };
+        let b = ctx.bv_symbol("b", 1);
+        let b_arith = ArithSymbol {
+            name: ctx[b].get_symbol_name_ref().unwrap(),
+            width: b.get_bv_type(&ctx).unwrap(),
+        };
+        let subst = FxHashMap::from_iter([
+            (Var::from_str("?wo").unwrap(), Arith::Width(2)),
+            (Var::from_str("?wa").unwrap(), Arith::Width(a_arith.width)),
+            (Var::from_str("?sa").unwrap(), Arith::Signed(true)),
+            (Var::from_str("?a").unwrap(), Arith::Symbol(a_arith)),
+            (Var::from_str("?wb").unwrap(), Arith::Width(b_arith.width)),
+            (Var::from_str("?sb").unwrap(), Arith::Signed(true)),
+            (Var::from_str("?b").unwrap(), Arith::Symbol(b_arith)),
+        ]);
+
+        assert_eq!(lhs.to_string(), "(+ ?wo ?wa ?sa ?a ?wb ?sb ?b)");
+        let lhs_sub = instantiate_pattern(lhs, &subst);
+        assert_eq!(
+            lhs_sub.to_string(),
+            "(+ 2 1 true \"StringRef(0):bv<1>\" 1 true \"StringRef(1):bv<1>\")"
         );
     }
 }

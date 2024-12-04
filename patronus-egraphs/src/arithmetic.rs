@@ -28,8 +28,8 @@ define_language! {
 
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct ArithSymbol {
-    name: StringRef,
-    width: WidthInt,
+    pub name: StringRef,
+    pub width: WidthInt,
 }
 
 impl FromStr for ArithSymbol {
@@ -42,7 +42,7 @@ impl FromStr for ArithSymbol {
 
 impl Display for ArithSymbol {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        write!(f, "{:?}:bv<{}>", self.name, self.width)
     }
 }
 
