@@ -1,6 +1,6 @@
-/target
-/Cargo.lock
-/.idea/
+target/
+Cargo.lock
+.idea/
 /*.smt
 /*.wit
 /flamegraph.svg
