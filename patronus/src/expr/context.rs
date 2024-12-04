@@ -323,6 +323,15 @@ impl Context {
         }
     }
 
+    /// Sign or zero extends depending on the value of `signed`.
+    pub fn extend(&mut self, e: ExprRef, by: WidthInt, signed: bool) -> ExprRef {
+        if signed {
+            self.sign_extend(e, by)
+        } else {
+            self.zero_extend(e, by)
+        }
+    }
+
     pub fn array_store(&mut self, array: ExprRef, index: ExprRef, data: ExprRef) -> ExprRef {
         self.add_expr(Expr::ArrayStore { array, index, data })
     }
@@ -489,6 +498,11 @@ impl<'a> Builder<'a> {
     }
     pub fn sign_extend(&self, e: ExprRef, by: WidthInt) -> ExprRef {
         self.ctx.borrow_mut().sign_extend(e, by)
+    }
+
+    /// Sign or zero extends depending on the value of `signed`.
+    pub fn extend(&mut self, e: ExprRef, by: WidthInt, signed: bool) -> ExprRef {
+        self.ctx.borrow_mut().extend(e, by, signed)
     }
 
     pub fn array_store(&self, array: ExprRef, index: ExprRef, data: ExprRef) -> ExprRef {
