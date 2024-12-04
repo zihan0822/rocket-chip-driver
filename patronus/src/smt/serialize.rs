@@ -8,7 +8,7 @@ use baa::BitVecOps;
 use easy_smt as smt;
 use std::borrow::Cow;
 
-pub fn convert_tpe(smt_ctx: &mut smt::Context, tpe: Type) -> smt::SExpr {
+pub fn convert_tpe(smt_ctx: &smt::Context, tpe: Type) -> smt::SExpr {
     match tpe {
         Type::BV(1) => smt_ctx.bool_sort(),
         Type::BV(width) => smt_ctx.bit_vec_sort(smt_ctx.numeral(width)),

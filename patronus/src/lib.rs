@@ -10,5 +10,5 @@ pub mod dse;
 pub mod expr;
 pub mod mc;
 pub mod sim;
-mod smt;
+pub mod smt;
 pub mod system;

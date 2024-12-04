@@ -14,3 +14,4 @@ patronus-egraphs = { path = "../../patronus-egraphs"}
 egg.workspace = true
 clap.workspace = true
 rustc-hash.workspace = true
+easy-smt.workspace = true

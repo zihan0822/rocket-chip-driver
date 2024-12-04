@@ -14,6 +14,7 @@ rust-version = "1.73.0"
 rustc-hash = "2.x"
 baa = "0.14.5"
 egg = "0.9.5"
+easy-smt = "0.2.3"
 clap =  { version = "4.x", features = ["derive"] }
 patronus = {path = "patronus"}
 

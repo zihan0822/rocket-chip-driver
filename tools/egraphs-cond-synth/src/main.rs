@@ -7,15 +7,18 @@
 
 use clap::Parser;
 use egg::*;
-use patronus::expr::{Context, ExprRef, WidthInt};
+use patronus::expr::traversal::TraversalCmd;
+use patronus::expr::{Context, ExprRef, TypeCheck, WidthInt};
 use patronus_egraphs::*;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 #[derive(Parser, Debug)]
 #[command(name = "patronus-egraphs-cond-synth")]
 #[command(version)]
 #[command(about = "Synthesizes rewrite conditions..", long_about = None)]
 struct Args {
+    #[arg(long, default_value = "8")]
+    max_width: WidthInt,
     #[arg(value_name = "RULE", index = 1)]
     rule: String,
 }
@@ -46,10 +49,57 @@ fn main() {
     let rule_info = lhs_info.merge(&rhs_info);
     println!("{:?}", rule_info);
 
-    let num_assignments = rule_info.iter_assignments(8).count();
+    let num_assignments = rule_info.num_assignments(args.max_width);
     println!("There are {num_assignments} possible assignments for this rule.");
 
-    //let mut ctx = Context::default();
+    // create context and start smt solver
+    let mut ctx = Context::default();
+    let solver: patronus::mc::SmtSolverCmd = patronus::mc::BITWUZLA_CMD;
+    let mut smt_ctx = easy_smt::ContextBuilder::new()
+        .solver(solver.name, solver.args)
+        .replay_file(Some(std::fs::File::create("replay.smt").unwrap()))
+        .build()
+        .unwrap();
+    smt_ctx.set_logic("QF_ABV").unwrap();
+
+    // check all rewrites
+    for assignment in rule_info.iter_assignments(args.max_width) {
+        let lhs_expr = to_smt(&mut ctx, lhs, &lhs_info, &assignment);
+        let rhs_expr = to_smt(&mut ctx, rhs, &rhs_info, &assignment);
+        let is_eq = ctx.equal(lhs_expr, rhs_expr);
+        let is_not_eq = ctx.not(is_eq);
+        let smt_expr = patronus::smt::convert_expr(&smt_ctx, &ctx, is_not_eq, &|_| None);
+
+        smt_ctx.push_many(1).unwrap();
+        declare_vars(&mut smt_ctx, &ctx, is_not_eq);
+        smt_ctx.assert(smt_expr).unwrap();
+        let resp = smt_ctx.check().unwrap();
+        smt_ctx.pop_many(1).unwrap();
+        println!("{:?} ==> {:?}", assignment, resp);
+    }
+}
+
+fn declare_vars(smt_ctx: &mut easy_smt::Context, ctx: &Context, expr: ExprRef) {
+    // find all variables in the expression
+    let mut vars = FxHashSet::default();
+    patronus::expr::traversal::top_down(ctx, expr, |ctx, e| {
+        if ctx[e].is_symbol() {
+            vars.insert(e);
+        }
+        TraversalCmd::Continue
+    });
+
+    // declare them
+    let mut vars = Vec::from_iter(vars);
+    vars.sort();
+    for v in vars.into_iter() {
+        let expr = &ctx[v];
+        let tpe = patronus::smt::convert_tpe(smt_ctx, expr.get_type(ctx));
+        let name = expr.get_symbol_name(ctx).unwrap();
+        smt_ctx
+            .declare_const(name, tpe)
+            .expect("failed to declare const");
+    }
 }
 
 fn extract_patterns<L: Language>(
@@ -95,7 +145,7 @@ impl RuleInfo {
 
     fn num_assignments(&self, max_width: WidthInt) -> u64 {
         let cl = self.children.len() as u32;
-        let width_values = max_width as u64 + 1;
+        let width_values = max_width as u64; // we do not use 0-bit
         2u64.pow(cl) + width_values.pow(1 + cl)
     }
 }
@@ -111,7 +161,7 @@ impl<'a> Iterator for AssignmentIter<'a> {
     type Item = Assignment;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let width_values = self.max_width as u64 + 1;
+        let width_values = self.max_width as u64;
         let max = self.rule.num_assignments(self.max_width);
         if self.index == max {
             None
@@ -122,7 +172,7 @@ impl<'a> Iterator for AssignmentIter<'a> {
                 .into_iter()
                 .chain(self.rule.children.iter().map(|c| c.width))
             {
-                let value = (index % width_values) as WidthInt;
+                let value = (index % width_values) as WidthInt + 1;
                 index /= width_values;
                 out.push((width_var, value))
             }
@@ -201,7 +251,34 @@ fn to_smt(
     rule: &RuleInfo,
     assignment: &Assignment,
 ) -> ExprRef {
-    todo!()
+    let subst = gen_substitution(ctx, rule, assignment);
+    let arith_expr = instantiate_pattern(pattern, &subst);
+    from_arith(ctx, &arith_expr)
+}
+
+/// Generates a complete substitution from an assignment.
+fn gen_substitution(
+    ctx: &mut Context,
+    rule: &RuleInfo,
+    assignment: &Assignment,
+) -> FxHashMap<Var, Arith> {
+    let assignment = FxHashMap::from_iter(assignment.clone());
+    let mut out = FxHashMap::default();
+    out.insert(rule.width, Arith::Width(assignment[&rule.width]));
+    for child in rule.children.iter() {
+        let width = assignment[&child.width];
+        out.insert(child.width, Arith::Width(width));
+        out.insert(child.sign, Arith::Signed(assignment[&child.sign] != 0));
+        let name = child.var.to_string().chars().skip(1).collect::<String>();
+        let symbol = ctx.bv_symbol(&name, width);
+        let name_ref = ctx[symbol].get_symbol_name_ref().unwrap();
+        let sym = ArithSymbol {
+            name: name_ref,
+            width,
+        };
+        out.insert(child.var, Arith::Symbol(sym));
+    }
+    out
 }
 
 /// Instantiates a pattern, replacing all vars with concrete e-nodes based on the given substitutions

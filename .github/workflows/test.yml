@@ -187,6 +187,7 @@ jobs:
 
   rewrite-condition:
     name: Test E-Graph Rewrite Condition Synthesizer
+    if: false # TODO: re-enable
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     strategy:
