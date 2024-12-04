@@ -1,6 +1,7 @@
 [package]
-name = "patronus-egraphs-cond-synth"
+name = "bmc"
 version = "0.1.0"
+description = "A simple bounded model checking tool based on the patronus library."
 edition.workspace = true
 authors.workspace = true
 repository.workspace = true
@@ -9,7 +10,5 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-patronus = { path = "../patronus" }
-patronus-egraphs = { path = "../patronus-egraphs"}
-egg.workspace = true
+patronus.workspace = true
 clap.workspace = true

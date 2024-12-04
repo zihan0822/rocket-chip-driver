@@ -10,7 +10,7 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-patronus = { path = "../patronus" }
+patronus.workspace = true
 clap.workspace = true
 rustc-hash.workspace = true
 baa.workspace = true

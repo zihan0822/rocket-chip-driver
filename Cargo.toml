@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = [ "bmc","patronus", "patronus-egraphs", "patronus-egraphs-cond-synth", "sim"]
+members = ["patronus", "patronus-egraphs", "tools/bmc", "tools/egraphs-cond-synth", "tools/sim"]
 
 [workspace.package]
 edition = "2021"
@@ -15,6 +15,7 @@ rustc-hash = "2.x"
 baa = "0.14.5"
 egg = "0.9.5"
 clap =  { version = "4.x", features = ["derive"] }
+patronus = {path = "patronus"}
 
 # speed up execution of tests using insta
 [profile.dev.package]
