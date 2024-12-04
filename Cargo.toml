@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = [ "bmc","patronus", "patronus-egraphs", "sim"]
+members = [ "bmc","patronus", "patronus-egraphs", "patronus-egraphs-cond-synth", "sim"]
 
 [workspace.package]
 edition = "2021"
@@ -13,6 +13,8 @@ rust-version = "1.73.0"
 [workspace.dependencies]
 rustc-hash = "2.x"
 baa = "0.14.5"
+egg = "0.9.5"
+clap =  { version = "4.x", features = ["derive"] }
 
 # speed up execution of tests using insta
 [profile.dev.package]

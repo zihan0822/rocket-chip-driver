@@ -1,7 +1,6 @@
 [package]
-name = "patronus-egraphs"
+name = "patronus-egraphs-cond-synth"
 version = "0.1.0"
-description = "egg and patronus integration"
 edition.workspace = true
 authors.workspace = true
 repository.workspace = true
@@ -11,4 +10,6 @@ rust-version.workspace = true
 
 [dependencies]
 patronus = { path = "../patronus" }
+patronus-egraphs = { path = "../patronus-egraphs"}
 egg.workspace = true
+clap.workspace = true

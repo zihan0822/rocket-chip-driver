@@ -11,6 +11,6 @@ rust-version.workspace = true
 
 [dependencies]
 patronus = { path = "../patronus" }
-clap =  { version = "4.x", features = ["derive"] }
+clap.workspace = true
 rustc-hash.workspace = true
 baa.workspace = true
