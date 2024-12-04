@@ -186,13 +186,15 @@ jobs:
           cargo run --release -p sim -- --init=zero --testbench=inputs/repair/axi-stream-xlnx.original.tb.csv inputs/repair/axi-stream-xlnx.original.btor
 
   semver:
-    name: Check Semantic Versioning
+    name: Check Semantic Versioning of Patronus
     runs-on: ubuntu-24.04
     timeout-minutes: 5
 
     steps:
       - uses: actions/checkout@v4
       - uses: obi1kenobi/cargo-semver-checks-action@v2
+        with:
+          package: patronus
 
   format:
     name: Check Formatting
