@@ -5,7 +5,7 @@
 use crate::expr::{Context, ExprRef, TypeCheck, WidthInt};
 use baa::BitVecValue;
 use regex::{Captures, Match, Regex, RegexSet};
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 
 pub fn parse_expr(ctx: &mut Context, inp: &str) -> ExprRef {
     let mut parser = Parser::new(ctx, inp);
@@ -18,7 +18,7 @@ pub fn parse_expr(ctx: &mut Context, inp: &str) -> ExprRef {
 struct Parser<'a> {
     ctx: &'a mut Context,
     inp: &'a str,
-    symbols: HashMap<String, ExprRef>,
+    symbols: FxHashMap<String, ExprRef>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -36,7 +36,7 @@ enum ArgTpe {
 impl<'a> Parser<'a> {
     fn new(ctx: &'a mut Context, inp: &'a str) -> Self {
         let inp = inp.trim();
-        let symbols = HashMap::new();
+        let symbols = FxHashMap::default();
         Self { ctx, inp, symbols }
     }
 

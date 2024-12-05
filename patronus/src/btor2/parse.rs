@@ -10,7 +10,6 @@ use fuzzy_matcher::FuzzyMatcher;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 use std::borrow::Cow;
-use std::collections::HashMap;
 
 pub fn parse_str(ctx: &mut Context, input: &str, name: Option<&str>) -> Option<TransitionSystem> {
     match Parser::new(ctx).parse(input.as_bytes(), name) {
@@ -824,7 +823,7 @@ fn include_name(name: &str) -> bool {
 /// Instead it creates nodes that just point to the state and carry its name. This function searches
 /// for these nodes and tries to rename the states.
 fn improve_state_names(ctx: &mut Context, sys: &mut TransitionSystem) {
-    let mut renames = HashMap::new();
+    let mut renames = FxHashMap::default();
     for state in sys.states.iter() {
         // since the alias signal refers to the same expression as the state symbol,
         // it will generate a signal info with the better name
@@ -974,12 +973,9 @@ const OTHER_OPS: [&str; 17] = [
 ];
 
 lazy_static! {
-    static ref UNARY_OPS_SET: std::collections::HashSet<&'static str> =
-        std::collections::HashSet::from(UNARY_OPS);
-    static ref BINARY_OPS_SET: std::collections::HashSet<&'static str> =
-        std::collections::HashSet::from(BINARY_OPS);
-    static ref OTHER_OPS_SET: std::collections::HashSet<&'static str> =
-        std::collections::HashSet::from(OTHER_OPS);
+    static ref UNARY_OPS_SET: FxHashSet<&'static str> = FxHashSet::from_iter(UNARY_OPS);
+    static ref BINARY_OPS_SET: FxHashSet<&'static str> = FxHashSet::from_iter(BINARY_OPS);
+    static ref OTHER_OPS_SET: FxHashSet<&'static str> = FxHashSet::from_iter(OTHER_OPS);
 }
 
 /// Indicated success or failure. Errors and data is not returned, but rather added to the context.

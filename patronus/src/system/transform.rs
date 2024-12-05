@@ -6,14 +6,14 @@
 use super::TransitionSystem;
 use crate::btor2::{DEFAULT_INPUT_PREFIX, DEFAULT_STATE_PREFIX};
 use crate::expr::*;
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 
 /** Remove any inputs named `_input_[...]` and replace their use with a literal zero.
 * This essentially gets rid of all undefined value modelling by yosys.
  */
 pub fn replace_anonymous_inputs_with_zero(ctx: &mut Context, sys: &mut TransitionSystem) {
     // find and remove inputs
-    let mut replace_map = HashMap::new();
+    let mut replace_map = FxHashMap::default();
     sys.inputs.retain(|&input| {
         let name = ctx.get_symbol_name(input).unwrap();
         if name.starts_with(DEFAULT_INPUT_PREFIX) || name.starts_with(DEFAULT_STATE_PREFIX) {

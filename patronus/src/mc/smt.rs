@@ -12,7 +12,6 @@ use crate::system::{State, TransitionSystem};
 use baa::*;
 use easy_smt as smt;
 use rustc_hash::FxHashSet;
-use std::collections::HashSet;
 
 #[derive(Debug, Clone, Copy)]
 pub struct SmtSolverCmd {
@@ -346,7 +345,8 @@ impl UnrollSmtEncoding {
         let mut signals = vec![None; signals_map_len];
         let mut signal_order = Vec::with_capacity(ser_info.signal_order.len());
 
-        let is_state: HashSet<ExprRef> = HashSet::from_iter(sys.states.iter().map(|s| s.symbol));
+        let is_state: FxHashSet<ExprRef> =
+            FxHashSet::from_iter(sys.states.iter().map(|s| s.symbol));
 
         // we skip states in our signal order since they are not calculated directly in the update function
         let input_set = FxHashSet::from_iter(sys.inputs.iter().cloned());

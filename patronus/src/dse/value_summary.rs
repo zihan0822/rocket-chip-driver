@@ -4,7 +4,7 @@
 
 use crate::expr::*;
 use boolean_expression::{BDDFunc, BDD};
-use std::collections::{HashMap, HashSet};
+use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
 use std::hash::Hash;
 
 #[derive(Debug, Clone)]
@@ -130,9 +130,9 @@ impl<V: Value> ValueSummary<V> {
         let mut out = Vec::with_capacity(a.len() + b.len());
 
         // first we check to see if any guards are the same, then we do not need to apply the cross product
-        let a_guards: HashSet<Guard> = a.iter().map(|e| e.guard).collect();
-        let b_guards: HashSet<Guard> = b.iter().map(|e| e.guard).collect();
-        let common_guards: HashSet<Guard> = a_guards.intersection(&b_guards).cloned().collect();
+        let a_guards: FxHashSet<Guard> = a.iter().map(|e| e.guard).collect();
+        let b_guards: FxHashSet<Guard> = b.iter().map(|e| e.guard).collect();
+        let common_guards: FxHashSet<Guard> = a_guards.intersection(&b_guards).cloned().collect();
 
         if !common_guards.is_empty() {
             // merge common guard entries
@@ -212,7 +212,7 @@ impl<V: Value> ValueSummary<V> {
 }
 
 fn coalesce_entries<V: Value>(entries: &mut Vec<Entry<V>>, gc: &mut GuardCtx) {
-    let mut by_value = HashMap::with_capacity(entries.len());
+    let mut by_value = FxHashMap::with_capacity_and_hasher(entries.len(), FxBuildHasher);
     let mut delete_list = vec![];
     for ii in 0..entries.len() {
         let entry = entries[ii].clone();
