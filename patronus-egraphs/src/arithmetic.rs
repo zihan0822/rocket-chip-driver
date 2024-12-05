@@ -217,14 +217,27 @@ fn patronus_bin_op(
     stack: &mut Vec<ExprRef>,
     op: fn(&mut Context, ExprRef, ExprRef) -> ExprRef,
 ) -> ExprRef {
+    // get parameters from stack
     let wo = get_u64(ctx, stack.pop().unwrap()) as WidthInt;
     let wa = get_u64(ctx, stack.pop().unwrap()) as WidthInt;
     let sa = get_u64(ctx, stack.pop().unwrap()) != 0;
-    let a = extend(ctx, stack.pop().unwrap(), wo, wa, sa);
+    let a = stack.pop().unwrap();
     let wb = get_u64(ctx, stack.pop().unwrap()) as WidthInt;
     let sb = get_u64(ctx, stack.pop().unwrap()) != 0;
-    let b = extend(ctx, stack.pop().unwrap(), wo, wb, sb);
-    op(ctx, a, b)
+    let b = stack.pop().unwrap();
+
+    // slice and extend appropriately
+    let arg_max_width = std::cmp::max(wa, wb);
+    let calc_width = std::cmp::max(arg_max_width, wo);
+    let a = extend(ctx, a, calc_width, wa, sa);
+    let b = extend(ctx, b, calc_width, wb, sb);
+    let res = op(ctx, a, b);
+    if calc_width == wo {
+        res
+    } else {
+        debug_assert!(calc_width > wo);
+        ctx.slice(res, wo - 1, 0)
+    }
 }
 
 fn get_u64(ctx: &Context, e: ExprRef) -> u64 {
