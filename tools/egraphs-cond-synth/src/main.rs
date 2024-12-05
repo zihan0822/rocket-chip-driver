@@ -63,6 +63,7 @@ fn main() {
     smt_ctx.set_logic("QF_ABV").unwrap();
 
     // check all rewrites
+    let mut samples = Samples::new(&rule_info);
     for assignment in rule_info.iter_assignments(args.max_width) {
         let lhs_expr = to_smt(&mut ctx, lhs, &lhs_info, &assignment);
         let rhs_expr = to_smt(&mut ctx, rhs, &rhs_info, &assignment);
@@ -75,9 +76,56 @@ fn main() {
         smt_ctx.assert(smt_expr).unwrap();
         let resp = smt_ctx.check().unwrap();
         smt_ctx.pop_many(1).unwrap();
-        println!("{:?} ==> {:?}", assignment, resp);
+
+        match resp {
+            easy_smt::Response::Sat => samples.add(assignment, false),
+            easy_smt::Response::Unsat => samples.add(assignment, true),
+            easy_smt::Response::Unknown => println!("{assignment:?} => Unknown!"),
+        }
+    }
+    println!("Found {} equivalent rewrites.", samples.num_equivalent());
+    println!(
+        "Found {} unequivalent rewrites.",
+        samples.num_unequivalent()
+    );
+}
+
+#[derive(Debug, Clone)]
+struct Samples {
+    vars: Vec<Var>,
+    assignments: Vec<WidthInt>,
+    is_equivalent: Vec<bool>,
+}
+
+impl Samples {
+    fn new(rule: &RuleInfo) -> Self {
+        let vars = rule.assignment_vars();
+        let assignments = vec![];
+        let is_equivalent = vec![];
+        Self {
+            vars,
+            assignments,
+            is_equivalent,
+        }
+    }
+    fn add(&mut self, a: Assignment, is_equivalent: bool) {
+        debug_assert_eq!(a.len(), self.vars.len());
+        for ((a_var, a_value), &our_var) in a.into_iter().zip(self.vars.iter()) {
+            assert_eq!(a_var, our_var);
+            self.assignments.push(a_value);
+        }
+        self.is_equivalent.push(is_equivalent);
+    }
+    fn num_equivalent(&self) -> usize {
+        self.is_equivalent.iter().filter(|e| **e).count()
+    }
+
+    fn num_unequivalent(&self) -> usize {
+        self.is_equivalent.len() - self.num_equivalent()
     }
 }
+
+fn generate_examples() {}
 
 fn declare_vars(smt_ctx: &mut easy_smt::Context, ctx: &Context, expr: ExprRef) {
     // find all variables in the expression
@@ -147,6 +195,17 @@ impl RuleInfo {
         let cl = self.children.len() as u32;
         let width_values = max_width as u64; // we do not use 0-bit
         2u64.pow(cl) * width_values.pow(1 + cl)
+    }
+
+    fn assignment_vars(&self) -> Vec<Var> {
+        let mut out = vec![self.width];
+        for child in self.children.iter() {
+            out.push(child.width);
+        }
+        for child in self.children.iter() {
+            out.push(child.sign);
+        }
+        out
     }
 }
 
