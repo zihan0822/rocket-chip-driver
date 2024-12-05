@@ -7,6 +7,7 @@ use baa::{
     ArrayMutOps, ArrayOps, ArrayValue, BitVecMutOps, BitVecOps, BitVecValue, BitVecValueIndex,
     BitVecValueRef, IndexToMutRef, IndexToRef, Value, Word,
 };
+use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use std::collections::HashMap;
 
@@ -22,7 +23,7 @@ type SymbolValueStoreIndex = u32;
 pub struct SymbolValueStore {
     arrays: Vec<ArrayValue>,
     bit_vec_words: Vec<Word>,
-    lookup: HashMap<ExprRef, SymbolValueStoreIndex>,
+    lookup: FxHashMap<ExprRef, SymbolValueStoreIndex>,
 }
 
 impl SymbolValueStore {
