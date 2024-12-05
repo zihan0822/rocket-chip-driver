@@ -12,7 +12,7 @@ rust-version = "1.73.0"
 
 [workspace.dependencies]
 rustc-hash = "2.x"
-baa = "0.14.5"
+baa = "0.14.6"
 egg = "0.9.5"
 easy-smt = "0.2.3"
 clap =  { version = "4.x", features = ["derive"] }
@@ -24,4 +24,9 @@ insta.opt-level = 3
 
 # include debug information for profiling
 [profile.release]
+debug = true
+
+# for samply: https://github.com/mstange/samply/?tab=readme-ov-file#turn-on-debug-info-for-full-stacks
+[profile.profiling]
+inherits = "release"
 debug = true
