@@ -146,7 +146,7 @@ impl RuleInfo {
     fn num_assignments(&self, max_width: WidthInt) -> u64 {
         let cl = self.children.len() as u32;
         let width_values = max_width as u64; // we do not use 0-bit
-        2u64.pow(cl) + width_values.pow(1 + cl)
+        2u64.pow(cl) * width_values.pow(1 + cl)
     }
 }
 
