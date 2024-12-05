@@ -42,12 +42,18 @@ fn main() {
 
     // find rule and extract both sides
     let rewrites = create_rewrites();
-    let rule = rewrites
-        .iter()
-        .find(|r| r.name.as_str() == args.rule)
-        .unwrap_or_else(|| panic!("Failed to find rewrite rule `{}`!", args.rule));
+    let rule = match rewrites.iter().find(|r| r.name.as_str() == args.rule) {
+        Some(r) => r,
+        None => {
+            let available = rewrites.iter().map(|r| r.name.as_str()).collect::<Vec<_>>();
+            panic!(
+                "Failed to find rewrite rule `{}`!\nAvailable rules are: {:?}",
+                args.rule, available
+            );
+        }
+    };
 
-    let samples = samples::generate_samples(&args.rule, rule, args.max_width);
+    let samples = samples::generate_samples(&args.rule, rule, args.max_width, true);
     println!("Found {} equivalent rewrites.", samples.num_equivalent());
     println!(
         "Found {} unequivalent rewrites.",

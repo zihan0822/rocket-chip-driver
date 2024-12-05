@@ -3,6 +3,7 @@
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
 use egg::*;
+use indicatif::ProgressBar;
 use patronus::expr::traversal::TraversalCmd;
 use patronus::expr::{Context, ExprRef, TypeCheck, WidthInt};
 use patronus_egraphs::*;
@@ -12,6 +13,7 @@ pub fn generate_samples(
     rule_name: &str,
     rule: &Rewrite<Arith, ()>,
     max_width: WidthInt,
+    show_progress: bool,
 ) -> Samples {
     let (lhs, rhs) = extract_patterns(rule).expect("failed to extract patterns from rewrite rule");
     println!("{}: {} => {}", rule_name, lhs, rhs);
@@ -37,7 +39,15 @@ pub fn generate_samples(
 
     // check all rewrites
     let mut samples = Samples::new(&rule_info);
+    let prog = if show_progress {
+        Some(ProgressBar::new(rule_info.num_assignments(max_width)))
+    } else {
+        None
+    };
     for assignment in rule_info.iter_assignments(max_width) {
+        if let Some(p) = &prog {
+            p.inc(1);
+        }
         let lhs_expr = to_smt(&mut ctx, lhs, &lhs_info, &assignment);
         let rhs_expr = to_smt(&mut ctx, rhs, &rhs_info, &assignment);
         let is_eq = ctx.equal(lhs_expr, rhs_expr);
