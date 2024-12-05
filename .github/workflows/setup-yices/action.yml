@@ -1,0 +1,28 @@
+name: Setup Yices
+
+inputs:
+  version:
+    description: version to install
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Cache Yices
+      id: cache-yices
+      uses: actions/cache@v3
+      with:
+        key: yices-${{ runner.os }}-${{ inputs.version }}
+        path: /tmp/yices2
+    - name: Download Yices2
+      shell: sh
+      if: ${{ steps.cache-yices.outputs.cache-hit != 'true' }}
+      run: |
+        mkdir /tmp/yices2
+        cd /tmp/yices2
+        wget -q https://yices.csl.sri.com/releases/${{ inputs.version }}/yices-${{ inputs.version }}-x86_64-pc-linux-gnu-static-gmp.tar.gz -O yices.tar.gz
+        tar -xf yices.tar.gz
+        mv yices-*/* .
+    - name: Add Yices to Path
+      shell: sh
+      run: echo "/tmp/yices2/bin" >> "$GITHUB_PATH"

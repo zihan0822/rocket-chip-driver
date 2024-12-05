@@ -42,24 +42,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Cache Yices
-        id: cache-yices
-        uses: actions/cache@v3
+      - name: Set Up Yices
         if: ${{ matrix.solver == 'yices2' }}
+        uses: ./.github/workflows/setup-yices
         with:
-          key: yices-${{ runner.os }}-${{ env.YICES_VERSION }}
-          path: /tmp/yices2
-      - name: Download Yices2
-        if: ${{ matrix.solver == 'yices2' && steps.cache-yices.outputs.cache-hit != 'true' }}
-        run: |
-          mkdir /tmp/yices2
-          cd /tmp/yices2
-          wget -q https://yices.csl.sri.com/releases/${{ env.YICES_VERSION }}/yices-${{ env.YICES_VERSION }}-x86_64-pc-linux-gnu-static-gmp.tar.gz -O yices.tar.gz
-          tar -xf yices.tar.gz
-          mv yices-*/* .
-      - name: Add Yices to Path
-        if: ${{ matrix.solver == 'yices2' }}
-        run: echo "/tmp/yices2/bin" >> "$GITHUB_PATH"
+          version: ${{ env.YICES_VERSION }}
       - name: Set Up Bitwuzla
         if: ${{ matrix.solver == 'bitwuzla' }}
         uses: ./.github/workflows/setup-bitwuzla
