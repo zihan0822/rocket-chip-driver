@@ -1,0 +1,31 @@
+name: Setup Bitwuzla
+
+inputs:
+  version:
+    description: version to install
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Cache Bitwuzla
+      id: cache-bitwuzla
+      uses: actions/cache@v3
+      with:
+        key: bitwuzla-${{ runner.os }}-${{ inputs.version }}
+        path: /tmp/bitwuzla
+    - name: Install Meson for Bitwuzla
+      run: sudo apt-get install -y meson
+    - name: Download and Compile Bitwuzla
+      if: ${{ steps.cache-bitwuzla.outputs.cache-hit != 'true'  }}
+      run: |
+        mkdir /tmp/bitwuzla
+        cd /tmp/bitwuzla
+        wget -q https://github.com/bitwuzla/bitwuzla/archive/refs/tags/${{ inputs.version }}.zip -O bitwuzla.zip
+        unzip -q bitwuzla.zip
+        mv bitwuzla-*/* .
+        ./configure.py
+        cd build
+        ninja
+    - name: Install Bitwuzla
+      run: cd /tmp/bitwuzla/build && sudo ninja install

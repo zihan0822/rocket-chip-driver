@@ -59,30 +59,11 @@ jobs:
       - name: Add Yices to Path
         if: ${{ matrix.solver == 'yices2' }}
         run: echo "/tmp/yices2/bin" >> "$GITHUB_PATH"
-      - name: Cache Bitwuzla
-        id: cache-bitwuzla
-        uses: actions/cache@v3
+      - name: Set Up Bitwuzla
         if: ${{ matrix.solver == 'bitwuzla' }}
+        uses: ./.github/workflows/setup-bitwuzla
         with:
-          key: bitwuzla-${{ runner.os }}-${{ env.BITWUZLA_VERSION }}
-          path: /tmp/bitwuzla
-      - name: Install Meson for Bitwuzla
-        if: ${{ matrix.solver == 'bitwuzla' }}
-        run: sudo apt-get install -y meson
-      - name: Download and Compile Bitwuzla
-        if: ${{ matrix.solver == 'bitwuzla' && steps.cache-bitwuzla.outputs.cache-hit != 'true'  }}
-        run: |
-          mkdir /tmp/bitwuzla
-          cd /tmp/bitwuzla
-          wget -q https://github.com/bitwuzla/bitwuzla/archive/refs/tags/${{ env.BITWUZLA_VERSION }}.zip -O bitwuzla.zip
-          unzip -q bitwuzla.zip
-          mv bitwuzla-*/* .
-          ./configure.py
-          cd build
-          ninja
-      - name: Install Bitwuzla
-        if: ${{ matrix.solver == 'bitwuzla' }}
-        run: cd /tmp/bitwuzla/build && sudo ninja install
+          version: ${{ env.BITWUZLA_VERSION }}
       - name: Install btor sim
         run: |
           mkdir /tmp/btor
