@@ -41,6 +41,7 @@ jobs:
           - yices2
 
     steps:
+      - uses: actions/checkout@v4
       - name: Cache Yices
         id: cache-yices
         uses: actions/cache@v3
@@ -76,7 +77,6 @@ jobs:
           echo "/tmp/btor/btor2tools/build/bin/" >> "$GITHUB_PATH"
       - name: Update Rust to ${{ matrix.toolchain }}
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
-      - uses: actions/checkout@v4
       - name: Build
         run: cargo build --verbose --release -p bmc
       - name: bmc Quiz1
