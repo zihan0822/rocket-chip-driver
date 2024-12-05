@@ -4,7 +4,9 @@
 
 use baa::BitVecOps;
 use egg::{define_language, rewrite, Id, Language, RecExpr, Var};
+use lazy_static::lazy_static;
 use patronus::expr::*;
+use regex::Regex;
 use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
@@ -32,11 +34,22 @@ pub struct ArithSymbol {
     pub width: WidthInt,
 }
 
+lazy_static! {
+    static ref ARITH_SYMBOL_REGEX: Regex =
+        Regex::new(r"^StringRef\(([[:digit:]]+)\)\s*:\s*bv<\s*([[:digit:]]+)\s*>\s*$").unwrap();
+}
+
 impl FromStr for ArithSymbol {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        todo!()
+        if let Some(c) = ARITH_SYMBOL_REGEX.captures(s) {
+            let name_index: usize = c.get(1).unwrap().as_str().parse().unwrap();
+            let width: WidthInt = c.get(2).unwrap().as_str().parse().unwrap();
+            todo!("{s} ==> {name_index} {width}")
+        } else {
+            Err(())
+        }
     }
 }
 

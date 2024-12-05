@@ -28,6 +28,12 @@ struct Args {
 fn create_rewrites() -> Vec<Rewrite<Arith, ()>> {
     vec![
         rewrite!("commute-add"; "(+ ?wo ?wa ?sa ?a ?wb ?sb ?b)" => "(+ ?wo ?wb ?sb ?b ?wa ?sa ?a)"),
+        rewrite!("merge-left-shift";
+            // we require that b, c and (b + c) are all unsigned
+            "(<< ?wo ?wab ?sab (<< ?wab ?wa ?sa ?a ?wb 0 ?b) ?wc 0 ?c)" =>
+            // note: in this version we set the width of (b + c) on the RHS to be the width of the
+            //       result (w_o)
+            "(<< ?wo ?wa ?sa ?a ?wo 0 (+ ?wo ?wb 0 ?b ?wc 0 ?c))"),
     ]
 }
 

@@ -13,3 +13,5 @@ rust-version.workspace = true
 patronus = { path = "../patronus" }
 egg.workspace = true
 baa.workspace = true
+lazy_static = "1.5.0"
+regex = "1.11.1"

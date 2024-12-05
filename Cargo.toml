@@ -15,6 +15,7 @@ rustc-hash = "2.x"
 baa = "0.14.6"
 egg = "0.9.5"
 easy-smt = "0.2.3"
+regex = "1.11.1"
 clap =  { version = "4.x", features = ["derive"] }
 patronus = {path = "patronus"}
 

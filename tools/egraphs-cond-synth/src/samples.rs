@@ -68,7 +68,7 @@ pub struct Samples {
 
 impl Samples {
     fn new(rule: &RuleInfo) -> Self {
-        let vars = rule.assignment_vars();
+        let vars = rule.assignment_vars().collect();
         let assignments = vec![];
         let is_equivalent = vec![];
         Self {
@@ -162,26 +162,40 @@ fn extract_patterns<L: Language>(
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct RuleInfo {
-    width: Var,
-    children: Vec<RuleChild>,
+    /// width parameters
+    widths: Vec<Var>,
+    /// sign parameters
+    signs: Vec<Var>,
+    /// all actual expression symbols in the rule which we need to plug in
+    /// if we want to check for equivalence
+    symbols: Vec<RuleSymbol>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
-struct RuleChild {
+enum VarOrConst {
+    C(WidthInt),
+    V(Var),
+}
+
+/// a unique symbol in a rule, needs to be replaced with an SMT bit-vector symbol for equivalence checks
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
+struct RuleSymbol {
     var: Var,
-    width: Var,
-    sign: Var,
+    width: VarOrConst,
+    sign: VarOrConst,
 }
 
 pub type Assignment = Vec<(Var, WidthInt)>;
 
 impl RuleInfo {
     fn merge(&self, other: &Self) -> Self {
-        assert_eq!(self.width, other.width);
-        let children = union_vecs(&self.children, &other.children);
+        let widths = union_vecs(&self.widths, &other.widths);
+        let signs = union_vecs(&self.signs, &other.signs);
+        let symbols = union_vecs(&self.symbols, &other.symbols);
         Self {
-            width: self.width,
-            children,
+            widths,
+            signs,
+            symbols,
         }
     }
 
@@ -194,20 +208,15 @@ impl RuleInfo {
     }
 
     fn num_assignments(&self, max_width: WidthInt) -> u64 {
-        let cl = self.children.len() as u32;
         let width_values = max_width as u64; // we do not use 0-bit
-        2u64.pow(cl) * width_values.pow(1 + cl)
+        2u64.pow(self.signs.len() as u32) * width_values.pow(self.widths.len() as u32)
     }
 
-    fn assignment_vars(&self) -> Vec<Var> {
-        let mut out = vec![self.width];
-        for child in self.children.iter() {
-            out.push(child.width);
-        }
-        for child in self.children.iter() {
-            out.push(child.sign);
-        }
-        out
+    fn assignment_vars(&self) -> impl Iterator<Item = Var> + '_ {
+        self.widths
+            .iter()
+            .cloned()
+            .chain(self.signs.iter().cloned())
     }
 }
 
@@ -227,17 +236,14 @@ impl<'a> Iterator for AssignmentIter<'a> {
         if self.index == max {
             None
         } else {
-            let mut out = Vec::with_capacity(1 + 2 * self.rule.children.len());
+            let mut out = Vec::with_capacity(1 + 2 * self.rule.symbols.len());
             let mut index = self.index;
-            for width_var in [self.rule.width]
-                .into_iter()
-                .chain(self.rule.children.iter().map(|c| c.width))
-            {
+            for &width_var in self.rule.widths.iter() {
                 let value = (index % width_values) as WidthInt + 1;
                 index /= width_values;
                 out.push((width_var, value))
             }
-            for sign_var in self.rule.children.iter().map(|c| c.sign) {
+            for &sign_var in self.rule.signs.iter() {
                 let value = (index % 2) as WidthInt;
                 index /= 2;
                 out.push((sign_var, value))
@@ -260,49 +266,69 @@ fn union_vecs<T: Clone + PartialEq + Ord>(a: &[T], b: &[T]) -> Vec<T> {
 /// Extracts the output width and all children including width and sign from an [[`egg::PatternAst`]].
 /// Requires that the output width is name `?wo` and that the child width and sign are named like:
 /// `?w{name}` and `?s{name}`.
-fn analyze_pattern<L: Language>(pat: &PatternAst<L>) -> RuleInfo {
-    let mut widths = FxHashMap::default();
-    let mut signs = FxHashMap::default();
-    let mut children = Vec::new();
+fn analyze_pattern(pat: &PatternAst<Arith>) -> RuleInfo {
+    let mut widths = vec![];
+    let mut signs = vec![];
+    let mut symbols = Vec::new();
     for element in pat.as_ref().iter() {
-        if let &ENodeOrVar::Var(v) = element {
-            // check name to determine the category
-            let name = v.to_string();
-            assert!(name.starts_with("?"), "expect all vars to start with `?`");
-            let second_char = name.chars().nth(1).unwrap();
-            match second_char {
-                'w' => {
-                    widths.insert(name, v);
+        match &element {
+            ENodeOrVar::Var(v) => {
+                // collect information on variables
+                let name = v.to_string();
+                assert!(name.starts_with("?"), "expect all vars to start with `?`");
+                let second_char = name.chars().nth(1).unwrap();
+                match second_char {
+                    'w' => widths.push(*v),
+                    's' => signs.push(*v),
+                    _ => {} // ignore
                 }
-                's' => {
-                    signs.insert(name, v);
+            }
+            ENodeOrVar::ENode(n) => {
+                // bin op pattern
+                if let [_w, w_a, s_a, a, w_b, s_b, b] = n.children() {
+                    if let Some(s) = symbol_from_pattern(pat, *a, *w_a, *s_a) {
+                        symbols.push(s);
+                    }
+                    if let Some(s) = symbol_from_pattern(pat, *b, *w_b, *s_b) {
+                        symbols.push(s);
+                    }
                 }
-                _ => children.push(v),
             }
         }
     }
-    let width = *widths
-        .get("?wo")
-        .expect("pattern is missing result width: `?wo`");
-    let mut children = children
-        .into_iter()
-        .map(|c| {
-            let name = c.to_string().chars().skip(1).collect::<String>();
-            let width = *widths
-                .get(&format!("?w{name}"))
-                .unwrap_or_else(|| panic!("pattern is missing a width for `{name}`: `?w{name}`"));
-            let sign = *signs
-                .get(&format!("?s{name}"))
-                .unwrap_or_else(|| panic!("pattern is missing a sign for `{name}`: `?s{name}`"));
-            RuleChild {
-                var: c,
-                width,
-                sign,
-            }
-        })
-        .collect::<Vec<_>>();
-    children.sort();
-    RuleInfo { width, children }
+
+    widths.sort();
+    widths.dedup();
+    signs.sort();
+    signs.dedup();
+    symbols.sort();
+    symbols.dedup();
+    RuleInfo {
+        widths,
+        signs,
+        symbols,
+    }
+}
+
+fn symbol_from_pattern(pat: &PatternAst<Arith>, a: Id, w: Id, s: Id) -> Option<RuleSymbol> {
+    if let ENodeOrVar::Var(var) = pat[a] {
+        let width = width_or_sign_from_pattern(pat, w);
+        let sign = width_or_sign_from_pattern(pat, s);
+        Some(RuleSymbol { var, width, sign })
+    } else {
+        None
+    }
+}
+
+fn width_or_sign_from_pattern(pat: &PatternAst<Arith>, id: Id) -> VarOrConst {
+    match &pat[id] {
+        ENodeOrVar::ENode(node) => match node {
+            &Arith::Width(w) => VarOrConst::C(w),
+            &Arith::Signed(s) => VarOrConst::C(s as WidthInt),
+            _ => unreachable!("not a widht!"),
+        },
+        ENodeOrVar::Var(var) => VarOrConst::V(*var),
+    }
 }
 
 /// Generates a patronus SMT expression from a pattern, rule info and assignment.
@@ -325,11 +351,17 @@ fn gen_substitution(
 ) -> FxHashMap<Var, Arith> {
     let assignment = FxHashMap::from_iter(assignment.clone());
     let mut out = FxHashMap::default();
-    out.insert(rule.width, Arith::Width(assignment[&rule.width]));
-    for child in rule.children.iter() {
-        let width = assignment[&child.width];
-        out.insert(child.width, Arith::Width(width));
-        out.insert(child.sign, Arith::Signed(assignment[&child.sign] != 0));
+    for &width_var in rule.widths.iter() {
+        out.insert(width_var, Arith::Width(assignment[&width_var]));
+    }
+    for &sign_var in rule.signs.iter() {
+        out.insert(sign_var, Arith::Signed(assignment[&sign_var] != 0));
+    }
+    for child in rule.symbols.iter() {
+        let width = match child.width {
+            VarOrConst::C(w) => w,
+            VarOrConst::V(v) => assignment[&v],
+        };
         let name = child.var.to_string().chars().skip(1).collect::<String>();
         let symbol = ctx.bv_symbol(&name, width);
         let name_ref = ctx[symbol].get_symbol_name_ref().unwrap();
