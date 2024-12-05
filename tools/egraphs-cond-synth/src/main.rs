@@ -19,6 +19,8 @@ use patronus_egraphs::*;
 struct Args {
     #[arg(long, default_value = "8")]
     max_width: WidthInt,
+    #[arg(long)]
+    print_samples: bool,
     #[arg(value_name = "RULE", index = 1)]
     rule: String,
 }
@@ -45,4 +47,10 @@ fn main() {
         "Found {} unequivalent rewrites.",
         samples.num_unequivalent()
     );
+
+    if args.print_samples {
+        for sample in samples.iter() {
+            println!("{:?}", sample);
+        }
+    }
 }
