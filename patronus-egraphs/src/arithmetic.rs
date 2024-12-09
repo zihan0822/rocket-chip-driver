@@ -23,8 +23,8 @@ define_language! {
         ">>" = RightShift([Id; 7]),
         ">>>" = ArithmeticRightShift([Id; 7]),
         Symbol(ArithSymbol),
-        Width(WidthInt),
-        Signed(bool),
+        // used for signedness (0 = unsigned, 1 = signed) or width parameters
+        WidthConst(WidthInt),
     }
 }
 
@@ -139,6 +139,7 @@ pub fn to_arith(ctx: &Context, e: ExprRef) -> egg::RecExpr<Arith> {
     out
 }
 
+#[allow(clippy::too_many_arguments)]
 fn convert_bin_op(
     ctx: &Context,
     out: &mut RecExpr<Arith>,
@@ -157,11 +158,11 @@ fn convert_bin_op(
     debug_assert_eq!(width_out, a.get_bv_type(ctx).unwrap());
     debug_assert_eq!(width_out, b.get_bv_type(ctx).unwrap());
     // convert signedness and widths into e-nodes
-    let width_out = out.add(Arith::Width(width_out));
-    let width_a = out.add(Arith::Width(width_a));
-    let width_b = out.add(Arith::Width(width_b));
-    let sign_a = out.add(Arith::Signed(sign_a));
-    let sign_b = out.add(Arith::Signed(sign_b));
+    let width_out = out.add(Arith::WidthConst(width_out));
+    let width_a = out.add(Arith::WidthConst(width_a));
+    let width_b = out.add(Arith::WidthConst(width_b));
+    let sign_a = out.add(Arith::WidthConst(sign_a as WidthInt));
+    let sign_b = out.add(Arith::WidthConst(sign_b as WidthInt));
     out.add(op([
         width_out,
         width_a,
@@ -215,8 +216,7 @@ pub fn from_arith(ctx: &mut Context, expr: &RecExpr<Arith>) -> ExprRef {
             Arith::ArithmeticRightShift(_) => patronus_bin_op(ctx, &mut stack, |ctx, a, b| {
                 ctx.arithmetic_shift_right(a, b)
             }),
-            Arith::Width(width) => ctx.bit_vec_val(*width, 32),
-            Arith::Signed(is_minus) => ctx.bit_vec_val(*is_minus, 1),
+            Arith::WidthConst(width) => ctx.bit_vec_val(*width, 32),
         };
         stack.push(result);
     }
@@ -303,8 +303,8 @@ fn commute_add_condition(
         let wo = get_width_from_e_graph(egraph, subst, wo);
         let wa = get_width_from_e_graph(egraph, subst, wa);
         let wb = get_width_from_e_graph(egraph, subst, wb);
-        let sa = get_signed_from_e_graph(egraph, subst, sa);
-        let sb = get_signed_from_e_graph(egraph, subst, sb);
+        let sa = get_width_from_e_graph(egraph, subst, sa);
+        let sb = get_width_from_e_graph(egraph, subst, sb);
         // actual condition
         wa == wb && wo >= wa
     }
@@ -312,15 +312,8 @@ fn commute_add_condition(
 
 fn get_width_from_e_graph(egraph: &mut EGraph, subst: &egg::Subst, v: Var) -> WidthInt {
     match egraph[subst[v]].nodes.as_slice() {
-        [Arith::Width(w)] => *w,
+        [Arith::WidthConst(w)] => *w,
         _ => unreachable!("expected a width!"),
-    }
-}
-
-fn get_signed_from_e_graph(egraph: &mut EGraph, subst: &egg::Subst, v: Var) -> bool {
-    match egraph[subst[v]].nodes.as_slice() {
-        [Arith::Signed(s)] => *s,
-        _ => unreachable!("expected a signed!"),
     }
 }
 

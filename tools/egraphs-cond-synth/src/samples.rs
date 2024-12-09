@@ -16,6 +16,7 @@ pub fn generate_samples(
     max_width: WidthInt,
     show_progress: bool,
     dump_smt: bool,
+    check_cond: bool,
 ) -> (Samples, RuleInfo) {
     let (lhs, rhs) = extract_patterns(rule).expect("failed to extract patterns from rewrite rule");
     println!("{}: {} => {}", rule_name, lhs, rhs);
@@ -209,6 +210,12 @@ fn extract_patterns<L: Language>(
     Some((left, right))
 }
 
+// fn extract_condition<L: Language>(
+//     rule: &Rewrite<L, ()>,
+// ) {
+//     rule.applier.apply_matches()
+// }
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct RuleInfo {
     /// width parameters
@@ -378,19 +385,18 @@ fn analyze_pattern(pat: &PatternAst<Arith>) -> RuleInfo {
 
 fn symbol_from_pattern(pat: &PatternAst<Arith>, a: Id, w: Id, s: Id) -> Option<RuleSymbol> {
     if let ENodeOrVar::Var(var) = pat[a] {
-        let width = width_or_sign_from_pattern(pat, w);
-        let sign = width_or_sign_from_pattern(pat, s);
+        let width = width_const_from_pattern(pat, w);
+        let sign = width_const_from_pattern(pat, s);
         Some(RuleSymbol { var, width, sign })
     } else {
         None
     }
 }
 
-fn width_or_sign_from_pattern(pat: &PatternAst<Arith>, id: Id) -> VarOrConst {
+fn width_const_from_pattern(pat: &PatternAst<Arith>, id: Id) -> VarOrConst {
     match &pat[id] {
         ENodeOrVar::ENode(node) => match node {
-            &Arith::Width(w) => VarOrConst::C(w),
-            &Arith::Signed(s) => VarOrConst::C(s as WidthInt),
+            &Arith::WidthConst(w) => VarOrConst::C(w),
             _ => unreachable!("not a widht!"),
         },
         ENodeOrVar::Var(var) => VarOrConst::V(*var),
@@ -418,10 +424,11 @@ fn gen_substitution(
     let assignment = FxHashMap::from_iter(assignment.clone());
     let mut out = FxHashMap::default();
     for &width_var in rule.widths.iter() {
-        out.insert(width_var, Arith::Width(assignment[&width_var]));
+        out.insert(width_var, Arith::WidthConst(assignment[&width_var]));
     }
     for &sign_var in rule.signs.iter() {
-        out.insert(sign_var, Arith::Signed(assignment[&sign_var] != 0));
+        debug_assert!(assignment[&sign_var] <= 1);
+        out.insert(sign_var, Arith::WidthConst(assignment[&sign_var]));
     }
     for child in rule.symbols.iter() {
         let width = match child.width {
@@ -497,12 +504,18 @@ mod tests {
             width: b.get_bv_type(&ctx).unwrap(),
         };
         let subst = FxHashMap::from_iter([
-            (Var::from_str("?wo").unwrap(), Arith::Width(2)),
-            (Var::from_str("?wa").unwrap(), Arith::Width(a_arith.width)),
-            (Var::from_str("?sa").unwrap(), Arith::Signed(true)),
+            (Var::from_str("?wo").unwrap(), Arith::WidthConst(2)),
+            (
+                Var::from_str("?wa").unwrap(),
+                Arith::WidthConst(a_arith.width),
+            ),
+            (Var::from_str("?sa").unwrap(), Arith::WidthConst(1)),
             (Var::from_str("?a").unwrap(), Arith::Symbol(a_arith)),
-            (Var::from_str("?wb").unwrap(), Arith::Width(b_arith.width)),
-            (Var::from_str("?sb").unwrap(), Arith::Signed(true)),
+            (
+                Var::from_str("?wb").unwrap(),
+                Arith::WidthConst(b_arith.width),
+            ),
+            (Var::from_str("?sb").unwrap(), Arith::WidthConst(1)),
             (Var::from_str("?b").unwrap(), Arith::Symbol(b_arith)),
         ]);
 
@@ -510,7 +523,7 @@ mod tests {
         let lhs_sub = instantiate_pattern(lhs, &subst);
         assert_eq!(
             lhs_sub.to_string(),
-            "(+ 2 1 true \"StringRef(0):bv<1>\" 1 true \"StringRef(1):bv<1>\")"
+            "(+ 2 1 1 \"StringRef(0):bv<1>\" 1 1 \"StringRef(1):bv<1>\")"
         );
     }
 }
