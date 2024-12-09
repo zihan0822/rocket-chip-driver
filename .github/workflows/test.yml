@@ -174,7 +174,7 @@ jobs:
         run: cargo build --verbose --release -p patronus-egraphs-cond-synth
       - name: synthesize commute-add condition
         run: |
-          cargo run --release -p patronus-egraphs-cond-synth -- commute-add
+          cargo run --release -p patronus-egraphs-cond-synth -- --bdd-formula commute-add
 
   semver:
     name: Check Semantic Versioning of Patronus

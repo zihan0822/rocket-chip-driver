@@ -8,6 +8,7 @@
 mod samples;
 mod summarize;
 
+use crate::summarize::bdd_summarize;
 use clap::Parser;
 use egg::*;
 use patronus::expr::*;
@@ -79,5 +80,12 @@ fn main() {
         for sample in samples.iter() {
             println!("{:?}", sample);
         }
+    }
+
+    if args.bdd_formula {
+        let summarize_start = std::time::Instant::now();
+        let formula = bdd_summarize(&rule_info, &samples);
+        let summarize_delta_t = std::time::Instant::now() - summarize_start;
+        println!("Generated formula in {summarize_delta_t:?}:\n{}", formula);
     }
 }
