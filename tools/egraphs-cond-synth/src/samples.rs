@@ -16,7 +16,7 @@ pub fn generate_samples(
     max_width: WidthInt,
     show_progress: bool,
     dump_smt: bool,
-) -> Samples {
+) -> (Samples, RuleInfo) {
     let (lhs, rhs) = extract_patterns(rule).expect("failed to extract patterns from rewrite rule");
     println!("{}: {} => {}", rule_name, lhs, rhs);
 
@@ -80,9 +80,10 @@ pub fn generate_samples(
         .collect::<Vec<_>>();
 
     // merge results from different threads
-    samples
+    let samples = samples
         .into_par_iter()
-        .reduce(|| Samples::new(&rule_info), Samples::merge)
+        .reduce(|| Samples::new(&rule_info), Samples::merge);
+    (samples, rule_info)
 }
 
 fn start_solver(dump_smt: bool) -> easy_smt::Context {
@@ -209,7 +210,7 @@ fn extract_patterns<L: Language>(
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-struct RuleInfo {
+pub struct RuleInfo {
     /// width parameters
     widths: Vec<Var>,
     /// sign parameters
@@ -220,20 +221,29 @@ struct RuleInfo {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
-enum VarOrConst {
+pub enum VarOrConst {
     C(WidthInt),
     V(Var),
 }
 
 /// a unique symbol in a rule, needs to be replaced with an SMT bit-vector symbol for equivalence checks
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
-struct RuleSymbol {
+pub struct RuleSymbol {
     var: Var,
     width: VarOrConst,
     sign: VarOrConst,
 }
 
 pub type Assignment = Vec<(Var, WidthInt)>;
+
+impl RuleInfo {
+    pub fn signs(&self) -> impl Iterator<Item = Var> + '_ {
+        self.signs.iter().cloned()
+    }
+    pub fn widths(&self) -> impl Iterator<Item = Var> + '_ {
+        self.widths.iter().cloned()
+    }
+}
 
 impl RuleInfo {
     fn merge(&self, other: &Self) -> Self {

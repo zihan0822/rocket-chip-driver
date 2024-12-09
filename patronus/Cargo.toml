@@ -18,7 +18,7 @@ fuzzy-matcher = "0.3.7"
 lazy_static = "1.4.0"
 easy-smt.workspace = true
 smallvec = { version = "1.x", features = ["union"] }
-boolean_expression = "0.4.4"
+boolean_expression.workspace = true
 regex.workspace = true
 baa.workspace = true
 rustc-hash.workspace = true

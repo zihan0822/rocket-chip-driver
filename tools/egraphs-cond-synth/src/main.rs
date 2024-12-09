@@ -6,6 +6,7 @@
 // author: Mohanna Shahrad <mohanna@princeton.edu>
 
 mod samples;
+mod summarize;
 
 use clap::Parser;
 use egg::*;
@@ -23,6 +24,8 @@ struct Args {
     print_samples: bool,
     #[arg(long)]
     dump_smt: bool,
+    #[arg(long)]
+    bdd_formula: bool,
     #[arg(value_name = "RULE", index = 1)]
     rule: String,
 }
@@ -58,7 +61,8 @@ fn main() {
         }
     };
 
-    let samples = samples::generate_samples(&args.rule, rule, args.max_width, true, args.dump_smt);
+    let (samples, rule_info) =
+        samples::generate_samples(&args.rule, rule, args.max_width, true, args.dump_smt);
     let delta_t = std::time::Instant::now() - start;
 
     println!("Found {} equivalent rewrites.", samples.num_equivalent());
