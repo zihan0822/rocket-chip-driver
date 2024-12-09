@@ -21,6 +21,8 @@ struct Args {
     max_width: WidthInt,
     #[arg(long)]
     print_samples: bool,
+    #[arg(long)]
+    dump_smt: bool,
     #[arg(value_name = "RULE", index = 1)]
     rule: String,
 }
@@ -40,6 +42,9 @@ fn create_rewrites() -> Vec<Rewrite<Arith, ()>> {
 fn main() {
     let args = Args::parse();
 
+    // remember start time
+    let start = std::time::Instant::now();
+
     // find rule and extract both sides
     let rewrites = create_rewrites();
     let rule = match rewrites.iter().find(|r| r.name.as_str() == args.rule) {
@@ -53,11 +58,17 @@ fn main() {
         }
     };
 
-    let samples = samples::generate_samples(&args.rule, rule, args.max_width, true);
+    let samples = samples::generate_samples(&args.rule, rule, args.max_width, true, args.dump_smt);
+    let delta_t = std::time::Instant::now() - start;
+
     println!("Found {} equivalent rewrites.", samples.num_equivalent());
     println!(
         "Found {} unequivalent rewrites.",
         samples.num_unequivalent()
+    );
+    println!(
+        "Took {delta_t:?} on {} threads.",
+        rayon::current_num_threads()
     );
 
     if args.print_samples {
