@@ -11,11 +11,11 @@ use rustc_hash::FxHashMap;
 pub fn bdd_summarize(rule: &RuleInfo, samples: &Samples) -> String {
     // generate all labels and the corresponding BDD terminals
     let labels = get_labels(rule);
-    let mut bdd = boolean_expression::BDD::<usize>::new();
-    let vars: Vec<_> = (0..labels.len()).map(|ii| bdd.terminal(ii)).collect();
+    let mut bdd = boolean_expression::BDD::<String>::new();
+    let vars: Vec<_> = labels.iter().map(|ii| bdd.terminal(ii.clone())).collect();
 
-    // start condition as trivially `true`
-    let mut cond = boolean_expression::BDD_ONE;
+    // start condition as trivially `false`
+    let mut cond = boolean_expression::BDD_ZERO;
     for (assignment, is_equal) in samples.iter() {
         let v = FxHashMap::from_iter(assignment);
         let mut outputs = vec![];
@@ -36,7 +36,7 @@ pub fn bdd_summarize(rule: &RuleInfo, samples: &Samples) -> String {
         let term = lits.into_iter().reduce(|a, b| bdd.and(a, b)).unwrap();
         let term = if is_equal { term } else { bdd.not(term) };
 
-        cond = bdd.and(cond, term);
+        cond = bdd.or(cond, term);
     }
 
     // extract simplified expression
