@@ -19,3 +19,4 @@ boolean_expression.workspace = true
 indicatif = "0.17.9"
 rayon = "1.10.0"
 thread_local = "1.1.8"
+bitvec = "1.0.1"
