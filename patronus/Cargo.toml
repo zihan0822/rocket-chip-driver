@@ -1,6 +1,6 @@
 [package]
 name = "patronus"
-version = "0.28.1"
+version = "0.28.2"
 description = "Hardware bug-finding toolkit."
 homepage = "https://kevinlaeufer.com"
 keywords = ["RTL", "btor", "model-checking", "SMT", "bit-vector"]
@@ -14,7 +14,6 @@ rust-version.workspace = true
 [dependencies]
 indexmap = "2.0.0"
 codespan-reporting = "0.11.1"
-fuzzy-matcher = "0.3.7"
 lazy_static = "1.4.0"
 easy-smt.workspace = true
 smallvec = { version = "1.x", features = ["union"] }

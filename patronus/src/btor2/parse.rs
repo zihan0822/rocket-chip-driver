@@ -6,7 +6,6 @@ use crate::expr::*;
 use crate::system::transform::do_transform;
 use crate::system::*;
 use baa::{BitVecValue, WidthInt};
-use fuzzy_matcher::FuzzyMatcher;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 use std::borrow::Cow;
@@ -785,23 +784,16 @@ impl<'a> Parser<'a> {
             .iter()
             .chain(BINARY_OPS.iter())
             .chain(TERNARY_OPS.iter())
-            .chain(OTHER_OPS.iter());
-        let matcher = fuzzy_matcher::skim::SkimMatcherV2::default();
-        let mut matches: Vec<(&&str, i64)> = all_ops
-            .flat_map(|other| matcher.fuzzy_match(other, op).map(|s| (other, s)))
-            .collect();
-        matches.sort_by_key(|(_, s)| -(*s));
-        let n_matches = std::cmp::min(matches.len(), 5);
-        let suggestions = matches
-            .iter()
-            .take(n_matches)
-            .map(|(n, _)| **n)
-            .collect::<Vec<&str>>()
-            .join(", ");
+            .chain(OTHER_OPS.iter())
+            .cloned()
+            .collect::<Vec<_>>();
         self.add_error(
             line,
             op,
-            format!("Invalid op {op}. Did you mean: {suggestions}?"),
+            format!(
+                "Invalid op {op}. Available ops are: {}?",
+                all_ops.join(", ")
+            ),
         )
     }
 }
