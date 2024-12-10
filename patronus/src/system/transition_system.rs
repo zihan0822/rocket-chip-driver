@@ -82,6 +82,11 @@ impl TransitionSystem {
         self.names[symbol] = name;
     }
 
+    pub fn add_output(&mut self, ctx: &mut Context, name: std::borrow::Cow<str>, expr: ExprRef) {
+        let name = ctx.string(name);
+        self.outputs.push(Output { name, expr });
+    }
+
     pub fn add_state(&mut self, ctx: &Context, state: impl Into<State>) -> StateRef {
         let state = state.into();
         assert!(ctx[state.symbol].is_symbol());

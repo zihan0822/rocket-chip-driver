@@ -105,7 +105,7 @@ impl Context {
         ExprRef::from_index(index)
     }
 
-    pub(crate) fn string(&mut self, value: std::borrow::Cow<str>) -> StringRef {
+    pub fn string(&mut self, value: std::borrow::Cow<str>) -> StringRef {
         if let Some(index) = self.strings.get_index_of(value.as_ref()) {
             StringRef::from_index(index)
         } else {
