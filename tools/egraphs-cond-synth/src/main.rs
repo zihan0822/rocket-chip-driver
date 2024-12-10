@@ -5,6 +5,7 @@
 // author: Amelia Dobis <amelia.dobis@princeton.edu>
 // author: Mohanna Shahrad <mohanna@princeton.edu>
 
+mod features;
 mod samples;
 mod summarize;
 
