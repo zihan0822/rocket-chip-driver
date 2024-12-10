@@ -49,6 +49,11 @@ struct Args {
         help = "writes assignments, features and equivalence into a CSV table"
     )]
     write_csv: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "writes features and equivalence into a PLA-style input file for espresso"
+    )]
+    write_espresso: Option<PathBuf>,
     #[arg(value_name = "RULE", index = 1)]
     rule: String,
 }
@@ -121,6 +126,10 @@ fn main() {
         write_csv(filename, &samples, &features).expect("failed to write CSV");
     }
 
+    if let Some(filename) = args.write_espresso {
+        write_espresso(filename, &features).expect("failed to write espresso file");
+    }
+
     if args.bdd_formula {
         let summarize_start = std::time::Instant::now();
         let formula = bdd_summarize(&features);
@@ -166,6 +175,27 @@ fn write_csv(
         }
         writeln!(o)?;
     }
+
+    Ok(())
+}
+
+fn write_espresso(filename: impl AsRef<Path>, features: &FeatureResult) -> std::io::Result<()> {
+    let mut o = std::io::BufWriter::new(std::fs::File::create(filename)?);
+
+    // the inputs are the features
+    writeln!(o, ".i {}", features.num_features())?;
+    // the output is whether it is equivalent or not
+    writeln!(o, ".o 1")?;
+
+    for (features, is_eq) in features.iter() {
+        for feature_on in features.iter() {
+            write!(o, "{}", (*feature_on) as u8)?;
+        }
+        writeln!(o, " {}", is_eq as u8)?;
+    }
+
+    // end
+    writeln!(o, ".e")?;
 
     Ok(())
 }
