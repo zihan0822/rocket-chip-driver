@@ -2,13 +2,10 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
-use crate::features::apply_features;
-use crate::samples::{RuleInfo, Samples};
+use crate::features::FeatureResult;
 
 /// generate a simplified re-write condition from samples, using BDDs
-pub fn bdd_summarize(rule: &RuleInfo, samples: &Samples) -> String {
-    let results = apply_features(rule, samples);
-
+pub fn bdd_summarize(results: &FeatureResult) -> String {
     // generate BDD terminals
     let mut bdd = boolean_expression::BDD::<String>::new();
     let vars: Vec<_> = results

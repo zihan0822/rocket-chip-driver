@@ -9,23 +9,26 @@ use patronus::expr::{Context, ExprRef, TypeCheck, WidthInt};
 use patronus_egraphs::*;
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
+use serde::{Deserialize, Serialize, Serializer};
+
+pub fn get_rule_info(rule: &Rewrite<Arith, ()>) -> RuleInfo {
+    let (lhs, rhs) = extract_patterns(rule).expect("failed to extract patterns from rewrite rule");
+    let lhs_info = analyze_pattern(lhs);
+    let rhs_info = analyze_pattern(rhs);
+    lhs_info.merge(&rhs_info)
+}
 
 pub fn generate_samples(
-    rule_name: &str,
     rule: &Rewrite<Arith, ()>,
     max_width: WidthInt,
     show_progress: bool,
     dump_smt: bool,
     check_cond: bool,
-) -> (Samples, RuleInfo) {
+) -> Samples {
     let (lhs, rhs) = extract_patterns(rule).expect("failed to extract patterns from rewrite rule");
-    println!("{}: {} => {}", rule_name, lhs, rhs);
-
-    // analyze rule patterns
     let lhs_info = analyze_pattern(lhs);
-    let rhs_info = analyze_pattern(lhs);
+    let rhs_info = analyze_pattern(rhs);
     let rule_info = lhs_info.merge(&rhs_info);
-    println!("{:?}", rule_info);
 
     let num_assignments = rule_info.num_assignments(max_width);
     println!("There are {num_assignments} possible assignments for this rule.");
@@ -81,10 +84,9 @@ pub fn generate_samples(
         .collect::<Vec<_>>();
 
     // merge results from different threads
-    let samples = samples
+    samples
         .into_par_iter()
-        .reduce(|| Samples::new(&rule_info), Samples::merge);
-    (samples, rule_info)
+        .reduce(|| Samples::new(&rule_info), Samples::merge)
 }
 
 fn start_solver(dump_smt: bool) -> easy_smt::Context {
@@ -108,6 +110,36 @@ pub struct Samples {
     vars: Vec<Var>,
     assignments: Vec<WidthInt>,
     is_equivalent: Vec<bool>,
+}
+
+/// Works around the fact that `Var` cannot be serialized/deserialized
+#[derive(Serialize, Deserialize)]
+struct SamplesSerde {
+    vars: Vec<String>,
+    assignments: Vec<WidthInt>,
+    is_equivalent: Vec<bool>,
+}
+
+impl From<Samples> for SamplesSerde {
+    fn from(value: Samples) -> Self {
+        let vars = value.vars.into_iter().map(|v| v.to_string()).collect();
+        Self {
+            vars,
+            assignments: value.assignments,
+            is_equivalent: value.is_equivalent,
+        }
+    }
+}
+
+impl From<SamplesSerde> for Samples {
+    fn from(value: SamplesSerde) -> Self {
+        let vars = value.vars.into_iter().map(|v| v.parse().unwrap()).collect();
+        Self {
+            vars,
+            assignments: value.assignments,
+            is_equivalent: value.is_equivalent,
+        }
+    }
 }
 
 impl Samples {
@@ -148,6 +180,16 @@ impl Samples {
         a.assignments.append(&mut b.assignments);
         a.is_equivalent.append(&mut b.is_equivalent);
         a
+    }
+
+    pub fn to_json(self, out: &mut impl std::io::Write) -> serde_json::error::Result<()> {
+        let s: SamplesSerde = self.into();
+        serde_json::to_writer_pretty(out, &s)
+    }
+
+    pub fn from_json(input: &mut impl std::io::Read) -> serde_json::error::Result<Self> {
+        let s: SamplesSerde = serde_json::from_reader(input)?;
+        Ok(s.into())
     }
 }
 

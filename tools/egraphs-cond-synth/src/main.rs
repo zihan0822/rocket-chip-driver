@@ -9,11 +9,14 @@ mod features;
 mod samples;
 mod summarize;
 
+use crate::features::apply_features;
+use crate::samples::{get_rule_info, Samples};
 use crate::summarize::bdd_summarize;
 use clap::Parser;
 use egg::*;
 use patronus::expr::*;
 use patronus_egraphs::*;
+use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[command(name = "patronus-egraphs-cond-synth")]
@@ -33,6 +36,13 @@ struct Args {
         help = "checks the current condition, prints out if it disagrees with the examples we generate"
     )]
     check_cond: bool,
+    #[arg(long, help = "write the generated assignments to a JSON file")]
+    write_assignments: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "read assignments from a JSON file instead of generating and checking them"
+    )]
+    read_assignments: Option<PathBuf>,
     #[arg(value_name = "RULE", index = 1)]
     rule: String,
 }
@@ -116,9 +126,6 @@ fn get_width_from_e_graph(egraph: &mut EGraph, subst: &Subst, v: Var) -> WidthIn
 fn main() {
     let args = Args::parse();
 
-    // remember start time
-    let start = std::time::Instant::now();
-
     // find rule and extract both sides
     let rewrites = create_rewrites();
     let rule = match rewrites.iter().find(|r| r.name.as_str() == args.rule) {
@@ -132,25 +139,40 @@ fn main() {
         }
     };
 
-    let (samples, rule_info) = samples::generate_samples(
-        &args.rule,
-        rule,
-        args.max_width,
-        true,
-        args.dump_smt,
-        args.check_cond,
-    );
-    let delta_t = std::time::Instant::now() - start;
+    // generate and check samples
+    let samples = if let Some(in_filename) = args.read_assignments {
+        let file = std::fs::File::open(&in_filename).expect("failed to open input JSON");
+        let mut reader = std::io::BufReader::new(file);
+        let samples = Samples::from_json(&mut reader).expect("failed to parse input JSON");
+        println!("Assignments loaded from {:?}", in_filename);
+        samples
+    } else {
+        // remember start time
+        let start = std::time::Instant::now();
+        let samples =
+            samples::generate_samples(rule, args.max_width, true, args.dump_smt, args.check_cond);
+        let delta_t = std::time::Instant::now() - start;
+        println!(
+            "Took {delta_t:?} on {} threads.",
+            rayon::current_num_threads()
+        );
+        samples
+    };
 
     println!("Found {} equivalent rewrites.", samples.num_equivalent());
     println!(
         "Found {} unequivalent rewrites.",
         samples.num_unequivalent()
     );
-    println!(
-        "Took {delta_t:?} on {} threads.",
-        rayon::current_num_threads()
-    );
+
+    if let Some(out_filename) = args.write_assignments {
+        let mut file = std::fs::File::create(&out_filename).expect("failed to open output JSON");
+        samples
+            .clone()
+            .to_json(&mut file)
+            .expect("failed to write output JSON");
+        println!("Wrote assignments to `{:?}`", out_filename);
+    }
 
     if args.print_samples {
         for sample in samples.iter() {
@@ -158,9 +180,16 @@ fn main() {
         }
     }
 
+    // check features
+    let feature_start = std::time::Instant::now();
+    let rule_info = get_rule_info(rule);
+    let features = apply_features(&rule_info, &samples);
+    let feature_delta_t = std::time::Instant::now() - feature_start;
+    println!("{feature_delta_t:?} to apply all features");
+
     if args.bdd_formula {
         let summarize_start = std::time::Instant::now();
-        let formula = bdd_summarize(&rule_info, &samples);
+        let formula = bdd_summarize(&features);
         let summarize_delta_t = std::time::Instant::now() - summarize_start;
         println!("Generated formula in {summarize_delta_t:?}:\n{}", formula);
     }
