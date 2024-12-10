@@ -44,11 +44,10 @@ struct Args {
         help = "read assignments from a JSON file instead of generating and checking them"
     )]
     read_assignments: Option<PathBuf>,
-    #[arg(
-        long,
-        help = "writes assignments, features and equivalence into a CSV table"
-    )]
-    write_csv: Option<PathBuf>,
+    #[arg(long, help = "writes assignments and equivalence into a CSV table")]
+    write_assignment_csv: Option<PathBuf>,
+    #[arg(long, help = "writes features and equivalence into a CSV table")]
+    write_feature_csv: Option<PathBuf>,
     #[arg(
         long,
         help = "writes features and equivalence into a PLA-style input file for espresso"
@@ -109,6 +108,10 @@ fn main() {
         println!("Wrote assignments to `{:?}`", out_filename);
     }
 
+    if let Some(filename) = args.write_assignment_csv {
+        write_assignment_csv(filename, &samples).expect("failed to write assignment CSV");
+    }
+
     if args.print_samples {
         for sample in samples.iter() {
             println!("{:?}", sample);
@@ -122,8 +125,9 @@ fn main() {
     let feature_delta_t = std::time::Instant::now() - feature_start;
     println!("{feature_delta_t:?} to apply all features");
 
-    if let Some(filename) = args.write_csv {
-        write_csv(filename, &samples, &features).expect("failed to write CSV");
+    // outputs
+    if let Some(filename) = args.write_feature_csv {
+        write_feature_csv(filename, &features).expect("failed to write feature CSV");
     }
 
     if let Some(filename) = args.write_espresso {
@@ -138,18 +142,40 @@ fn main() {
     }
 }
 
-fn write_csv(
-    filename: impl AsRef<Path>,
-    samples: &Samples,
-    features: &FeatureResult,
-) -> std::io::Result<()> {
+fn write_assignment_csv(filename: impl AsRef<Path>, samples: &Samples) -> std::io::Result<()> {
     let mut o = std::io::BufWriter::new(std::fs::File::create(filename)?);
 
     // header
     write!(o, "equivalent?,")?;
-    for var in samples.vars() {
-        write!(o, "{},", get_var_name(&var).unwrap())?;
+    let num_vars = samples.vars().count();
+    for (ii, var) in samples.vars().enumerate() {
+        write!(o, "{}", get_var_name(&var).unwrap())?;
+        if ii < num_vars - 1 {
+            write!(o, ",")?;
+        }
     }
+    writeln!(o)?;
+
+    // data
+    for (a, a_is_eq) in samples.iter() {
+        write!(o, "{},", a_is_eq as u8)?;
+        for (ii, (_var, value)) in a.iter().enumerate() {
+            write!(o, "{}", *value)?;
+            if ii < num_vars - 1 {
+                write!(o, ",")?;
+            }
+        }
+        writeln!(o)?;
+    }
+
+    Ok(())
+}
+
+fn write_feature_csv(filename: impl AsRef<Path>, features: &FeatureResult) -> std::io::Result<()> {
+    let mut o = std::io::BufWriter::new(std::fs::File::create(filename)?);
+
+    // header
+    write!(o, "equivalent?,")?;
     let num_features = features.num_features();
     for (ii, feature) in features.labels().iter().enumerate() {
         write!(o, "{}", feature)?;
@@ -160,12 +186,8 @@ fn write_csv(
     writeln!(o)?;
 
     // data
-    for ((a, a_is_eq), (s, s_is_eq)) in samples.iter().zip(features.iter()) {
-        assert_eq!(a_is_eq, s_is_eq);
-        write!(o, "{},", a_is_eq as u8)?;
-        for (_var, value) in a.iter() {
-            write!(o, "{},", *value)?;
-        }
+    for (s, s_is_eq) in features.iter() {
+        write!(o, "{},", s_is_eq as u8)?;
         for (ii, feature_on) in s.iter().enumerate() {
             let feature_on = *feature_on;
             write!(o, "{}", feature_on as u8)?;
