@@ -10,13 +10,14 @@ mod rewrites;
 mod samples;
 mod summarize;
 
-use crate::features::apply_features;
+use crate::features::{apply_features, FeatureResult};
 use crate::rewrites::create_rewrites;
-use crate::samples::{get_rule_info, Samples};
+use crate::samples::{get_rule_info, get_var_name, Samples};
 use crate::summarize::bdd_summarize;
 use clap::Parser;
 use patronus::expr::*;
-use std::path::PathBuf;
+use std::io::Write;
+use std::path::{Path, PathBuf};
 
 #[derive(Parser, Debug)]
 #[command(name = "patronus-egraphs-cond-synth")]
@@ -116,10 +117,55 @@ fn main() {
     let feature_delta_t = std::time::Instant::now() - feature_start;
     println!("{feature_delta_t:?} to apply all features");
 
+    if let Some(filename) = args.write_csv {
+        write_csv(filename, &samples, &features).expect("failed to write CSV");
+    }
+
     if args.bdd_formula {
         let summarize_start = std::time::Instant::now();
         let formula = bdd_summarize(&features);
         let summarize_delta_t = std::time::Instant::now() - summarize_start;
         println!("Generated formula in {summarize_delta_t:?}:\n{}", formula);
     }
+}
+
+fn write_csv(
+    filename: impl AsRef<Path>,
+    samples: &Samples,
+    features: &FeatureResult,
+) -> std::io::Result<()> {
+    let mut o = std::io::BufWriter::new(std::fs::File::create(filename)?);
+
+    // header
+    write!(o, "equivalent?,")?;
+    for var in samples.vars() {
+        write!(o, "{},", get_var_name(&var).unwrap())?;
+    }
+    let num_features = features.num_features();
+    for (ii, feature) in features.labels().iter().enumerate() {
+        write!(o, "{}", feature)?;
+        if ii < num_features - 1 {
+            write!(o, ",")?;
+        }
+    }
+    writeln!(o)?;
+
+    // data
+    for ((a, a_is_eq), (s, s_is_eq)) in samples.iter().zip(features.iter()) {
+        assert_eq!(a_is_eq, s_is_eq);
+        write!(o, "{},", a_is_eq as u8)?;
+        for (_var, value) in a.iter() {
+            write!(o, "{},", *value)?;
+        }
+        for (ii, feature_on) in s.iter().enumerate() {
+            let feature_on = *feature_on;
+            write!(o, "{}", feature_on as u8)?;
+            if ii < num_features - 1 {
+                write!(o, ",")?;
+            }
+        }
+        writeln!(o)?;
+    }
+
+    Ok(())
 }

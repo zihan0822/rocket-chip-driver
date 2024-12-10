@@ -182,6 +182,10 @@ impl Samples {
         a
     }
 
+    pub fn vars(&self) -> impl Iterator<Item = Var> + '_ {
+        self.vars.iter().cloned()
+    }
+
     pub fn to_json(self, out: &mut impl std::io::Write) -> serde_json::error::Result<()> {
         let s: SamplesSerde = self.into();
         serde_json::to_writer_pretty(out, &s)
@@ -378,6 +382,16 @@ fn union_vecs<T: Clone + PartialEq + Ord>(a: &[T], b: &[T]) -> Vec<T> {
     out
 }
 
+#[inline]
+pub fn get_var_name(v: &Var) -> Option<String> {
+    let name = v.to_string();
+    if name.starts_with('?') {
+        Some(name.chars().skip(1).collect())
+    } else {
+        None
+    }
+}
+
 /// Extracts the output width and all children including width and sign from an [[`egg::PatternAst`]].
 /// Requires that the output width is name `?wo` and that the child width and sign are named like:
 /// `?w{name}` and `?s{name}`.
@@ -439,7 +453,7 @@ fn width_const_from_pattern(pat: &PatternAst<Arith>, id: Id) -> VarOrConst {
     match &pat[id] {
         ENodeOrVar::ENode(node) => match node {
             &Arith::WidthConst(w) => VarOrConst::C(w),
-            _ => unreachable!("not a widht!"),
+            _ => unreachable!("not a width!"),
         },
         ENodeOrVar::Var(var) => VarOrConst::V(*var),
     }

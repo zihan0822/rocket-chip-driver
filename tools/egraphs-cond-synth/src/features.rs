@@ -2,7 +2,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
-use crate::samples::{RuleInfo, Samples};
+use crate::samples::{get_var_name, RuleInfo, Samples};
 use bitvec::prelude as bv;
 use egg::Var;
 use patronus::expr::WidthInt;
@@ -63,7 +63,7 @@ const FEATURES: &[Feature] = &[
         labels: |r| {
             let mut o = vec![];
             for sign in r.signs() {
-                o.push(format!("!{sign}"));
+                o.push(format!("!{}", get_var_name(&sign).unwrap()));
             }
             o
         },
@@ -81,7 +81,11 @@ const FEATURES: &[Feature] = &[
             for w_i in r.widths() {
                 for w_j in r.widths() {
                     if w_i != w_j {
-                        o.push(format!("{w_i} == {w_j}"));
+                        o.push(format!(
+                            "{} == {}",
+                            get_var_name(&w_i).unwrap(),
+                            get_var_name(&w_j).unwrap(),
+                        ));
                     }
                 }
             }
@@ -105,6 +109,8 @@ const FEATURES: &[Feature] = &[
             for w_i in r.widths() {
                 for w_j in r.widths() {
                     if w_i != w_j {
+                        let w_i = get_var_name(&w_i).unwrap();
+                        let w_j = get_var_name(&w_j).unwrap();
                         o.push(format!("{w_i} < {w_j}"));
                         o.push(format!("{w_i} + 1 < {w_j}"));
                         o.push(format!("{w_i} - 1 < {w_j}"));
@@ -138,6 +144,9 @@ const FEATURES: &[Feature] = &[
                     if w_i != w_j {
                         for w_k in r.widths() {
                             if w_k != w_i && w_k != w_j {
+                                let w_i = get_var_name(&w_i).unwrap();
+                                let w_j = get_var_name(&w_j).unwrap();
+                                let w_k = get_var_name(&w_k).unwrap();
                                 o.push(format!("{w_i} + {w_j} < {w_k}"));
                                 o.push(format!("{w_i} as u64 + 2u64.pow({w_j}) < {w_k} as u64"));
                             }
