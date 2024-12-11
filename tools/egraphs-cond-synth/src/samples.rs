@@ -460,7 +460,7 @@ fn width_const_from_pattern(pat: &PatternAst<Arith>, id: Id) -> VarOrConst {
 }
 
 /// Generates a patronus SMT expression from a pattern, rule info and assignment.
-fn to_smt(
+pub fn to_smt(
     ctx: &mut Context,
     pattern: &PatternAst<Arith>,
     rule: &RuleInfo,

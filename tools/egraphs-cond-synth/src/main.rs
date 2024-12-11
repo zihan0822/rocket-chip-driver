@@ -11,8 +11,8 @@ mod samples;
 mod summarize;
 
 use crate::features::{apply_features, FeatureResult};
-use crate::rewrites::create_rewrites;
-use crate::samples::{get_rule_info, get_var_name, Samples};
+use crate::rewrites::{create_rewrites, ArithRewrite};
+use crate::samples::{get_rule_info, get_var_name, to_smt, RuleInfo, Samples};
 use crate::summarize::bdd_summarize;
 use clap::Parser;
 use patronus::expr::*;
@@ -95,36 +95,10 @@ fn main() {
         samples.num_unequivalent()
     );
 
+    let rule_info = get_rule_info(rule);
+
     if args.check_cond {
-        // false positive => our current condition says it is equivalent, while it actually is not
-        let mut false_positive = 0u64;
-        // false negative => our current condition says the rule does not apply, while it actually could
-        let mut false_negative = 0u64;
-        let mut false_pos_examples = vec![];
-        for (a, is_eq) in samples.iter() {
-            let condition_res = rule.eval_condition(&a);
-            match (condition_res, is_eq) {
-                (true, false) => {
-                    if false_pos_examples.len() < 10 && false_positive % 100 == 0 {
-                        false_pos_examples.push(a);
-                    }
-                    false_positive += 1;
-                }
-                (false, true) => {
-                    false_negative += 1;
-                }
-                _ => {} // ignore
-            }
-        }
-        println!("The current implementation of the condition has:");
-        println!("False positives (BAD): {false_positive: >10}");
-        println!("False negatives (OK):  {false_negative: >10}");
-        if !false_pos_examples.is_empty() {
-            println!("Some example assignments that are incorrectly classified as OK by our current condition:");
-            for a in false_pos_examples {
-                println!("{a:?}");
-            }
-        }
+        check_conditions(rule, &samples, &rule_info);
     }
 
     if let Some(out_filename) = args.write_assignments {
@@ -148,7 +122,6 @@ fn main() {
 
     // check features
     let feature_start = std::time::Instant::now();
-    let rule_info = get_rule_info(rule);
     let features = apply_features(&rule_info, &samples);
     let feature_delta_t = std::time::Instant::now() - feature_start;
     println!("{feature_delta_t:?} to apply all features");
@@ -248,4 +221,45 @@ fn write_espresso(filename: impl AsRef<Path>, features: &FeatureResult) -> std::
     writeln!(o, ".e")?;
 
     Ok(())
+}
+
+fn check_conditions(rule: &ArithRewrite, samples: &Samples, info: &RuleInfo) {
+    // false positive => our current condition says it is equivalent, while it actually is not
+    let mut false_positive = 0u64;
+    // false negative => our current condition says the rule does not apply, while it actually could
+    let mut false_negative = 0u64;
+    let mut false_pos_examples = vec![];
+    for (a, is_eq) in samples.iter() {
+        let condition_res = rule.eval_condition(&a);
+        match (condition_res, is_eq) {
+            (true, false) => {
+                if false_pos_examples.len() < 10 && false_positive % 100 == 0 {
+                    false_pos_examples.push(a);
+                }
+                false_positive += 1;
+            }
+            (false, true) => {
+                false_negative += 1;
+            }
+            _ => {} // ignore
+        }
+    }
+    println!("The current implementation of the condition has:");
+    println!("False positives (BAD): {false_positive: >10}");
+    println!("False negatives (OK):  {false_negative: >10}");
+    if !false_pos_examples.is_empty() {
+        println!("Some example assignments that are incorrectly classified as OK by our current condition:");
+        let mut ctx = Context::default();
+        for a in false_pos_examples {
+            println!("{a:?}");
+            let (lhs, rhs) = rule.patterns();
+            let lhs = to_smt(&mut ctx, lhs, info, &a);
+            let rhs = to_smt(&mut ctx, rhs, info, &a);
+            println!(
+                "  {} =/= {}",
+                lhs.serialize_to_str(&ctx),
+                rhs.serialize_to_str(&ctx)
+            );
+        }
+    }
 }
