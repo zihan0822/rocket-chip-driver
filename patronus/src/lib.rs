@@ -6,7 +6,6 @@ extern crate lazy_static;
 extern crate core;
 
 pub mod btor2;
-pub mod dse;
 pub mod expr;
 pub mod mc;
 pub mod sim;

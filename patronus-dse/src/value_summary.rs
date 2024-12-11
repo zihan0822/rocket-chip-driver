@@ -2,8 +2,8 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
-use crate::expr::*;
 use boolean_expression::{BDDFunc, BDD};
+use patronus::expr::*;
 use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
 use std::hash::Hash;
 

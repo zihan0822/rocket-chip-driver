@@ -1,0 +1,15 @@
+[package]
+name = "patronus-dse"
+version = "0.1.0"
+description = "dynamic symbolic execution with patronus"
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+readme.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+patronus = { path = "../patronus" }
+boolean_expression.workspace = true
+rustc-hash.workspace = true

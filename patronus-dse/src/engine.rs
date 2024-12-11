@@ -2,8 +2,8 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
-use crate::expr::Context;
-use crate::system::TransitionSystem;
+use patronus::expr::Context;
+use patronus::system::TransitionSystem;
 
 /// Symbolic execution engine.
 pub struct SymEngine {
