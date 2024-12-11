@@ -62,14 +62,9 @@ pub fn generate_samples(
                 let assignment = rule_info.get_assignment(max_width, assignment_index);
                 let lhs_expr = to_smt(&mut ctx, lhs, &lhs_info, &assignment);
                 let rhs_expr = to_smt(&mut ctx, rhs, &rhs_info, &assignment);
-                let is_eq = ctx.equal(lhs_expr, rhs_expr);
-                let is_not_eq = ctx.not(is_eq);
-                let smt_expr = patronus::smt::convert_expr(&smt_ctx, &ctx, is_not_eq, &|_| None);
 
                 smt_ctx.push_many(1).unwrap();
-                declare_vars(&mut smt_ctx, &ctx, is_not_eq);
-                smt_ctx.assert(smt_expr).unwrap();
-                let resp = smt_ctx.check().unwrap();
+                let resp = check_eq(&mut ctx, &mut smt_ctx, lhs_expr, rhs_expr);
                 smt_ctx.pop_many(1).unwrap();
 
                 match resp {
@@ -89,7 +84,21 @@ pub fn generate_samples(
         .reduce(|| Samples::new(&rule_info), Samples::merge)
 }
 
-fn start_solver(dump_smt: bool) -> easy_smt::Context {
+pub fn check_eq(
+    ctx: &mut Context,
+    smt_ctx: &mut easy_smt::Context,
+    lhs_expr: ExprRef,
+    rhs_expr: ExprRef,
+) -> easy_smt::Response {
+    let is_eq = ctx.equal(lhs_expr, rhs_expr);
+    let is_not_eq = ctx.not(is_eq);
+    let smt_expr = patronus::smt::convert_expr(&smt_ctx, &ctx, is_not_eq, &|_| None);
+    declare_vars(smt_ctx, &ctx, is_not_eq);
+    smt_ctx.assert(smt_expr).unwrap();
+    smt_ctx.check().unwrap()
+}
+
+pub fn start_solver(dump_smt: bool) -> easy_smt::Context {
     let solver: patronus::mc::SmtSolverCmd = patronus::mc::BITWUZLA_CMD;
     let dump_file = if dump_smt {
         Some(std::fs::File::create("replay.smt").unwrap())
@@ -225,7 +234,7 @@ impl<'a> Iterator for SamplesIter<'a> {
     }
 }
 
-fn declare_vars(smt_ctx: &mut easy_smt::Context, ctx: &Context, expr: ExprRef) {
+pub fn find_symbols_in_expr(ctx: &Context, expr: ExprRef) -> Vec<ExprRef> {
     // find all variables in the expression
     let mut vars = FxHashSet::default();
     patronus::expr::traversal::top_down(ctx, expr, |ctx, e| {
@@ -238,6 +247,11 @@ fn declare_vars(smt_ctx: &mut easy_smt::Context, ctx: &Context, expr: ExprRef) {
     // declare them
     let mut vars = Vec::from_iter(vars);
     vars.sort();
+    vars
+}
+
+fn declare_vars(smt_ctx: &mut easy_smt::Context, ctx: &Context, expr: ExprRef) {
+    let vars = find_symbols_in_expr(ctx, expr);
     for v in vars.into_iter() {
         let expr = &ctx[v];
         let tpe = patronus::smt::convert_tpe(smt_ctx, expr.get_type(ctx));

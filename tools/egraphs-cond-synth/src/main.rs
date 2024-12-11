@@ -12,10 +12,15 @@ mod summarize;
 
 use crate::features::{apply_features, FeatureResult};
 use crate::rewrites::{create_rewrites, ArithRewrite};
-use crate::samples::{get_rule_info, get_var_name, to_smt, RuleInfo, Samples};
+use crate::samples::{
+    check_eq, find_symbols_in_expr, get_rule_info, get_var_name, start_solver, to_smt, RuleInfo,
+    Samples,
+};
 use crate::summarize::bdd_summarize;
+use baa::BitVecOps;
 use clap::Parser;
 use patronus::expr::*;
+use patronus::mc::get_smt_value;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
@@ -250,16 +255,58 @@ fn check_conditions(rule: &ArithRewrite, samples: &Samples, info: &RuleInfo) {
     if !false_pos_examples.is_empty() {
         println!("Some example assignments that are incorrectly classified as OK by our current condition:");
         let mut ctx = Context::default();
+        let mut smt_ctx = start_solver(false);
         for a in false_pos_examples {
             println!("{a:?}");
+
+            // generate smt expressions
             let (lhs, rhs) = rule.patterns();
-            let lhs = to_smt(&mut ctx, lhs, info, &a);
-            let rhs = to_smt(&mut ctx, rhs, info, &a);
+            let lhs_expr = to_smt(&mut ctx, lhs, info, &a);
+            let rhs_expr = to_smt(&mut ctx, rhs, info, &a);
+
+            // run SMT solver to get a counter example
+            smt_ctx.push_many(1).unwrap();
+            let resp = check_eq(&mut ctx, &mut smt_ctx, lhs_expr, rhs_expr);
+            assert_eq!(resp, easy_smt::Response::Sat);
+
+            // get assignments to variables
+            let is_eq = ctx.equal(lhs_expr, rhs_expr);
+            let vars = find_symbols_in_expr(&ctx, is_eq);
+            let mut values: Vec<String> = vars
+                .into_iter()
+                .map(|v| {
+                    let name = ctx.get_symbol_name(v).unwrap();
+                    let value = get_value(&ctx, &mut smt_ctx, v);
+                    format!("{name}={value}")
+                })
+                .collect();
+            values.push(format!(
+                "lhs_result={}",
+                get_value(&ctx, &mut smt_ctx, lhs_expr)
+            ));
+            values.push(format!(
+                "rhs_result={}",
+                get_value(&ctx, &mut smt_ctx, rhs_expr)
+            ));
+            smt_ctx.pop_many(1).unwrap();
+
             println!(
                 "  {} =/= {}",
-                lhs.serialize_to_str(&ctx),
-                rhs.serialize_to_str(&ctx)
+                lhs_expr.serialize_to_str(&ctx),
+                rhs_expr.serialize_to_str(&ctx)
             );
+            println!("  with: {}", values.join(", "));
         }
+    }
+}
+
+fn get_value(ctx: &Context, smt_ctx: &mut easy_smt::Context, expr: ExprRef) -> String {
+    let tpe = expr.get_type(&ctx);
+    let v = patronus::smt::convert_expr(smt_ctx, &ctx, expr, &|_| None);
+    let value = get_smt_value(smt_ctx, v, tpe).unwrap();
+    if let baa::Value::BitVec(v) = value {
+        format!("{}", v.to_u64().unwrap())
+    } else {
+        unreachable!("no arrays!")
     }
 }
