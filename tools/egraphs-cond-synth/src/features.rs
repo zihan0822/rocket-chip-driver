@@ -177,6 +177,7 @@ const FEATURES: &[Feature] = &[
 ];
 
 struct Feature {
+    #[allow(dead_code)]
     name: &'static str,
     labels: fn(rule: &RuleInfo) -> Vec<String>,
     eval: fn(rule: &RuleInfo, v: &FxHashMap<Var, WidthInt>, out: &mut bv::BitVec),

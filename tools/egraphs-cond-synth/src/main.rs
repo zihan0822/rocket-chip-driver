@@ -62,10 +62,10 @@ fn main() {
 
     // find rule and extract both sides
     let rewrites = create_rewrites();
-    let rule = match rewrites.iter().find(|r| r.name.as_str() == args.rule) {
+    let rule = match rewrites.iter().find(|r| r.name() == args.rule) {
         Some(r) => r,
         None => {
-            let available = rewrites.iter().map(|r| r.name.as_str()).collect::<Vec<_>>();
+            let available = rewrites.iter().map(|r| r.name()).collect::<Vec<_>>();
             panic!(
                 "Failed to find rewrite rule `{}`!\nAvailable rules are: {:?}",
                 args.rule, available

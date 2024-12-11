@@ -2,6 +2,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
+use crate::rewrites::ArithRewrite;
 use egg::*;
 use indicatif::ProgressBar;
 use patronus::expr::traversal::TraversalCmd;
@@ -9,23 +10,23 @@ use patronus::expr::{Context, ExprRef, TypeCheck, WidthInt};
 use patronus_egraphs::*;
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 
-pub fn get_rule_info(rule: &Rewrite<Arith, ()>) -> RuleInfo {
-    let (lhs, rhs) = extract_patterns(rule).expect("failed to extract patterns from rewrite rule");
+pub fn get_rule_info(rule: &ArithRewrite) -> RuleInfo {
+    let (lhs, rhs) = rule.patterns();
     let lhs_info = analyze_pattern(lhs);
     let rhs_info = analyze_pattern(rhs);
     lhs_info.merge(&rhs_info)
 }
 
 pub fn generate_samples(
-    rule: &Rewrite<Arith, ()>,
+    rule: &ArithRewrite,
     max_width: WidthInt,
     show_progress: bool,
     dump_smt: bool,
     check_cond: bool,
 ) -> Samples {
-    let (lhs, rhs) = extract_patterns(rule).expect("failed to extract patterns from rewrite rule");
+    let (lhs, rhs) = rule.patterns();
     let lhs_info = analyze_pattern(lhs);
     let rhs_info = analyze_pattern(rhs);
     let rule_info = lhs_info.merge(&rhs_info);
