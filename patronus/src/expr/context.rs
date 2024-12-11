@@ -17,6 +17,7 @@
 use crate::expr::nodes::*;
 use crate::expr::TypeCheck;
 use baa::{BitVecValue, BitVecValueIndex, BitVecValueRef, IndexToRef};
+use rustc_hash::FxBuildHasher;
 use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::fmt::{Debug, Formatter};
@@ -69,8 +70,8 @@ impl ExprRef {
 /// reference equivalence implies structural equivalence.
 #[derive(Clone)]
 pub struct Context {
-    strings: indexmap::IndexSet<String>,
-    exprs: indexmap::IndexSet<Expr>,
+    strings: indexmap::IndexSet<String, FxBuildHasher>,
+    exprs: indexmap::IndexSet<Expr, FxBuildHasher>,
     values: baa::ValueInterner,
     // cached special values
     tru_expr_ref: ExprRef,
