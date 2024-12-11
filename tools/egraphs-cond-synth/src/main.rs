@@ -32,10 +32,7 @@ struct Args {
     dump_smt: bool,
     #[arg(long)]
     bdd_formula: bool,
-    #[arg(
-        long,
-        help = "checks the current condition, prints out if it disagrees with the examples we generate"
-    )]
+    #[arg(long, help = "checks the current condition of the re-write rules")]
     check_cond: bool,
     #[arg(long, help = "write the generated assignments to a JSON file")]
     write_assignments: Option<PathBuf>,
@@ -103,10 +100,14 @@ fn main() {
         let mut false_positive = 0u64;
         // false negative => our current condition says the rule does not apply, while it actually could
         let mut false_negative = 0u64;
+        let mut false_pos_examples = vec![];
         for (a, is_eq) in samples.iter() {
             let condition_res = rule.eval_condition(&a);
             match (condition_res, is_eq) {
                 (true, false) => {
+                    if false_pos_examples.len() < 10 && false_positive % 100 == 0 {
+                        false_pos_examples.push(a);
+                    }
                     false_positive += 1;
                 }
                 (false, true) => {
@@ -118,6 +119,12 @@ fn main() {
         println!("The current implementation of the condition has:");
         println!("False positives (BAD): {false_positive: >10}");
         println!("False negatives (OK):  {false_negative: >10}");
+        if !false_pos_examples.is_empty() {
+            println!("Some example assignments that are incorrectly classified as OK by our current condition:");
+            for a in false_pos_examples {
+                println!("{a:?}");
+            }
+        }
     }
 
     if let Some(out_filename) = args.write_assignments {
