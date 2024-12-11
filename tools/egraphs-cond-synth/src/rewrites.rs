@@ -2,6 +2,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
+use crate::samples::Assignment;
 use egg::*;
 use patronus::expr::*;
 use patronus_egraphs::*;
@@ -30,7 +31,7 @@ pub struct ArithRewrite {
     /// rhs pattern with all widths derived from the lhs, maybe be the same as rhs
     rhs_derived: Pattern<Arith>,
     /// variables use by the condition
-    cond_vars: Vec<String>,
+    cond_vars: Vec<Var>,
     /// condition of the re_write
     cond: Option<fn(&[WidthInt]) -> bool>,
 }
@@ -45,7 +46,7 @@ impl ArithRewrite {
     ) -> Self {
         let cond_vars = cond_vars
             .into_iter()
-            .map(|n| n.as_ref().to_string())
+            .map(|n| n.as_ref().parse().unwrap())
             .collect();
         Self {
             name: name.to_string(),
@@ -67,7 +68,7 @@ impl ArithRewrite {
     pub fn to_egg(&self) -> Vec<Rewrite<Arith, ()>> {
         // TODO: support bi-directional rules
         if let Some(cond) = self.cond {
-            let vars: Vec<Var> = self.cond_vars.iter().map(|n| n.parse().unwrap()).collect();
+            let vars: Vec<Var> = self.cond_vars.clone();
             let condition = move |egraph: &mut EGraph, _, subst: &Subst| {
                 let values: Vec<WidthInt> = vars
                     .iter()
@@ -87,6 +88,20 @@ impl ArithRewrite {
                 self.rhs_derived.clone(),
             )
             .unwrap()]
+        }
+    }
+
+    pub fn eval_condition(&self, a: &Assignment) -> bool {
+        if let Some(cond) = self.cond {
+            let values: Vec<WidthInt> = self
+                .cond_vars
+                .iter()
+                .map(|v| a.iter().find(|(k, _)| k == v).unwrap().1)
+                .collect();
+            cond(values.as_slice())
+        } else {
+            // unconditional rewrite
+            true
         }
     }
 }

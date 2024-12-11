@@ -24,7 +24,6 @@ pub fn generate_samples(
     max_width: WidthInt,
     show_progress: bool,
     dump_smt: bool,
-    check_cond: bool,
 ) -> Samples {
     let (lhs, rhs) = rule.patterns();
     let lhs_info = analyze_pattern(lhs);

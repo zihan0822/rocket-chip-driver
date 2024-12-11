@@ -83,8 +83,7 @@ fn main() {
     } else {
         // remember start time
         let start = std::time::Instant::now();
-        let samples =
-            samples::generate_samples(rule, args.max_width, true, args.dump_smt, args.check_cond);
+        let samples = samples::generate_samples(rule, args.max_width, true, args.dump_smt);
         let delta_t = std::time::Instant::now() - start;
         println!(
             "Took {delta_t:?} on {} threads.",
@@ -98,6 +97,28 @@ fn main() {
         "Found {} unequivalent rewrites.",
         samples.num_unequivalent()
     );
+
+    if args.check_cond {
+        // false positive => our current condition says it is equivalent, while it actually is not
+        let mut false_positive = 0u64;
+        // false negative => our current condition says the rule does not apply, while it actually could
+        let mut false_negative = 0u64;
+        for (a, is_eq) in samples.iter() {
+            let condition_res = rule.eval_condition(&a);
+            match (condition_res, is_eq) {
+                (true, false) => {
+                    false_positive += 1;
+                }
+                (false, true) => {
+                    false_negative += 1;
+                }
+                _ => {} // ignore
+            }
+        }
+        println!("The current implementation of the condition has:");
+        println!("False positives (BAD): {false_positive: >10}");
+        println!("False negatives (OK):  {false_negative: >10}");
+    }
 
     if let Some(out_filename) = args.write_assignments {
         let mut file = std::fs::File::create(&out_filename).expect("failed to open output JSON");
