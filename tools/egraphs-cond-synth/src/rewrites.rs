@@ -100,7 +100,8 @@ pub fn create_rewrites() -> Vec<ArithRewrite> {
             // note: in this version we set the width of (b + c) on the RHS to be the width of the
             //       result (w_o)
             "(<< ?wo ?wa ?sa ?a ?wo 0 (+ ?wo ?wb 0 ?b ?wc 0 ?c))";
-            if["?wo", "?wa", "?sa", "?wb", "?wc"], |w| w[1] == w[2] && w[0] >= w[1]),
+            // wa == wb && wo >= wa
+            if["?wo", "?wa", "?wb"], |w| w[1] == w[2] && w[0] >= w[1]),
     ]
 }
 
