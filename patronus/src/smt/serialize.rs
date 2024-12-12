@@ -3,13 +3,91 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
-use crate::expr::{traversal, Context, ExprRef, Type};
+use crate::expr::{Context, Expr, ExprRef, ForEachChild, Type};
+use baa::BitVecOps;
 use std::io::Write;
 
 pub type Result<T> = std::io::Result<T>;
 
 pub fn serialize_expr(out: &mut impl Write, ctx: &Context, expr: ExprRef) -> Result<()> {
-    todo!()
+    // we need to visit each expression "number of children + 1" times
+    let mut todo: Vec<(ExprRef, u32)> = vec![(expr, 0)];
+    let mut child_vec: Vec<ExprRef> = Vec::with_capacity(4);
+
+    while let Some((e, pc)) = todo.pop() {
+        let expr = &ctx[e];
+        if pc == 0 {
+            // first time we visit
+            match expr {
+                Expr::BVSymbol { name, .. } => write!(out, "{}", ctx[*name])?,
+                Expr::BVLiteral(v) => {
+                    let value = v.get(ctx);
+                    if value.width() > 1 {
+                        write!(out, "#b{}", v.get(ctx).to_bit_str())?;
+                    } else if value.is_tru() {
+                        write!(out, "true")?;
+                    } else {
+                        debug_assert!(value.is_fals());
+                        write!(out, "false")?;
+                    }
+                }
+                Expr::BVZeroExt { .. } => todo!(),
+                Expr::BVSignExt { .. } => todo!(),
+                Expr::BVSlice { .. } => todo!(),
+                Expr::BVNot(_, _) => todo!(),
+                Expr::BVNegate(_, _) => todo!(),
+                Expr::BVEqual(_, _) => todo!(),
+                Expr::BVImplies(_, _) => todo!(),
+                Expr::BVGreater(_, _) => todo!(),
+                Expr::BVGreaterSigned(_, _, _) => todo!(),
+                Expr::BVGreaterEqual(_, _) => todo!(),
+                Expr::BVGreaterEqualSigned(_, _, _) => todo!(),
+                Expr::BVConcat(_, _, _) => todo!(),
+                Expr::BVAnd(_, _, _) => todo!(),
+                Expr::BVOr(_, _, _) => todo!(),
+                Expr::BVXor(_, _, _) => todo!(),
+                Expr::BVShiftLeft(_, _, _) => todo!(),
+                Expr::BVArithmeticShiftRight(_, _, _) => todo!(),
+                Expr::BVShiftRight(_, _, _) => todo!(),
+                Expr::BVAdd(_, _, _) => todo!(),
+                Expr::BVMul(_, _, _) => todo!(),
+                Expr::BVSignedDiv(_, _, _) => todo!(),
+                Expr::BVUnsignedDiv(_, _, _) => todo!(),
+                Expr::BVSignedMod(_, _, _) => todo!(),
+                Expr::BVSignedRem(_, _, _) => todo!(),
+                Expr::BVUnsignedRem(_, _, _) => todo!(),
+                Expr::BVSub(_, _, _) => todo!(),
+                Expr::BVArrayRead { .. } => todo!(),
+                Expr::BVIte { .. } => todo!(),
+                Expr::ArraySymbol { .. } => todo!(),
+                Expr::ArrayConstant { .. } => todo!(),
+                Expr::ArrayEqual(_, _) => todo!(),
+                Expr::ArrayStore { .. } => todo!(),
+                Expr::ArrayIte { .. } => todo!(),
+            }
+        }
+
+        if let Some(next_child) = find_next_child(pc, expr) {
+            write!(out, " ")?;
+            todo.push((e, pc + 1));
+            todo.push((next_child, 0));
+        } else if pc > 0 {
+            write!(out, ")")?;
+        }
+    }
+    Ok(())
+}
+
+fn find_next_child(pos: u32, e: &Expr) -> Option<ExprRef> {
+    let mut count = 0;
+    let mut out = None;
+    e.for_each_child(|c| {
+        if count == pos {
+            out = Some(*c);
+        }
+        count += 1;
+    });
+    out
 }
 
 pub fn serialize_type(out: &mut impl Write, tpe: Type) -> Result<()> {
@@ -33,6 +111,12 @@ mod tests {
     fn s_type(t: Type) -> String {
         let mut out = Vec::new();
         serialize_type(&mut out, t).unwrap();
+        String::from_utf8(out).unwrap()
+    }
+
+    fn s_expr(ctx: &Context, e: ExprRef) -> String {
+        let mut out = Vec::new();
+        serialize_expr(&mut out, ctx, e).unwrap();
         String::from_utf8(out).unwrap()
     }
 
@@ -69,5 +153,16 @@ mod tests {
             })),
             "(Array Bool Bool)"
         );
+    }
+
+    #[test]
+    fn test_serialize_nullary_expr() {
+        let mut ctx = Context::default();
+        let a = ctx.bv_symbol("a", 2);
+        assert_eq!(s_expr(&ctx, a), "a");
+        assert_eq!(s_expr(&ctx, ctx.fals()), "false");
+        assert_eq!(s_expr(&ctx, ctx.tru()), "true");
+        let bv_lit = ctx.bit_vec_val(3, 3);
+        assert_eq!(s_expr(&ctx, bv_lit), "#b011");
     }
 }
