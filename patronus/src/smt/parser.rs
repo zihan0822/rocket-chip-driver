@@ -2,15 +2,18 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
-use crate::expr::{Context, ExprRef};
-use regex::bytes::{Captures, Match, Regex, RegexSet};
+use crate::expr::{ArrayType, Context, ExprRef, Type, TypeCheck, WidthInt};
+use regex::bytes::RegexSet;
 use rustc_hash::FxHashMap;
 use std::fmt::{Debug, Formatter};
-use std::io::{BufRead, Read};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum SmtParserError {
+    #[error("[smt] expected an expression but got: {0}")]
+    ExpectedExpr(String),
+    #[error("[smt] expected a type but got: {0}")]
+    ExpectedType(String),
     #[error("[smt] unknown pattern: {0}")]
     Pattern(String),
     #[error("[smt] missing opening parenthesis for closing parenthesis")]
@@ -29,6 +32,12 @@ pub enum SmtParserError {
 
 impl From<baa::ParseIntError> for SmtParserError {
     fn from(value: baa::ParseIntError) -> Self {
+        SmtParserError::ParseInt(format!("{value:?}"))
+    }
+}
+
+impl From<std::num::ParseIntError> for SmtParserError {
+    fn from(value: std::num::ParseIntError) -> Self {
         SmtParserError::ParseInt(format!("{value:?}"))
     }
 }
@@ -53,18 +62,19 @@ pub fn parse_expr(ctx: &mut Context, st: &mut SymbolTable, input: &[u8]) -> Resu
                     None => return Err(SmtParserError::MissingOpen),
                 };
                 let pattern = &stack[open_pos + 1..];
-                let result = parse_pattern(ctx, pattern)?;
+                let result = parse_pattern(ctx, st, pattern)?;
                 stack.truncate(open_pos);
                 stack.push(result);
             }
             Token::Value(value) => {
-                stack.push(parse_value_token(ctx, st, value)?);
+                // we eagerly parse number literals, but we do not make decisions on symbols yet
+                stack.push(early_parse_number_literals(ctx, value)?);
             }
-            Token::EscapedValue(value) => stack.push(Parsed(lookup_sym(st, value)?)),
+            Token::EscapedValue(value) => stack.push(PExpr(lookup_sym(st, value)?)),
         }
     }
 
-    if let [Parsed(e)] = stack.as_slice() {
+    if let [PExpr(e)] = stack.as_slice() {
         Ok(*e)
     } else {
         todo!("error message!")
@@ -79,71 +89,108 @@ fn lookup_sym(st: &SymbolTable, name: &[u8]) -> Result<ExprRef> {
     }
 }
 
-fn parse_pattern<'a>(ctx: &mut Context, pattern: &[ParserItem<'a>]) -> Result<ParserItem<'a>> {
+fn parse_pattern<'a>(
+    ctx: &mut Context,
+    st: &SymbolTable,
+    pattern: &[ParserItem<'a>],
+) -> Result<ParserItem<'a>> {
     use ParserItem::*;
-    let expr = match pattern {
-        [BvLibSymbol(b"bvand"), Parsed(a), Parsed(b)] => ctx.and(*a, *b),
-        [BvLibSymbol(b"bvadd"), Parsed(a), Parsed(b)] => ctx.add(*a, *b),
+    let item = match pattern {
+        // bit vector type
+        [Sym(b"_"), Sym(b"BitVec"), Sym(width)] => PType(Type::BV(parse_width(width)?)),
+        // bit vector expressions
+        [Sym(b"bvand"), a, b] => PExpr(ctx.and(expr(st, a)?, expr(st, b)?)),
+        [Sym(b"bvadd"), a, b] => PExpr(ctx.add(expr(st, a)?, expr(st, b)?)),
+        // array type
+        [Sym(b"Array"), PType(Type::BV(index_width)), PType(Type::BV(data_width))] => {
+            PType(Type::Array(ArrayType {
+                index_width: *index_width,
+                data_width: *data_width,
+            }))
+        }
+        // array expressions
+        [Sym(b"as"), Sym(b"const"), PType(Type::Array(tpe))] => AsConst(*tpe),
+        [AsConst(tpe), PExpr(data)] => {
+            debug_assert_eq!(tpe.data_width, data.get_bv_type(ctx).unwrap());
+            PExpr(ctx.array_const(*data, tpe.index_width))
+        }
+        [Sym(b"store"), PExpr(array), PExpr(index), PExpr(data)] => {
+            PExpr(ctx.array_store(*array, *index, *data))
+        }
         other => {
             return Err(SmtParserError::Pattern(format!("{other:?}")));
         }
     };
-    Ok(Parsed(expr))
+    Ok(item)
 }
 
-/// parse an _unescaped_ token
-fn parse_value_token<'a>(
-    ctx: &mut Context,
-    st: &SymbolTable,
-    value: &'a [u8],
-) -> Result<ParserItem<'a>> {
-    let special_token_match = TOKEN_REGEX.matches(value);
-    if let Some(match_id) = special_token_match.into_iter().next() {
+fn parse_width(value: &[u8]) -> Result<WidthInt> {
+    Ok(std::str::from_utf8(value)?.parse()?)
+}
+
+/// errors if the item cannot be directly converted to an expression
+fn expr(st: &SymbolTable, item: &ParserItem<'_>) -> Result<ExprRef> {
+    match item {
+        ParserItem::PExpr(e) => Ok(*e),
+        ParserItem::Sym(name) => lookup_sym(st, name),
+        other => Err(SmtParserError::ExpectedExpr(format!("{other:?}"))),
+    }
+}
+
+/// errors if the item cannot be directly converted to a type
+fn tpe(item: &ParserItem<'_>) -> Result<Type> {
+    match item {
+        ParserItem::PType(t) => Ok(*t),
+        other => Err(SmtParserError::ExpectedType(format!("{other:?}"))),
+    }
+}
+
+fn early_parse_number_literals<'a>(ctx: &mut Context, value: &'a [u8]) -> Result<ParserItem<'a>> {
+    if let Some(match_id) = NUM_LIT_REGEX.matches(value).into_iter().next() {
         match match_id {
             0 => {
                 // binary
                 let value = baa::BitVecValue::from_bit_str(std::str::from_utf8(&value[2..])?)?;
-                Ok(ParserItem::Parsed(ctx.bv_lit(&value)))
+                Ok(ParserItem::PExpr(ctx.bv_lit(&value)))
             }
             1 => {
                 // hex
-                let value = baa::BitVecValue::from_bit_str(std::str::from_utf8(&value[2..])?)?;
-                Ok(ParserItem::Parsed(ctx.bv_lit(&value)))
+                let value = baa::BitVecValue::from_hex_str(std::str::from_utf8(&value[2..])?)?;
+                Ok(ParserItem::PExpr(ctx.bv_lit(&value)))
             }
             2 => Err(SmtParserError::Unsupported(format!(
                 "decimal constant: {}",
                 String::from_utf8_lossy(value)
             ))),
-            other => {
-                if other < RESERVED_WORDS.len() + 3 {
-                    Ok(ParserItem::Reserved(value))
-                } else if other < BV_LIB_SYMBOL.len() + RESERVED_WORDS.len() + 3 {
-                    Ok(ParserItem::BvLibSymbol(value))
-                } else {
-                    unreachable!("")
-                }
-            }
+            other => unreachable!("not part of the regex!"),
         }
     } else {
-        // otherwise we assume that this is a symbol
-        Ok(ParserItem::Parsed(lookup_sym(st, value)?))
+        Ok(ParserItem::Sym(value))
     }
 }
 
+/// represents intermediate parser results
 enum ParserItem<'a> {
+    /// opening parenthesis
     Open,
-    Parsed(ExprRef),
-    Reserved(&'a [u8]),
-    BvLibSymbol(&'a [u8]),
+    /// parsed expression
+    PExpr(ExprRef),
+    /// parsed type
+    PType(Type),
+    /// either a built-in or a user defined symbol
+    Sym(&'a [u8]),
+    /// as const function from the array theory
+    AsConst(ArrayType),
 }
 
 impl<'a> Debug for ParserItem<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             ParserItem::Open => write!(f, "("),
-            ParserItem::Parsed(e) => write!(f, "{e:?}"),
-            ParserItem::Reserved(v) => write!(f, "R({})", String::from_utf8_lossy(v)),
-            ParserItem::BvLibSymbol(v) => write!(f, "B({})", String::from_utf8_lossy(v)),
+            ParserItem::PExpr(e) => write!(f, "{e:?}"),
+            ParserItem::PType(t) => write!(f, "{t:?}"),
+            ParserItem::Sym(v) => write!(f, "S({})", String::from_utf8_lossy(v)),
+            ParserItem::AsConst(tpe) => write!(f, "AsConst({tpe:?})"),
         }
     }
 }
@@ -176,22 +223,12 @@ const COMMANDS: &[&str] = &[
     // TODO
 ];
 
-const NUMBER_PATTERNS: &[&str] = &[
-    r"^#b[01]+$",                    // binary
-    r"^#h[[:xdigit:]]+$",            // hex
-    r"^[[:digit:]]+\.[[:digit:]]+$", // decimal
-];
-
 lazy_static! {
-    static ref TOKEN_REGEX: RegexSet = RegexSet::new(
-        NUMBER_PATTERNS.iter().map(|s| s.to_string()).chain(
-            RESERVED_WORDS
-                .iter()
-                .chain(BV_LIB_SYMBOL.iter())
-                .map(|s| format!("^{s}$"))
-        )
-    )
-    .unwrap();
+    static ref NUM_LIT_REGEX: RegexSet = RegexSet::new([
+        r"^#b[01]+$",                    // binary
+        r"^#x[[:xdigit:]]+$",            // hex
+        r"^[[:digit:]]+\.[[:digit:]]+$", // decimal
+    ]).unwrap();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -299,6 +336,7 @@ impl<'a> Iterator for Lexer<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::expr::SerializableIrNode;
 
     fn lex_to_token_str(input: &str) -> String {
         let tokens = Lexer::new(input.as_bytes())
@@ -322,5 +360,30 @@ mod tests {
         let mut symbols = FxHashMap::from_iter([("a".to_string(), a)]);
         let expr = parse_expr(&mut ctx, &mut symbols, &mut "(bvand a #b00)".as_bytes()).unwrap();
         assert_eq!(expr, ctx.build(|c| c.and(a, c.bit_vec_val(0, 2))));
+    }
+
+    #[test]
+    fn test_parse_smt_array_const_and_store() {
+        let mut ctx = Context::default();
+        let mut symbols = FxHashMap::default();
+
+        let base =
+            "((as const (Array (_ BitVec 5) (_ BitVec 32))) #b00000000000000000000000000110011)";
+        let expr = parse_expr(&mut ctx, &mut symbols, base.as_bytes()).unwrap();
+        assert_eq!(expr.serialize_to_str(&ctx), "([32'x00000033] x 2^5)");
+
+        let store_1 = format!("(store {base} #b01110 #x00000000)");
+        let expr = parse_expr(&mut ctx, &mut symbols, store_1.as_bytes()).unwrap();
+        assert_eq!(
+            expr.serialize_to_str(&ctx),
+            "([32'x00000033] x 2^5)[5'b01110 := 32'x00000000]"
+        );
+
+        let store_2 = format!("(store {store_1} #b01110 #x00000011)");
+        let expr = parse_expr(&mut ctx, &mut symbols, store_2.as_bytes()).unwrap();
+        assert_eq!(
+            expr.serialize_to_str(&ctx),
+            "([32'x00000033] x 2^5)[5'b01110 := 32'x00000000][5'b01110 := 32'x00000011]"
+        );
     }
 }
