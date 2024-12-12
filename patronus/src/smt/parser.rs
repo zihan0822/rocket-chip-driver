@@ -3,6 +3,7 @@
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
 use crate::expr::{Context, ExprRef};
+use crate::smt::parser::LexState::Searching;
 use rustc_hash::FxHashMap;
 use std::fmt::{Debug, Formatter};
 use std::io::{BufRead, Read};
@@ -25,14 +26,17 @@ pub fn parse_expr(
     st: &mut SymbolTable,
     input: &mut impl BufRead,
 ) -> Result<ExprRef> {
-    let on_token = |token: Token| {
-        println!("TODO: {:?}", token);
-        Ok(())
-    };
-
-    lex(input, on_token)?;
-
     todo!()
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Lexer
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct Lexer<'a> {
+    input: &'a [u8],
+    state: LexState,
+    pos: usize,
 }
 
 enum Token<'a> {
@@ -51,90 +55,78 @@ impl<'a> Debug for Token<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 enum LexState {
     Searching,
-    ParsingToken,
-    ParsingEscapedToken,
+    ParsingToken(usize),
+    ParsingEscapedToken(usize),
 }
 
-/// lex SMTLib
-fn lex(input: &mut impl BufRead, mut on_token: impl FnMut(Token) -> Result<()>) -> Result<()> {
-    use LexState::*;
-    let mut token_buf = Vec::with_capacity(128);
-    let mut state = Searching;
-
-    for c in input.bytes() {
-        let c = c?;
-        state = match state {
-            Searching => {
-                debug_assert!(token_buf.is_empty());
-                match c {
-                    b'|' => ParsingEscapedToken,
-                    b'(' => {
-                        on_token(Token::Open)?;
-                        Searching
-                    }
-                    b')' => {
-                        on_token(Token::Close)?;
-                        Searching
-                    }
-                    // White Space Characters: tab, line feed, carriage return or space
-                    b' ' | b'\n' | b'\r' | b'\t' => Searching,
-                    // string literals are currently not supported
-                    b'"' => return Err(SmtParserError::Unsupported("String Literal".to_string())),
-                    other => {
-                        token_buf.push(other);
-                        ParsingToken
-                    }
-                }
-            }
-            ParsingToken => {
-                debug_assert!(!token_buf.is_empty());
-                match c {
-                    b'|' => {
-                        on_token(Token::Value(&token_buf))?;
-                        token_buf.clear();
-                        ParsingEscapedToken
-                    }
-                    b'(' => {
-                        on_token(Token::Value(&token_buf))?;
-                        token_buf.clear();
-                        on_token(Token::Open)?;
-                        Searching
-                    }
-                    b')' => {
-                        on_token(Token::Value(&token_buf))?;
-                        token_buf.clear();
-                        on_token(Token::Close)?;
-                        Searching
-                    }
-                    // White Space Characters: tab, line feed, carriage return or space
-                    b' ' | b'\n' | b'\r' | b'\t' => {
-                        on_token(Token::Value(&token_buf))?;
-                        token_buf.clear();
-                        Searching
-                    }
-                    other => {
-                        token_buf.push(other);
-                        ParsingToken
-                    }
-                }
-            }
-            ParsingEscapedToken => {
-                if c == b'|' {
-                    on_token(Token::Value(&token_buf))?;
-                    token_buf.clear();
-                    Searching
-                } else {
-                    token_buf.push(c);
-                    ParsingEscapedToken
-                }
-            }
-        };
+impl<'a> Lexer<'a> {
+    fn new(input: &'a [u8]) -> Self {
+        Self {
+            input,
+            state: Searching,
+            pos: 0,
+        }
     }
+}
 
-    Ok(())
+impl<'a> Iterator for Lexer<'a> {
+    type Item = Token<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        use LexState::*;
+
+        // are we already done?
+        if self.pos >= self.input.len() {
+            return None;
+        }
+
+        for &c in self.input.iter().skip(self.pos) {
+            match self.state {
+                Searching => {
+                    // when we are searching, we always consume the character
+                    self.pos += 1;
+                    self.state = match c {
+                        b'|' => ParsingEscapedToken(self.pos),
+                        b'(' => return Some(Token::Open),
+                        b')' => return Some(Token::Close),
+                        // White Space Characters: tab, line feed, carriage return or space
+                        b' ' | b'\n' | b'\r' | b'\t' => Searching,
+                        // string literals are currently not supported
+                        b'"' => todo!("String literals are currently not supported!"),
+                        _ => ParsingToken(self.pos - 1),
+                    }
+                }
+                ParsingToken(start) => {
+                    debug_assert!(start <= self.pos, "{start} > {}", self.pos);
+                    match c {
+                        // done
+                        b'|' | b'(' | b')' | b' ' | b'\n' | b'\r' | b'\t' => {
+                            self.state = Searching; // do not consume the character
+                            return Some(Token::Value(&self.input[start..self.pos]));
+                        }
+                        _ => {
+                            // consume character
+                            self.pos += 1;
+                        }
+                    }
+                }
+                ParsingEscapedToken(start) => {
+                    // consume character
+                    self.pos += 1;
+                    if c == b'|' {
+                        self.state = Searching;
+                        return Some(Token::Value(&self.input[start..(self.pos - 1)]));
+                    }
+                }
+            };
+        }
+
+        debug_assert_eq!(self.pos, self.input.len() - 1);
+        None
+    }
 }
 
 #[cfg(test)]
@@ -142,13 +134,9 @@ mod tests {
     use super::*;
 
     fn lex_to_token_str(input: &str) -> String {
-        let mut tokens = vec![];
-        lex(&mut input.as_bytes(), |token| {
-            tokens.push(format!("{token:?}"));
-            Ok(())
-        })
-        .unwrap();
-
+        let tokens = Lexer::new(input.as_bytes())
+            .map(|token| format!("{token:?}"))
+            .collect::<Vec<_>>();
         tokens.join(" ")
     }
 
