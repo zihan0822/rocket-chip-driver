@@ -4,6 +4,7 @@
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
 mod parse;
+mod parser;
 mod serialize;
 mod solver;
 
