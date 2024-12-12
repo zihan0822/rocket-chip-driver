@@ -116,7 +116,7 @@ fn smt_bit_vec_str_to_value(a: &str) -> BitVecValue {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::smt::serialize::PatronSmtHelpers;
+    use crate::smt::convert::PatronSmtHelpers;
     use baa::ArrayOps;
     use baa::*;
     use easy_smt::*;
