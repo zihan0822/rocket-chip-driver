@@ -3,8 +3,6 @@
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
 use crate::expr::{Context, ExprRef};
-use crate::smt::parser::LexState::Searching;
-use crate::smt::parser::ParserItem::Parsed;
 use regex::bytes::{Captures, Match, Regex, RegexSet};
 use rustc_hash::FxHashMap;
 use std::fmt::{Debug, Formatter};
@@ -13,6 +11,10 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum SmtParserError {
+    #[error("[smt] unknown pattern: {0}")]
+    Pattern(String),
+    #[error("[smt] missing opening parenthesis for closing parenthesis")]
+    MissingOpen,
     #[error("[smt] unsupported feature {0}")]
     Unsupported(String),
     #[error("[smt] unknown symbol {0}")]
@@ -45,7 +47,15 @@ pub fn parse_expr(ctx: &mut Context, st: &mut SymbolTable, input: &[u8]) -> Resu
                 stack.push(Open);
             }
             Token::Close => {
-                todo!("deal with closing parens")
+                // find the closest Open
+                let open_pos = match stack.iter().rev().position(|i| matches!(i, Open)) {
+                    Some(p) => stack.len() - 1 - p,
+                    None => return Err(SmtParserError::MissingOpen),
+                };
+                let pattern = &stack[open_pos + 1..];
+                let result = parse_pattern(ctx, pattern)?;
+                stack.truncate(open_pos);
+                stack.push(result);
             }
             Token::Value(value) => {
                 stack.push(parse_value_token(ctx, st, value)?);
@@ -69,38 +79,73 @@ fn lookup_sym(st: &SymbolTable, name: &[u8]) -> Result<ExprRef> {
     }
 }
 
+fn parse_pattern<'a>(ctx: &mut Context, pattern: &[ParserItem<'a>]) -> Result<ParserItem<'a>> {
+    use ParserItem::*;
+    let expr = match pattern {
+        [BvLibSymbol(b"bvand"), Parsed(a), Parsed(b)] => ctx.and(*a, *b),
+        [BvLibSymbol(b"bvadd"), Parsed(a), Parsed(b)] => ctx.add(*a, *b),
+        other => {
+            return Err(SmtParserError::Pattern(format!("{other:?}")));
+        }
+    };
+    Ok(Parsed(expr))
+}
+
 /// parse an _unescaped_ token
-fn parse_value_token(ctx: &mut Context, st: &SymbolTable, value: &[u8]) -> Result<ParserItem> {
+fn parse_value_token<'a>(
+    ctx: &mut Context,
+    st: &SymbolTable,
+    value: &'a [u8],
+) -> Result<ParserItem<'a>> {
     let special_token_match = TOKEN_REGEX.matches(value);
     if let Some(match_id) = special_token_match.into_iter().next() {
         match match_id {
             0 => {
                 // binary
-                let value = baa::BitVecValue::from_bit_str(std::str::from_utf8(value)?)?;
-                Ok(Parsed(ctx.bv_lit(&value)))
+                let value = baa::BitVecValue::from_bit_str(std::str::from_utf8(&value[2..])?)?;
+                Ok(ParserItem::Parsed(ctx.bv_lit(&value)))
             }
             1 => {
                 // hex
-                let value = baa::BitVecValue::from_bit_str(std::str::from_utf8(value)?)?;
-                Ok(Parsed(ctx.bv_lit(&value)))
+                let value = baa::BitVecValue::from_bit_str(std::str::from_utf8(&value[2..])?)?;
+                Ok(ParserItem::Parsed(ctx.bv_lit(&value)))
             }
             2 => Err(SmtParserError::Unsupported(format!(
                 "decimal constant: {}",
                 String::from_utf8_lossy(value)
             ))),
             other => {
-                todo!("keyword: {}", String::from_utf8_lossy(value));
+                if other < RESERVED_WORDS.len() + 3 {
+                    Ok(ParserItem::Reserved(value))
+                } else if other < BV_LIB_SYMBOL.len() + RESERVED_WORDS.len() + 3 {
+                    Ok(ParserItem::BvLibSymbol(value))
+                } else {
+                    unreachable!("")
+                }
             }
         }
     } else {
         // otherwise we assume that this is a symbol
-        Ok(Parsed(lookup_sym(st, value)?))
+        Ok(ParserItem::Parsed(lookup_sym(st, value)?))
     }
 }
 
-enum ParserItem {
+enum ParserItem<'a> {
     Open,
     Parsed(ExprRef),
+    Reserved(&'a [u8]),
+    BvLibSymbol(&'a [u8]),
+}
+
+impl<'a> Debug for ParserItem<'a> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParserItem::Open => write!(f, "("),
+            ParserItem::Parsed(e) => write!(f, "{e:?}"),
+            ParserItem::Reserved(v) => write!(f, "R({})", String::from_utf8_lossy(v)),
+            ParserItem::BvLibSymbol(v) => write!(f, "B({})", String::from_utf8_lossy(v)),
+        }
+    }
 }
 
 const RESERVED_WORDS: &[&str] = &[
@@ -119,6 +164,13 @@ const RESERVED_WORDS: &[&str] = &[
     "STRING",
 ];
 
+const BV_LIB_SYMBOL: &[&str] = &[
+    "BitVec", "concat", "extract", // op1 is from:
+    "bvnot", "bvneg", // op2 is from:
+    "bvand", "bvor", "bvadd", "bvmul", "bvudiv", "bvurem", "bvshl", "bvlshr", //
+    "bvult",
+];
+
 const COMMANDS: &[&str] = &[
     "assert",
     // TODO
@@ -132,10 +184,12 @@ const NUMBER_PATTERNS: &[&str] = &[
 
 lazy_static! {
     static ref TOKEN_REGEX: RegexSet = RegexSet::new(
-        NUMBER_PATTERNS
-            .iter()
-            .map(|s| s.to_string())
-            .chain(RESERVED_WORDS.iter().map(|s| format!("^{s}$")))
+        NUMBER_PATTERNS.iter().map(|s| s.to_string()).chain(
+            RESERVED_WORDS
+                .iter()
+                .chain(BV_LIB_SYMBOL.iter())
+                .map(|s| format!("^{s}$"))
+        )
     )
     .unwrap();
 }
@@ -179,7 +233,7 @@ impl<'a> Lexer<'a> {
     fn new(input: &'a [u8]) -> Self {
         Self {
             input,
-            state: Searching,
+            state: LexState::Searching,
             pos: 0,
         }
     }
@@ -267,6 +321,6 @@ mod tests {
         let a = ctx.bv_symbol("a", 2);
         let mut symbols = FxHashMap::from_iter([("a".to_string(), a)]);
         let expr = parse_expr(&mut ctx, &mut symbols, &mut "(bvand a #b00)".as_bytes()).unwrap();
-        assert_eq!(expr, ctx.build(|c| c.add(a, c.bit_vec_val(0, 2))));
+        assert_eq!(expr, ctx.build(|c| c.and(a, c.bit_vec_val(0, 2))));
     }
 }
