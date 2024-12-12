@@ -12,7 +12,6 @@ pub type Result<T> = std::io::Result<T>;
 pub fn serialize_expr(out: &mut impl Write, ctx: &Context, expr: ExprRef) -> Result<()> {
     // we need to visit each expression "number of children + 1" times
     let mut todo: Vec<(ExprRef, u32)> = vec![(expr, 0)];
-    let mut child_vec: Vec<ExprRef> = Vec::with_capacity(4);
 
     while let Some((e, pc)) = todo.pop() {
         let expr = &ctx[e];
@@ -36,7 +35,7 @@ pub fn serialize_expr(out: &mut impl Write, ctx: &Context, expr: ExprRef) -> Res
                 Expr::BVSlice { .. } => todo!(),
                 Expr::BVNot(_, _) => todo!(),
                 Expr::BVNegate(_, _) => todo!(),
-                Expr::BVEqual(_, _) => todo!(),
+                Expr::BVEqual(_, _) => write!(out, "(=")?,
                 Expr::BVImplies(_, _) => todo!(),
                 Expr::BVGreater(_, _) => todo!(),
                 Expr::BVGreaterSigned(_, _, _) => todo!(),
