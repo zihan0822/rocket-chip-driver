@@ -2,17 +2,38 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
+use crate::expr::{Context, ExprRef};
+use rustc_hash::FxHashMap;
 use std::fmt::{Debug, Formatter};
 use std::io::{BufRead, Read};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum SmtParserError {
-    #[error("I/O operation failed")]
+    #[error("[smt] unsupported feature {0}")]
+    Unsupported(String),
+    #[error("[smt] I/O operation failed")]
     Io(#[from] std::io::Error),
 }
 
 type Result<T> = std::result::Result<T, SmtParserError>;
+
+type SymbolTable = FxHashMap<String, ExprRef>;
+
+pub fn parse_expr(
+    ctx: &mut Context,
+    st: &mut SymbolTable,
+    input: &mut impl BufRead,
+) -> Result<ExprRef> {
+    let on_token = |token: Token| {
+        println!("TODO: {:?}", token);
+        Ok(())
+    };
+
+    lex(input, on_token)?;
+
+    todo!()
+}
 
 enum Token<'a> {
     Open,
@@ -30,51 +51,87 @@ impl<'a> Debug for Token<'a> {
     }
 }
 
+#[derive(Debug)]
+enum LexState {
+    Searching,
+    ParsingToken,
+    ParsingEscapedToken,
+}
+
 /// lex SMTLib
 fn lex(input: &mut impl BufRead, mut on_token: impl FnMut(Token) -> Result<()>) -> Result<()> {
-    let mut in_escaped = false;
+    use LexState::*;
     let mut token_buf = Vec::with_capacity(128);
+    let mut state = Searching;
 
     for c in input.bytes() {
         let c = c?;
-        if in_escaped {
-            if c == b'|' {
-                on_token(Token::Value(&token_buf))?;
-                token_buf.clear();
-                in_escaped = false;
-            } else {
-                token_buf.push(c);
-            }
-        } else {
-            match c {
-                b'|' => {
-                    in_escaped = true;
-                }
-                b'(' => {
-                    if !token_buf.is_empty() {
-                        on_token(Token::Value(&token_buf))?;
-                        token_buf.clear();
+        state = match state {
+            Searching => {
+                debug_assert!(token_buf.is_empty());
+                match c {
+                    b'|' => ParsingEscapedToken,
+                    b'(' => {
+                        on_token(Token::Open)?;
+                        Searching
                     }
-                    on_token(Token::Open)?;
-                }
-                b')' => {
-                    if !token_buf.is_empty() {
-                        on_token(Token::Value(&token_buf))?;
-                        token_buf.clear();
+                    b')' => {
+                        on_token(Token::Close)?;
+                        Searching
                     }
-                    on_token(Token::Close)?;
-                }
-                b' ' | b'\n' | b'\r' => {
-                    if !token_buf.is_empty() {
-                        on_token(Token::Value(&token_buf))?;
-                        token_buf.clear();
+                    // White Space Characters: tab, line feed, carriage return or space
+                    b' ' | b'\n' | b'\r' | b'\t' => Searching,
+                    // string literals are currently not supported
+                    b'"' => return Err(SmtParserError::Unsupported("String Literal".to_string())),
+                    other => {
+                        token_buf.push(other);
+                        ParsingToken
                     }
-                }
-                other => {
-                    token_buf.push(other);
                 }
             }
-        }
+            ParsingToken => {
+                debug_assert!(!token_buf.is_empty());
+                match c {
+                    b'|' => {
+                        on_token(Token::Value(&token_buf))?;
+                        token_buf.clear();
+                        ParsingEscapedToken
+                    }
+                    b'(' => {
+                        on_token(Token::Value(&token_buf))?;
+                        token_buf.clear();
+                        on_token(Token::Open)?;
+                        Searching
+                    }
+                    b')' => {
+                        on_token(Token::Value(&token_buf))?;
+                        token_buf.clear();
+                        on_token(Token::Close)?;
+                        Searching
+                    }
+                    // White Space Characters: tab, line feed, carriage return or space
+                    b' ' | b'\n' | b'\r' | b'\t' => {
+                        on_token(Token::Value(&token_buf))?;
+                        token_buf.clear();
+                        Searching
+                    }
+                    other => {
+                        token_buf.push(other);
+                        ParsingToken
+                    }
+                }
+            }
+            ParsingEscapedToken => {
+                if c == b'|' {
+                    on_token(Token::Value(&token_buf))?;
+                    token_buf.clear();
+                    Searching
+                } else {
+                    token_buf.push(c);
+                    ParsingEscapedToken
+                }
+            }
+        };
     }
 
     Ok(())
@@ -101,5 +158,14 @@ mod tests {
         assert_eq!(lex_to_token_str(inp), "( + a b )");
         let inp = "(+ |a|    b     (      )";
         assert_eq!(lex_to_token_str(inp), "( + a b ( )");
+    }
+
+    #[test]
+    fn test_parser() {
+        let mut ctx = Context::default();
+        let a = ctx.bv_symbol("a", 2);
+        let mut symbols = FxHashMap::from_iter([("a".to_string(), a)]);
+        let expr = parse_expr(&mut ctx, &mut symbols, &mut "(bvand a #b00)".as_bytes()).unwrap();
+        assert_eq!(expr, ctx.build(|c| c.add(a, c.bit_vec_val(0, 2))));
     }
 }
