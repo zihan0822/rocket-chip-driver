@@ -57,6 +57,7 @@ pub enum SmtCommand {
     CheckSatAssuming(Vec<ExprRef>),
     Push(u64),
     Pop(u64),
+    GetValue(ExprRef),
 }
 
 /// The result of a `(check-sat)` command.
@@ -91,6 +92,7 @@ pub trait SolverContext {
     fn check_sat(&mut self) -> Result<CheckSatResponse>;
     fn push(&mut self) -> Result<()>;
     fn pop(&mut self) -> Result<()>;
+    fn get_value(&mut self, ctx: &mut Context, e: ExprRef) -> Result<ExprRef>;
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -315,17 +317,24 @@ impl<R: Write + Send> SolverContext for SmtLibSolverCtx<R> {
             Err(Error::StackUnderflow)
         }
     }
+
+    fn get_value(&mut self, ctx: &mut Context, e: ExprRef) -> Result<ExprRef> {
+        self.write_cmd(Some(ctx), &SmtCommand::GetValue(e))?;
+        self.read_response()?;
+        let response = self.response.trim();
+        todo!("parse get-value response: {response}")
+    }
 }
 
-const BITWUZLA: SmtLibSolver = SmtLibSolver {
+pub const BITWUZLA: SmtLibSolver = SmtLibSolver {
     name: "bitwuzla",
     args: &[],
-    options: &["incremental"],
+    options: &["incremental", "produce-models"],
     supports_uf: false,
     supports_check_assuming: true,
 };
 
-const YICES2: SmtLibSolver = SmtLibSolver {
+pub const YICES2: SmtLibSolver = SmtLibSolver {
     name: "yices-smt2",
     args: &["--incremental"],
     options: &[],
@@ -362,5 +371,7 @@ mod tests {
         solver.declare_const(&ctx, a).unwrap();
         let res = solver.check_sat_assuming(&ctx, [e]);
         assert_eq!(res.unwrap(), CheckSatResponse::Sat);
+        let value_of_a = solver.get_value(&mut ctx, a).unwrap();
+        assert_eq!(value_of_a, ctx.bit_vec_val(3, 3));
     }
 }

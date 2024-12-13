@@ -238,13 +238,14 @@ pub fn check_assuming_end(smt_ctx: &mut impl SolverContext, solver: &impl Solver
 }
 
 pub fn get_smt_value(smt_ctx: &mut impl SolverContext, expr: ExprRef, tpe: Type) -> Result<Value> {
-    let smt_value = smt_ctx.get_value(vec![expr])?[0].1;
-    let res = if tpe.is_array() {
-        Value::Array(parse_smt_array(smt_ctx, smt_value).unwrap())
-    } else {
-        Value::BitVec(parse_smt_bit_vec(smt_ctx, smt_value).unwrap())
-    };
-    Ok(res)
+    // let smt_value = smt_ctx.get_value(vec![expr])?[0].1;
+    // let res = if tpe.is_array() {
+    //     Value::Array(parse_smt_array(smt_ctx, smt_value).unwrap())
+    // } else {
+    //     Value::BitVec(parse_smt_bit_vec(smt_ctx, smt_value).unwrap())
+    // };
+    // Ok('res)
+    todo!("extract value from solver!")
 }
 
 pub enum ModelCheckResult {

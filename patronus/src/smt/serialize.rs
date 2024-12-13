@@ -128,15 +128,21 @@ pub fn serialize_cmd(out: &mut impl Write, ctx: Option<&Context>, cmd: &SmtComma
         }
         SmtCommand::CheckSatAssuming(exprs) => {
             let ctx = ctx.unwrap();
-            write!(out, "(check-sat-assuming")?;
+            write!(out, "(check-sat-assuming (")?;
             for &e in exprs.iter() {
-                write!(out, " ")?;
                 serialize_expr(out, ctx, e)?;
+                write!(out, " ")?;
             }
-            writeln!(out, ")")
+            writeln!(out, "))")
         }
         SmtCommand::Push(n) => writeln!(out, "(push {n})"),
         SmtCommand::Pop(n) => writeln!(out, "(pop {n})"),
+        SmtCommand::GetValue(e) => {
+            let ctx = ctx.unwrap();
+            write!(out, "(get-value (")?;
+            serialize_expr(out, ctx, *e)?;
+            writeln!(out, "))")
+        }
     }
 }
 

@@ -5,6 +5,7 @@
 
 use clap::{Parser, ValueEnum};
 use patronus::expr::*;
+use patronus::smt::{Solver, BITWUZLA, YICES2};
 use patronus::*;
 
 #[derive(Parser, Debug)]
@@ -19,7 +20,7 @@ struct Args {
         default_value = "bitwuzla",
         help = "the SMT solver to use"
     )]
-    solver: Solver,
+    solver: SolverChoice,
     #[arg(short, long)]
     verbose: bool,
     #[arg(short, long)]
@@ -29,7 +30,7 @@ struct Args {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
-pub enum Solver {
+pub enum SolverChoice {
     Bitwuzla,
     Yices2,
 }
@@ -50,13 +51,13 @@ fn main() {
         save_smt_replay: args.dump_smt,
     };
     let solver = match args.solver {
-        Solver::Bitwuzla => mc::BITWUZLA_CMD,
-        Solver::Yices2 => mc::YICES2_CMD,
+        SolverChoice::Bitwuzla => BITWUZLA,
+        SolverChoice::Yices2 => YICES2,
     };
     if args.verbose {
         println!(
             "Checking up to {k_max} using {} and the following options:\n{checker_opts:?}",
-            solver.name
+            solver.name()
         );
     }
     let checker = mc::SmtModelChecker::new(solver, checker_opts);
