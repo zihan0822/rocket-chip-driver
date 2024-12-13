@@ -3,6 +3,7 @@
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
 use crate::expr::{Context, ExprRef};
+use crate::smt::parser::{parse_get_value_response, SmtParserError};
 use crate::smt::serialize::serialize_cmd;
 use std::io::{BufRead, BufReader, BufWriter};
 use std::io::{Read, Write};
@@ -22,6 +23,8 @@ pub enum Error {
     SolverDead(String),
     #[error("[smt] {0} returned an unexpected response:\n{1}")]
     UnexpectedResponse(String, String),
+    #[error("[smt] failed to parse a response")]
+    Parser(#[from] SmtParserError),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -322,7 +325,8 @@ impl<R: Write + Send> SolverContext for SmtLibSolverCtx<R> {
         self.write_cmd(Some(ctx), &SmtCommand::GetValue(e))?;
         self.read_response()?;
         let response = self.response.trim();
-        todo!("parse get-value response: {response}")
+        let expr = parse_get_value_response(ctx, response.as_bytes())?;
+        Ok(expr)
     }
 }
 

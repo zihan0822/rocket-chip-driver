@@ -5,11 +5,14 @@
 use crate::expr::{ArrayType, Context, ExprRef, Type, TypeCheck, WidthInt};
 use regex::bytes::RegexSet;
 use rustc_hash::FxHashMap;
+use std::cmp::Ordering;
 use std::fmt::{Debug, Formatter};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum SmtParserError {
+    #[error("[smt] get-value response: {0}")]
+    GetValueResponse(String),
     #[error("[smt] expected an expression but got: {0}")]
     ExpectedExpr(String),
     #[error("[smt] expected a type but got: {0}")]
@@ -47,38 +50,119 @@ type Result<T> = std::result::Result<T, SmtParserError>;
 type SymbolTable = FxHashMap<String, ExprRef>;
 
 pub fn parse_expr(ctx: &mut Context, st: &mut SymbolTable, input: &[u8]) -> Result<ExprRef> {
+    let lexer = Lexer::new(input);
+    let (expr, extra_closing_parens) = parse_expr_internal(ctx, st, lexer)?;
+    if extra_closing_parens == 0 {
+        Ok(expr)
+    } else {
+        Err(SmtParserError::MissingOpen)
+    }
+}
+
+fn parse_expr_internal(
+    ctx: &mut Context,
+    st: &mut SymbolTable,
+    lexer: Lexer,
+) -> Result<(ExprRef, u64)> {
     use ParserItem::*;
     let mut stack: Vec<ParserItem> = Vec::with_capacity(64);
-    let lexer = Lexer::new(input);
+    // keep track of how many closing parenthesis without an opening one are encountered
+    let mut orphan_closing_count = 0u64;
     for token in lexer {
         match token {
             Token::Open => {
+                if orphan_closing_count > 0 {
+                    return Err(SmtParserError::MissingOpen);
+                }
                 stack.push(Open);
             }
             Token::Close => {
                 // find the closest Open
-                let open_pos = match stack.iter().rev().position(|i| matches!(i, Open)) {
-                    Some(p) => stack.len() - 1 - p,
-                    None => return Err(SmtParserError::MissingOpen),
-                };
-                let pattern = &stack[open_pos + 1..];
-                let result = parse_pattern(ctx, st, pattern)?;
-                stack.truncate(open_pos);
-                stack.push(result);
+                if let Some(p) = stack.iter().rev().position(|i| matches!(i, Open)) {
+                    let open_pos = stack.len() - 1 - p;
+                    let pattern = &stack[open_pos + 1..];
+                    let result = parse_pattern(ctx, st, pattern)?;
+                    stack.truncate(open_pos);
+                    stack.push(result);
+                } else {
+                    // no matching open parenthesis
+                    orphan_closing_count += 1;
+                }
             }
             Token::Value(value) => {
+                if orphan_closing_count > 0 {
+                    return Err(SmtParserError::MissingOpen);
+                }
                 // we eagerly parse number literals, but we do not make decisions on symbols yet
                 stack.push(early_parse_number_literals(ctx, value)?);
             }
-            Token::EscapedValue(value) => stack.push(PExpr(lookup_sym(st, value)?)),
+            Token::EscapedValue(value) => {
+                if orphan_closing_count > 0 {
+                    return Err(SmtParserError::MissingOpen);
+                }
+                stack.push(PExpr(lookup_sym(st, value)?))
+            }
         }
     }
 
     if let [PExpr(e)] = stack.as_slice() {
-        Ok(*e)
+        Ok((*e, orphan_closing_count))
     } else {
         todo!("error message!")
     }
+}
+
+/// Extracts the value expression from SMT solver responses of the form ((... value))
+/// We expect value to be self contained and thus no symbol table should be necessary.
+pub fn parse_get_value_response(ctx: &mut Context, input: &[u8]) -> Result<ExprRef> {
+    let mut lexer = Lexer::new(input);
+
+    // skip `(`
+    let open_one = lexer.next() == Some(Token::Open);
+    let open_two = lexer.next() == Some(Token::Open);
+    if !open_one || !open_two {
+        return Err(SmtParserError::GetValueResponse(
+            "expected two opening parentheses".to_string(),
+        ));
+    }
+
+    // skip next expr
+    if !skip_expr(&mut lexer) {
+        return Err(SmtParserError::GetValueResponse(
+            "failed to find first expression".to_string(),
+        ));
+    }
+
+    // parse next expr
+    let mut st = FxHashMap::default();
+    let (expr, extra_closing_parens) = parse_expr_internal(ctx, &mut st, lexer)?;
+    match extra_closing_parens.cmp(&2) {
+        Ordering::Less => Err(SmtParserError::GetValueResponse(
+            "expected two closing parentheses".to_string(),
+        )),
+        Ordering::Equal => Ok(expr),
+        Ordering::Greater => Err(SmtParserError::MissingOpen),
+    }
+}
+
+fn skip_expr(lexer: &mut Lexer) -> bool {
+    let mut open_count = 0u64;
+    while let Some(token) = lexer.next() {
+        match token {
+            Token::Open => {
+                open_count += 1;
+            }
+            Token::Close => {
+                open_count -= 1;
+                if open_count == 0 {
+                    return true;
+                }
+            }
+            _ => return true,
+        }
+    }
+    // reached end of tokens
+    false
 }
 
 fn lookup_sym(st: &SymbolTable, name: &[u8]) -> Result<ExprRef> {
@@ -137,14 +221,6 @@ fn expr(st: &SymbolTable, item: &ParserItem<'_>) -> Result<ExprRef> {
     }
 }
 
-/// errors if the item cannot be directly converted to a type
-fn tpe(item: &ParserItem<'_>) -> Result<Type> {
-    match item {
-        ParserItem::PType(t) => Ok(*t),
-        other => Err(SmtParserError::ExpectedType(format!("{other:?}"))),
-    }
-}
-
 fn early_parse_number_literals<'a>(ctx: &mut Context, value: &'a [u8]) -> Result<ParserItem<'a>> {
     if let Some(match_id) = NUM_LIT_REGEX.matches(value).into_iter().next() {
         match match_id {
@@ -195,34 +271,6 @@ impl<'a> Debug for ParserItem<'a> {
     }
 }
 
-const RESERVED_WORDS: &[&str] = &[
-    "_",
-    "!",
-    "as",
-    "let",
-    "exists",
-    "forall",
-    "match",
-    "par",
-    "BINARY",
-    "DECIMAL",
-    "HEXADECIMAL",
-    "NUMERAL",
-    "STRING",
-];
-
-const BV_LIB_SYMBOL: &[&str] = &[
-    "BitVec", "concat", "extract", // op1 is from:
-    "bvnot", "bvneg", // op2 is from:
-    "bvand", "bvor", "bvadd", "bvmul", "bvudiv", "bvurem", "bvshl", "bvlshr", //
-    "bvult",
-];
-
-const COMMANDS: &[&str] = &[
-    "assert",
-    // TODO
-];
-
 lazy_static! {
     static ref NUM_LIT_REGEX: RegexSet = RegexSet::new([
         r"^#b[01]+$",                    // binary
@@ -241,6 +289,7 @@ struct Lexer<'a> {
     pos: usize,
 }
 
+#[derive(Eq, PartialEq)]
 enum Token<'a> {
     Open,
     Close,
@@ -358,8 +407,15 @@ mod tests {
         let mut ctx = Context::default();
         let a = ctx.bv_symbol("a", 2);
         let mut symbols = FxHashMap::from_iter([("a".to_string(), a)]);
-        let expr = parse_expr(&mut ctx, &mut symbols, &mut "(bvand a #b00)".as_bytes()).unwrap();
+        let expr = parse_expr(&mut ctx, &mut symbols, "(bvand a #b00)".as_bytes()).unwrap();
         assert_eq!(expr, ctx.build(|c| c.and(a, c.bit_vec_val(0, 2))));
+    }
+
+    #[test]
+    fn test_get_value_parser() {
+        let mut ctx = Context::default();
+        let expr = parse_get_value_response(&mut ctx, "((a #b011))".as_bytes()).unwrap();
+        assert_eq!(expr, ctx.bit_vec_val(3, 3));
     }
 
     #[test]

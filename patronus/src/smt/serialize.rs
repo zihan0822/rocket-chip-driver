@@ -3,7 +3,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
-use crate::expr::{Context, Expr, ExprRef, ForEachChild, SerializableIrNode, Type, TypeCheck};
+use crate::expr::{Context, Expr, ExprRef, ForEachChild, Type, TypeCheck};
 use crate::smt::solver::SmtCommand;
 use baa::BitVecOps;
 use std::io::Write;
