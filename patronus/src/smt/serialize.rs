@@ -3,24 +3,35 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
-use crate::expr::{Context, Expr, ExprRef, ForEachChild, Type, TypeCheck};
+use crate::expr::{Context, Expr, ExprRef, ForEachChild, SerializableIrNode, Type, TypeCheck};
 use crate::smt::solver::SmtCommand;
 use baa::BitVecOps;
 use std::io::Write;
+use std::ptr::write;
 
 pub type Result<T> = std::io::Result<T>;
 
 pub fn serialize_expr(out: &mut impl Write, ctx: &Context, expr: ExprRef) -> Result<()> {
-    // we need to visit each expression "number of children + 1" times
-    let mut todo: Vec<(ExprRef, u32)> = vec![(expr, 0)];
+    println!("{}", expr.serialize_to_str(ctx));
 
-    while let Some((e, pc)) = todo.pop() {
+    // we need to visit each expression "number of children + 1" times
+    let mut todo: Vec<(ExprRef, u32, bool)> = vec![(expr, 0, false)];
+
+    while let Some((e, pc, must_be_bit_vec)) = todo.pop() {
         let expr = &ctx[e];
-        if pc == 0 {
+        let convert_result_to_bv = e.get_bv_type(ctx) == Some(1) && must_be_bit_vec;
+
+        let child_must_be_bit_vec: bool = if pc == 0 {
+            if convert_result_to_bv {
+                // 1-bit results are normally bool, we need to convert them to bit-vec
+                write!(out, "(ite ")?;
+            }
+
             // first time we visit
             match expr {
                 Expr::BVSymbol { name, .. } => {
-                    write!(out, "{}", escape_smt_identifier(&ctx[*name]))?
+                    write!(out, "{}", escape_smt_identifier(&ctx[*name]))?;
+                    false
                 }
                 Expr::BVLiteral(v) => {
                     let value = v.get(ctx);
@@ -32,49 +43,235 @@ pub fn serialize_expr(out: &mut impl Write, ctx: &Context, expr: ExprRef) -> Res
                         debug_assert!(value.is_fals());
                         write!(out, "false")?;
                     }
+                    false
                 }
-                Expr::BVZeroExt { .. } => todo!(),
-                Expr::BVSignExt { .. } => todo!(),
-                Expr::BVSlice { .. } => todo!(),
-                Expr::BVNot(_, _) => todo!(),
-                Expr::BVNegate(_, _) => todo!(),
-                Expr::BVEqual(_, _) => write!(out, "(=")?,
-                Expr::BVImplies(_, _) => todo!(),
-                Expr::BVGreater(_, _) => todo!(),
-                Expr::BVGreaterSigned(_, _, _) => todo!(),
-                Expr::BVGreaterEqual(_, _) => todo!(),
-                Expr::BVGreaterEqualSigned(_, _, _) => todo!(),
-                Expr::BVConcat(_, _, _) => todo!(),
-                Expr::BVAnd(_, _, _) => todo!(),
-                Expr::BVOr(_, _, _) => todo!(),
-                Expr::BVXor(_, _, _) => todo!(),
-                Expr::BVShiftLeft(_, _, _) => todo!(),
-                Expr::BVArithmeticShiftRight(_, _, _) => todo!(),
-                Expr::BVShiftRight(_, _, _) => todo!(),
-                Expr::BVAdd(_, _, _) => todo!(),
-                Expr::BVMul(_, _, _) => todo!(),
-                Expr::BVSignedDiv(_, _, _) => todo!(),
-                Expr::BVUnsignedDiv(_, _, _) => todo!(),
-                Expr::BVSignedMod(_, _, _) => todo!(),
-                Expr::BVSignedRem(_, _, _) => todo!(),
-                Expr::BVUnsignedRem(_, _, _) => todo!(),
-                Expr::BVSub(_, _, _) => todo!(),
-                Expr::BVArrayRead { .. } => todo!(),
-                Expr::BVIte { .. } => todo!(),
-                Expr::ArraySymbol { .. } => todo!(),
-                Expr::ArrayConstant { .. } => todo!(),
-                Expr::ArrayEqual(_, _) => todo!(),
-                Expr::ArrayStore { .. } => todo!(),
-                Expr::ArrayIte { .. } => todo!(),
+                Expr::BVZeroExt { e, by, .. } => {
+                    let width = e.get_bv_type(ctx).expect("zext only works on bv expr");
+                    if width == 1 {
+                        // this encoding avoids the zext by using an ite on the expanded true/false case
+                        write!(out, "(ite ")?;
+                    } else {
+                        write!(out, "((_ zero_extend {by}) ")?;
+                    }
+                    // or special approach allows us to deal with booleans
+                    false
+                }
+                Expr::BVSignExt { by, .. } => {
+                    write!(out, "((_ sign_extend {by}) ")?;
+                    true
+                }
+                Expr::BVSlice { e, hi, lo } => {
+                    let width = e.get_bv_type(ctx).expect("slice only works on bv expr");
+                    // skip no-op bit extracts (this helps us avoid slices on boolean values)
+                    if *lo == 0 && width - 1 == *hi {
+                        // nothing to do
+                    } else {
+                        let result_width = *hi - *lo + 1;
+                        if result_width == 1 {
+                            // convert to a bool
+                            write!(out, "(= ((_ extract {hi} {lo}) ")?;
+                        } else {
+                            write!(out, "((_ extract {hi} {lo}) ")?;
+                        }
+                    }
+                    // we can work with boolean values, since 1-bit values can only have no-op
+                    // slices which we ignore
+                    false
+                }
+                Expr::BVNot(e, _) => {
+                    if e.get_type(ctx).is_bool() {
+                        write!(out, "(not ")?;
+                    } else {
+                        write!(out, "(bvnot ")?;
+                    }
+                    false
+                }
+                Expr::BVNegate(_, _) => {
+                    write!(out, "(bvneg ")?;
+                    true
+                }
+                Expr::BVEqual(_, _) => {
+                    write!(out, "(= ")?;
+                    false
+                }
+                Expr::BVImplies(a, b) => {
+                    debug_assert!(a.get_type(ctx).is_bool());
+                    debug_assert!(b.get_type(ctx).is_bool());
+                    write!(out, "(=> ")?;
+                    false
+                }
+                Expr::BVGreater(_, _) => {
+                    write!(out, "(bvugt ")?;
+                    true
+                }
+                Expr::BVGreaterSigned(_, _, _) => {
+                    write!(out, "(bvsgt ")?;
+                    true
+                }
+                Expr::BVGreaterEqual(_, _) => {
+                    write!(out, "(bvuge ")?;
+                    true
+                }
+                Expr::BVGreaterEqualSigned(_, _, _) => {
+                    write!(out, "(bvsge ")?;
+                    true
+                }
+                Expr::BVConcat(_, _, _) => {
+                    write!(out, "(concat ")?;
+                    true
+                }
+                Expr::BVAnd(_, _, _) => {
+                    if e.get_type(ctx).is_bool() {
+                        write!(out, "(and ")?;
+                    } else {
+                        write!(out, "(bvand ")?;
+                    }
+                    false
+                }
+                Expr::BVOr(_, _, _) => {
+                    if e.get_type(ctx).is_bool() {
+                        write!(out, "(or ")?;
+                    } else {
+                        write!(out, "(bvor ")?;
+                    }
+                    false
+                }
+                Expr::BVXor(_, _, _) => {
+                    if e.get_type(ctx).is_bool() {
+                        write!(out, "(xor ")?;
+                    } else {
+                        write!(out, "(bvxor ")?;
+                    }
+                    false
+                }
+                Expr::BVShiftLeft(_, _, _) => {
+                    write!(out, "(bvshl ")?;
+                    true
+                }
+                Expr::BVArithmeticShiftRight(_, _, _) => {
+                    write!(out, "(bvashr ")?;
+                    true
+                }
+                Expr::BVShiftRight(_, _, _) => {
+                    write!(out, "(bvlshr ")?;
+                    true
+                }
+                Expr::BVAdd(_, _, _) => {
+                    write!(out, "(bvadd ")?;
+                    true
+                }
+                Expr::BVMul(_, _, _) => {
+                    write!(out, "(bvmul ")?;
+                    true
+                }
+                Expr::BVSignedDiv(_, _, _) => {
+                    write!(out, "(bvsdiv ")?;
+                    true
+                }
+                Expr::BVUnsignedDiv(_, _, _) => {
+                    write!(out, "(bvudiv ")?;
+                    true
+                }
+                Expr::BVSignedMod(_, _, _) => {
+                    write!(out, "(bvsmod ")?;
+                    true
+                }
+                Expr::BVSignedRem(_, _, _) => {
+                    write!(out, "(bvsrem ")?;
+                    true
+                }
+                Expr::BVUnsignedRem(_, _, _) => {
+                    write!(out, "(bvurem ")?;
+                    true
+                }
+                Expr::BVSub(_, _, _) => {
+                    write!(out, "(bvsub ")?;
+                    true
+                }
+                Expr::BVArrayRead { .. } => {
+                    write!(out, "(select ")?;
+                    false
+                }
+                Expr::BVIte { .. } => {
+                    write!(out, "(ite ")?;
+                    false
+                }
+                Expr::ArraySymbol { name, .. } => {
+                    write!(out, "{}", escape_smt_identifier(&ctx[*name]))?;
+                    false
+                }
+                Expr::ArrayConstant { .. } => {
+                    write!(out, "((as const ")?;
+                    let tpe = expr.get_type(ctx);
+                    serialize_type(out, tpe)?;
+                    write!(out, ") ")?;
+                    false
+                }
+                Expr::ArrayEqual(_, _) => {
+                    write!(out, "(= ")?;
+                    false
+                }
+                Expr::ArrayStore { .. } => {
+                    write!(out, "(store ")?;
+                    false
+                }
+                Expr::ArrayIte { .. } => {
+                    write!(out, "(ite ")?;
+                    false
+                }
             }
-        }
+        } else {
+            matches!(
+                expr,
+                // expressions that require their 2nd+ children to be a bitvector
+                // note: result should not matter for expressions with 0 or 1 child
+                Expr::BVGreater(_, _)
+                    | Expr::BVGreaterSigned(_, _, _)
+                    | Expr::BVGreaterEqual(_, _)
+                    | Expr::BVGreaterEqualSigned(_, _, _)
+                    | Expr::BVConcat(_, _, _)
+                    | Expr::BVShiftLeft(_, _, _)
+                    | Expr::BVArithmeticShiftRight(_, _, _)
+                    | Expr::BVShiftRight(_, _, _)
+                    | Expr::BVAdd(_, _, _)
+                    | Expr::BVMul(_, _, _)
+                    | Expr::BVSignedDiv(_, _, _)
+                    | Expr::BVUnsignedDiv(_, _, _)
+                    | Expr::BVSignedMod(_, _, _)
+                    | Expr::BVSignedRem(_, _, _)
+                    | Expr::BVUnsignedRem(_, _, _)
+                    | Expr::BVSub(_, _, _)
+            )
+        };
 
         if let Some(next_child) = find_next_child(pc, expr) {
             write!(out, " ")?;
-            todo.push((e, pc + 1));
-            todo.push((next_child, 0));
-        } else if pc > 0 {
-            write!(out, ")")?;
+            todo.push((e, pc + 1, must_be_bit_vec));
+            todo.push((next_child, 0, child_must_be_bit_vec));
+        } else {
+            // we had to serialize some children first => we need a closing parenthesis
+            if pc > 0 {
+                // special continuation for zero extend of booleans (for which we use an ite)
+                if let Expr::BVZeroExt { e, by, .. } = expr {
+                    if e.get_type(ctx).is_bool() {
+                        let zeros = "0".repeat(*by as usize);
+                        write!(out, " #b{}1 #b{}0", zeros, zeros)?;
+                    }
+                }
+                // everyone gets a closing parenthesis
+                write!(out, ")")?;
+                // special continuation for slice with a 1-bit result
+                if let Expr::BVSlice { hi, lo, .. } = expr {
+                    if hi == lo {
+                        // slice(...) == 1?
+                        write!(out, " #b1)")?;
+                    }
+                }
+            }
+            if convert_result_to_bv {
+                // 1-bit results are normally bool, we need to convert them to bit-vec
+                write!(out, " #b1 #b0)")?;
+            }
         }
     }
     Ok(())
