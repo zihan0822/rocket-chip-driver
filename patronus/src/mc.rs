@@ -7,7 +7,6 @@ mod types;
 
 pub use smt::{
     check_assuming, check_assuming_end, get_smt_value, ModelCheckResult, SmtModelChecker,
-    SmtModelCheckerOptions, SmtSolverCmd, TransitionSystemEncoding, UnrollSmtEncoding,
-    BITWUZLA_CMD, YICES2_CMD,
+    SmtModelCheckerOptions, TransitionSystemEncoding, UnrollSmtEncoding,
 };
 pub use types::{InitValue, Witness};

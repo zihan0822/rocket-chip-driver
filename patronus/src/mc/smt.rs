@@ -10,33 +10,7 @@ use crate::smt::*;
 use crate::system::analysis::{analyze_for_serialization, count_expr_uses, UseCountInt, Uses};
 use crate::system::{State, TransitionSystem};
 use baa::*;
-use easy_smt as smt;
 use rustc_hash::FxHashSet;
-
-#[derive(Debug, Clone, Copy)]
-pub struct SmtSolverCmd {
-    pub name: &'static str,
-    pub args: &'static [&'static str],
-    pub options: &'static [&'static str],
-    pub supports_uf: bool,
-    pub supports_check_assuming: bool,
-}
-
-pub const BITWUZLA_CMD: SmtSolverCmd = SmtSolverCmd {
-    name: "bitwuzla",
-    args: &[],
-    options: &["incremental"],
-    supports_uf: false,
-    supports_check_assuming: true,
-};
-
-pub const YICES2_CMD: SmtSolverCmd = SmtSolverCmd {
-    name: "yices-smt2",
-    args: &["--incremental"],
-    options: &[],
-    supports_uf: false, // actually true, but ignoring for now
-    supports_check_assuming: false,
-};
 
 #[derive(Debug, Clone, Copy)]
 pub struct SmtModelCheckerOptions {
@@ -48,15 +22,15 @@ pub struct SmtModelCheckerOptions {
     pub save_smt_replay: bool,
 }
 
-pub struct SmtModelChecker {
-    solver: SmtSolverCmd,
+pub struct SmtModelChecker<S: Solver> {
+    solver: S,
     opts: SmtModelCheckerOptions,
 }
 
-type Result<T> = std::io::Result<T>;
+type Result<T> = crate::smt::Result<T>;
 
-impl SmtModelChecker {
-    pub fn new(solver: SmtSolverCmd, opts: SmtModelCheckerOptions) -> Self {
+impl<S: Solver> SmtModelChecker<S> {
+    pub fn new(solver: S, opts: SmtModelCheckerOptions) -> Self {
         Self { solver, opts }
     }
 
@@ -72,23 +46,15 @@ impl SmtModelChecker {
         } else {
             None
         };
-        let mut smt_ctx = easy_smt::ContextBuilder::new()
-            .solver(self.solver.name, self.solver.args)
-            .replay_file(replay_file)
-            .build()?;
-
-        // older versions of bitwuzla need incremental to be set with an option
-        for opt in self.solver.options.iter() {
-            smt_ctx.set_option(format!(":{}", *opt), smt_ctx.true_())?;
-        }
+        let mut smt_ctx = self.solver.start(replay_file);
 
         // z3 only supports the non-standard as-const array syntax when the logic is set to ALL
-        let logic = if self.solver.name == "z3" {
-            "ALL"
-        } else if self.solver.supports_uf {
-            "QF_AUFBV"
+        let logic = if self.solver.name() == "z3" {
+            Logic::All
+        } else if self.solver.supports_uf() {
+            Logic::QfAufbv
         } else {
-            "QF_ABV"
+            Logic::QfAbv
         };
         smt_ctx.set_logic(logic)?;
 
@@ -103,16 +69,16 @@ impl SmtModelChecker {
         for k in 0..=k_max {
             // assume all constraints hold in this step
             for expr_ref in constraints.iter() {
-                let expr = enc.get_at(ctx, &mut smt_ctx, *expr_ref, k);
-                smt_ctx.assert(expr)?;
+                let expr = enc.get_at(ctx, *expr_ref, k);
+                smt_ctx.assert(&ctx, expr)?;
             }
 
             // make sure the constraints are not contradictory
             if self.opts.check_constraints {
-                let res = smt_ctx.check()?;
+                let res = smt_ctx.check_sat()?;
                 assert_eq!(
                     res,
-                    smt::Response::Sat,
+                    CheckSatResponse::Sat,
                     "Found unsatisfiable constraints in cycle {}",
                     k
                 );
@@ -120,12 +86,12 @@ impl SmtModelChecker {
 
             if self.opts.check_bad_states_individually {
                 for (_bs_id, expr_ref) in bad_states.iter().enumerate() {
-                    let expr = enc.get_at(ctx, &mut smt_ctx, *expr_ref, k);
+                    let expr = enc.get_at(ctx, *expr_ref, k);
                     let res = check_assuming(&mut smt_ctx, expr, &self.solver)?;
 
                     // count expression uses
                     let use_counts = count_expr_uses(ctx, sys);
-                    if res == smt::Response::Sat {
+                    if res == CheckSatResponse::Sat {
                         let wit = self.get_witness(
                             sys,
                             ctx,
@@ -149,7 +115,7 @@ impl SmtModelChecker {
 
                 // count expression uses
                 let use_counts = count_expr_uses(ctx, sys);
-                if res == smt::Response::Sat {
+                if res == CheckSatResponse::Sat {
                     let wit = self.get_witness(
                         sys,
                         ctx,
@@ -244,34 +210,32 @@ impl SmtModelChecker {
 
 #[inline]
 pub fn check_assuming(
-    smt_ctx: &mut smt::Context,
-    assumption: smt::SExpr,
-    solver: &SmtSolverCmd,
-) -> std::io::Result<smt::Response> {
-    if solver.supports_check_assuming {
-        smt_ctx.check_assuming([assumption])
+    ctx: &Context,
+    smt_ctx: &mut impl SolverContext,
+    assumption: ExprRef,
+    solver: &impl Solver,
+) -> Result<CheckSatResponse> {
+    if solver.supports_check_assuming() {
+        smt_ctx.check_sat_assuming(ctx, [assumption])
     } else {
-        smt_ctx.push_many(1)?; // add new assertion
-        smt_ctx.assert(assumption)?;
-        let res = smt_ctx.check()?;
+        smt_ctx.push()?; // add new assertion
+        smt_ctx.assert(ctx, assumption)?;
+        let res = smt_ctx.check_sat()?;
         Ok(res)
     }
 }
 
 // pops context for solver that do not support check assuming
 #[inline]
-pub fn check_assuming_end(
-    smt_ctx: &mut smt::Context,
-    solver: &SmtSolverCmd,
-) -> std::io::Result<()> {
-    if !solver.supports_check_assuming {
-        smt_ctx.pop_many(1)
+pub fn check_assuming_end(smt_ctx: &mut impl SolverContext, solver: &impl Solver) -> Result<()> {
+    if !solver.supports_check_assuming() {
+        smt_ctx.pop()
     } else {
         Ok(())
     }
 }
 
-pub fn get_smt_value(smt_ctx: &mut smt::Context, expr: smt::SExpr, tpe: Type) -> Result<Value> {
+pub fn get_smt_value(smt_ctx: &mut impl SolverContext, expr: ExprRef, tpe: Type) -> Result<Value> {
     let smt_value = smt_ctx.get_value(vec![expr])?[0].1;
     let res = if tpe.is_array() {
         Value::Array(parse_smt_array(smt_ctx, smt_value).unwrap())
@@ -287,17 +251,16 @@ pub enum ModelCheckResult {
 }
 
 pub trait TransitionSystemEncoding {
-    fn define_header(&self, smt_ctx: &mut smt::Context) -> Result<()>;
-    fn init_at(&mut self, ctx: &mut Context, smt_ctx: &mut smt::Context, step: u64) -> Result<()>;
-    fn unroll(&mut self, ctx: &mut Context, smt_ctx: &mut smt::Context) -> Result<()>;
+    fn define_header(&self, smt_ctx: &mut impl SolverContext) -> Result<()>;
+    fn init_at(
+        &mut self,
+        ctx: &mut Context,
+        smt_ctx: &mut impl SolverContext,
+        step: u64,
+    ) -> Result<()>;
+    fn unroll(&mut self, ctx: &mut Context, smt_ctx: &mut impl SolverContext) -> Result<()>;
     /// Allows access to inputs, states, constraints and bad_state expressions.
-    fn get_at(
-        &self,
-        ctx: &Context,
-        smt_ctx: &mut smt::Context,
-        expr: ExprRef,
-        k: u64,
-    ) -> smt::SExpr;
+    fn get_at(&self, ctx: &Context, expr: ExprRef, k: u64) -> ExprRef;
 }
 
 pub struct UnrollSmtEncoding {
@@ -401,7 +364,7 @@ impl UnrollSmtEncoding {
     fn define_signals(
         &self,
         ctx: &mut Context,
-        smt_ctx: &mut smt::Context,
+        smt_ctx: &mut impl SolverContext,
         step: u64,
         filter: &impl Fn(&SmtSignalInfo) -> bool,
     ) -> Result<()> {
@@ -459,13 +422,7 @@ impl UnrollSmtEncoding {
         }
     }
 
-    fn expr_in_step(
-        &self,
-        ctx: &Context,
-        smt_ctx: &mut smt::Context,
-        expr: ExprRef,
-        step: u64,
-    ) -> smt::SExpr {
+    fn expr_in_step(&self, ctx: &Context, expr: ExprRef, step: u64) -> ExprRef {
         let expr_is_symbol = ctx[expr].is_symbol();
         let patch = |e: &ExprRef| -> Option<ExprRef> {
             // If the expression we are trying to serialize is not a symbol, then wo
@@ -481,12 +438,17 @@ impl UnrollSmtEncoding {
 }
 
 impl TransitionSystemEncoding for UnrollSmtEncoding {
-    fn define_header(&self, _smt_ctx: &mut smt::Context) -> Result<()> {
+    fn define_header(&self, _smt_ctx: &mut impl SolverContext) -> Result<()> {
         // nothing to do in this encoding
         Ok(())
     }
 
-    fn init_at(&mut self, ctx: &mut Context, smt_ctx: &mut smt::Context, step: u64) -> Result<()> {
+    fn init_at(
+        &mut self,
+        ctx: &mut Context,
+        smt_ctx: &mut impl SolverContext,
+        step: u64,
+    ) -> Result<()> {
         // delete old mutable state
         self.symbols_at.clear();
         // remember current step and starting offset
@@ -533,7 +495,7 @@ impl TransitionSystemEncoding for UnrollSmtEncoding {
         Ok(())
     }
 
-    fn unroll(&mut self, ctx: &mut Context, smt_ctx: &mut smt::Context) -> Result<()> {
+    fn unroll(&mut self, ctx: &mut Context, smt_ctx: &mut impl SolverContext) -> Result<()> {
         let prev_step = self.current_step.unwrap();
         let next_step = prev_step + 1;
         self.create_signal_symbols_in_step(ctx, next_step);
@@ -574,13 +536,7 @@ impl TransitionSystemEncoding for UnrollSmtEncoding {
         Ok(())
     }
 
-    fn get_at(
-        &self,
-        ctx: &Context,
-        smt_ctx: &mut smt::Context,
-        expr: ExprRef,
-        step: u64,
-    ) -> smt::SExpr {
+    fn get_at(&self, ctx: &Context, expr: ExprRef, step: u64) -> ExprRef {
         assert!(step <= self.current_step.unwrap_or(0));
         let sym = self.signal_sym_in_step(expr, step).unwrap();
         convert_expr(smt_ctx, ctx, sym, &|_| None)

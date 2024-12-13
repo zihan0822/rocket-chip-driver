@@ -67,8 +67,18 @@ pub enum CheckSatResponse {
     Unknown,
 }
 
-/// Interface to a SMT Solver with everything executing as blocking I/O.
+/// Represents a kind of SMT solver and allows that solver to be started.
 pub trait Solver {
+    /// Launch a new instance of this solver.
+    fn start<R: Write + Send>(&self, replay_file: Option<R>) -> Result<impl SolverContext>;
+    // properties
+    fn name(&self) -> &str;
+    fn supports_check_assuming(&self) -> bool;
+    fn supports_uf(&self) -> bool;
+}
+
+/// Interface to a running SMT Solver with everything executing as blocking I/O.
+pub trait SolverContext {
     fn set_logic(&mut self, option: Logic) -> Result<()>;
     fn assert(&mut self, ctx: &Context, e: ExprRef) -> Result<()>;
     fn declare_const(&mut self, ctx: &Context, symbol: ExprRef) -> Result<()>;
@@ -83,8 +93,61 @@ pub trait Solver {
     fn pop(&mut self) -> Result<()>;
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct SmtLibSolver {
+    name: &'static str,
+    args: &'static [&'static str],
+    options: &'static [&'static str],
+    supports_uf: bool,
+    supports_check_assuming: bool,
+}
+
+impl Solver for SmtLibSolver {
+    fn start<R: Write + Send>(&self, replay_file: Option<R>) -> Result<impl SolverContext> {
+        let mut proc = Command::new(self.name)
+            .args(self.args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()?;
+        let stdin = BufWriter::new(proc.stdin.take().unwrap());
+        let stdout = BufReader::new(proc.stdout.take().unwrap());
+        let stderr = proc.stderr.take().unwrap();
+        let mut solver = SmtLibSolverCtx {
+            name: self.name.to_string(),
+            proc,
+            stdin,
+            stdout,
+            stderr,
+            stack_depth: 0,
+            response: String::new(),
+            replay_file,
+            has_error: false,
+        };
+        for option in self.options.iter() {
+            solver.write_cmd(
+                None,
+                &SmtCommand::SetOption(option.to_string(), "true".to_string()),
+            )?
+        }
+        Ok(solver)
+    }
+
+    fn name(&self) -> &str {
+        self.name
+    }
+
+    fn supports_check_assuming(&self) -> bool {
+        self.supports_check_assuming
+    }
+
+    fn supports_uf(&self) -> bool {
+        self.supports_uf
+    }
+}
+
 /// Launches an SMT solver and communicates through `stdin` using SMTLib commands.
-pub struct SmtLibSolver<R: Write + Send> {
+pub struct SmtLibSolverCtx<R: Write + Send> {
     name: String,
     proc: std::process::Child,
     stdin: BufWriter<std::process::ChildStdin>,
@@ -98,42 +161,7 @@ pub struct SmtLibSolver<R: Write + Send> {
     has_error: bool,
 }
 
-impl<R: Write + Send> SmtLibSolver<R> {
-    pub fn bitwuzla(replay_file: Option<R>) -> Result<impl Solver> {
-        Self::create(&BITWUZLA_CMD, replay_file)
-    }
-
-    fn create(cmd: &SmtSolverCmd, replay_file: Option<R>) -> Result<impl Solver> {
-        let mut proc = Command::new(cmd.name)
-            .args(cmd.args)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()?;
-        let stdin = BufWriter::new(proc.stdin.take().unwrap());
-        let stdout = BufReader::new(proc.stdout.take().unwrap());
-        let stderr = proc.stderr.take().unwrap();
-        let name = cmd.name.to_string();
-        let mut solver = Self {
-            name,
-            proc,
-            stdin,
-            stdout,
-            stderr,
-            stack_depth: 0,
-            response: String::new(),
-            replay_file,
-            has_error: false,
-        };
-        for option in cmd.options.iter() {
-            solver.write_cmd(
-                None,
-                &SmtCommand::SetOption(option.to_string(), "true".to_string()),
-            )?
-        }
-        Ok(solver)
-    }
-
+impl<R: Write + Send> SmtLibSolverCtx<R> {
     #[inline]
     fn write_cmd(&mut self, ctx: Option<&Context>, cmd: &SmtCommand) -> Result<()> {
         if let Some(rf) = self.replay_file.as_mut() {
@@ -215,7 +243,7 @@ fn count_parens(s: &str) -> i64 {
     })
 }
 
-impl<R: Write + Send> Drop for SmtLibSolver<R> {
+impl<R: Write + Send> Drop for SmtLibSolverCtx<R> {
     fn drop(&mut self) {
         // try to close the child process as not to leak resources
         if self.write_cmd(None, &SmtCommand::Exit).is_err() {
@@ -240,7 +268,7 @@ impl<R: Write + Send> Drop for SmtLibSolver<R> {
     }
 }
 
-impl<R: Write + Send> Solver for SmtLibSolver<R> {
+impl<R: Write + Send> SolverContext for SmtLibSolverCtx<R> {
     fn set_logic(&mut self, logic: Logic) -> Result<()> {
         self.write_cmd(None, &SmtCommand::SetLogic(logic))
     }
@@ -289,16 +317,7 @@ impl<R: Write + Send> Solver for SmtLibSolver<R> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-struct SmtSolverCmd {
-    name: &'static str,
-    args: &'static [&'static str],
-    options: &'static [&'static str],
-    supports_uf: bool,
-    supports_check_assuming: bool,
-}
-
-const BITWUZLA_CMD: SmtSolverCmd = SmtSolverCmd {
+const BITWUZLA: SmtLibSolver = SmtLibSolver {
     name: "bitwuzla",
     args: &[],
     options: &["incremental"],
@@ -306,7 +325,7 @@ const BITWUZLA_CMD: SmtSolverCmd = SmtSolverCmd {
     supports_check_assuming: true,
 };
 
-const YICES2_CMD: SmtSolverCmd = SmtSolverCmd {
+const YICES2: SmtLibSolver = SmtLibSolver {
     name: "yices-smt2",
     args: &["--incremental"],
     options: &[],
@@ -322,7 +341,7 @@ mod tests {
     fn test_bitwuzla_error() {
         let mut ctx = Context::default();
         let replay = Some(std::fs::File::create("replay.smt").unwrap());
-        let mut solver = SmtLibSolver::bitwuzla(replay).unwrap();
+        let mut solver = BITWUZLA.start(replay).unwrap();
         let a = ctx.bv_symbol("a", 3);
         let e = ctx.build(|c| c.equal(a, c.bit_vec_val(3, 3)));
         solver.assert(&ctx, e).unwrap();
@@ -338,11 +357,10 @@ mod tests {
         let mut ctx = Context::default();
         let a = ctx.bv_symbol("a", 3);
         let e = ctx.build(|c| c.equal(a, c.bit_vec_val(3, 3)));
-
         let replay = Some(std::fs::File::create("replay.smt").unwrap());
-        let mut solver = SmtLibSolver::bitwuzla(replay).unwrap();
+        let mut solver = BITWUZLA.start(replay).unwrap();
         solver.declare_const(&ctx, a).unwrap();
-        let res = solver.check_sat();
+        let res = solver.check_sat_assuming(&ctx, [e]);
         assert_eq!(res.unwrap(), CheckSatResponse::Sat);
     }
 }

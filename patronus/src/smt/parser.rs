@@ -162,7 +162,7 @@ fn early_parse_number_literals<'a>(ctx: &mut Context, value: &'a [u8]) -> Result
                 "decimal constant: {}",
                 String::from_utf8_lossy(value)
             ))),
-            other => unreachable!("not part of the regex!"),
+            _ => unreachable!("not part of the regex!"),
         }
     } else {
         Ok(ParserItem::Sym(value))
