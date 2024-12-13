@@ -3,10 +3,10 @@
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
 use crate::expr::{Context, ExprRef};
-use crate::smt::serialize::serialize_expr;
+use crate::smt::serialize::serialize_cmd;
 use std::io::{BufRead, BufReader, BufWriter};
 use std::io::{Read, Write};
-use std::process::{ChildStdin, Command, Stdio};
+use std::process::{Command, Stdio};
 use thiserror::Error;
 
 /// A SMT Solver Error.
@@ -18,6 +18,8 @@ pub enum Error {
     StackUnderflow,
     #[error("[smt] {0} reported an error:\n{1}")]
     FromSolver(String, String),
+    #[error("[smt]{0} is unreachable, the process might have died")]
+    SolverDead(String),
     #[error("[smt] {0} returned an unexpected response:\n{1}")]
     UnexpectedResponse(String, String),
 }
@@ -25,11 +27,36 @@ pub enum Error {
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// An SMT Logic.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Logic {
     All,
     QfAufbv,
     QfAbv,
+}
+
+impl Logic {
+    pub(crate) fn to_smt_str(&self) -> &'static str {
+        match self {
+            Logic::All => "ALL",
+            Logic::QfAufbv => "QF_AUFBV",
+            Logic::QfAbv => "QF_ABV",
+        }
+    }
+}
+
+/// A command to an SMT solver.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum SmtCommand {
+    Exit,
+    CheckSat,
+    SetLogic(Logic),
+    SetOption(String, String),
+    Assert(ExprRef),
+    DeclareConst(ExprRef),
+    DefineConst(ExprRef, ExprRef),
+    CheckSatAssuming(Vec<ExprRef>),
+    Push(u64),
+    Pop(u64),
 }
 
 /// The result of a `(check-sat)` command.
@@ -99,38 +126,32 @@ impl<R: Write + Send> SmtLibSolver<R> {
             has_error: false,
         };
         for option in cmd.options.iter() {
-            solver.write_cmd_replay(|o| writeln!(o, "(set-option :{} true)", option))?;
-            solver.write_cmd(|o| writeln!(o, "(set-option :{} true)", option))?;
+            solver.write_cmd(
+                None,
+                &SmtCommand::SetOption(option.to_string(), "true".to_string()),
+            )?
         }
         Ok(solver)
     }
 
     #[inline]
-    fn write_cmd_str(&mut self, cmd: &str) -> Result<()> {
-        self.write_cmd_replay(|stdin| writeln!(stdin, "{}", cmd))?;
-        self.write_cmd(|stdin| writeln!(stdin, "{}", cmd))
-    }
-
-    #[inline]
-    fn write_cmd(
-        &mut self,
-        cmd: impl FnOnce(&mut BufWriter<ChildStdin>) -> std::result::Result<(), std::io::Error>,
-    ) -> Result<()> {
-        cmd(&mut self.stdin)?;
-        self.stdin.flush()?;
-        Ok(())
-    }
-
-    #[inline]
-    fn write_cmd_replay(
-        &mut self,
-        cmd: impl FnOnce(&mut R) -> std::result::Result<(), std::io::Error>,
-    ) -> Result<()> {
+    fn write_cmd(&mut self, ctx: Option<&Context>, cmd: &SmtCommand) -> Result<()> {
         if let Some(rf) = self.replay_file.as_mut() {
-            cmd(rf)?;
+            serialize_cmd(rf, ctx, cmd)?;
+        }
+        serialize_cmd(&mut self.stdin, ctx, cmd)?;
+        if let Some(rf) = self.replay_file.as_mut() {
             rf.flush()?;
         }
-        Ok(())
+        match self.stdin.flush() {
+            Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => {
+                // make sure we drop the replay file
+                self.replay_file.take();
+                Err(Error::SolverDead(self.name.clone()))
+            }
+            Err(other) => Err(other.into()),
+            Ok(_) => Ok(()),
+        }
     }
 
     /// after this function executes, the result will be available in `self.result`.
@@ -145,16 +166,6 @@ impl<R: Write + Send> SmtLibSolver<R> {
             self.response.push(' ');
             self.stdout.read_line(&mut self.response)?;
         }
-        // check stderr
-        let mut err = vec![];
-        self.stderr.read_to_end(&mut err)?;
-        if !err.is_empty() {
-            self.has_error = true;
-            return Err(Error::FromSolver(
-                self.name.clone(),
-                String::from_utf8_lossy(&err).to_string(),
-            ));
-        }
 
         // check to see if there was an error reported on stdout
         if self.response.trim_start().starts_with("(error") {
@@ -164,7 +175,21 @@ impl<R: Write + Send> SmtLibSolver<R> {
             self.has_error = true;
             Err(Error::FromSolver(self.name.clone(), msg.to_string()))
         } else {
-            Ok(())
+            // check if the process is still alive
+            match self.proc.try_wait() {
+                Ok(Some(status)) if !status.success() => {
+                    // solver terminated with error return code
+                    // check for output on stderror
+                    let mut err = vec![];
+                    self.stderr.read_to_end(&mut err)?;
+                    self.has_error = true;
+                    Err(Error::FromSolver(
+                        self.name.clone(),
+                        String::from_utf8_lossy(&err).to_string(),
+                    ))
+                }
+                _ => Ok(()),
+            }
         }
     }
 
@@ -193,7 +218,7 @@ fn count_parens(s: &str) -> i64 {
 impl<R: Write + Send> Drop for SmtLibSolver<R> {
     fn drop(&mut self) {
         // try to close the child process as not to leak resources
-        if self.write_cmd_str("(exit)").is_err() {
+        if self.write_cmd(None, &SmtCommand::Exit).is_err() {
             if self.has_error {
                 return;
             } else {
@@ -217,36 +242,19 @@ impl<R: Write + Send> Drop for SmtLibSolver<R> {
 
 impl<R: Write + Send> Solver for SmtLibSolver<R> {
     fn set_logic(&mut self, logic: Logic) -> Result<()> {
-        let logic = match logic {
-            Logic::All => "ALL",
-            Logic::QfAufbv => "QF_AUFBV",
-            Logic::QfAbv => "QF_ABV",
-        };
-        self.write_cmd_replay(|o| writeln!(o, "(set-logic {})", logic))?;
-        self.write_cmd(|o| writeln!(o, "(set-logic {})", logic))
+        self.write_cmd(None, &SmtCommand::SetLogic(logic))
     }
 
     fn assert(&mut self, ctx: &Context, e: ExprRef) -> Result<()> {
-        self.write_cmd_replay(|out| {
-            write!(out, "(assert ")?;
-            serialize_expr(out, ctx, e)?;
-            writeln!(out, ")")
-        })?;
-        self.write_cmd(|out| {
-            write!(out, "(assert ")?;
-            serialize_expr(out, ctx, e)?;
-            writeln!(out, ")")
-        })
+        self.write_cmd(Some(ctx), &SmtCommand::Assert(e))
     }
 
     fn declare_const(&mut self, ctx: &Context, symbol: ExprRef) -> Result<()> {
-        todo!(
-            "we should change hoow write_cmd works to take &str and a list of expressions or types"
-        )
+        self.write_cmd(Some(ctx), &SmtCommand::DeclareConst(symbol))
     }
 
     fn define_const(&mut self, ctx: &Context, symbol: ExprRef, expr: ExprRef) -> Result<()> {
-        todo!()
+        self.write_cmd(Some(ctx), &SmtCommand::DefineConst(symbol, expr))
     }
 
     fn check_sat_assuming(
@@ -255,41 +263,24 @@ impl<R: Write + Send> Solver for SmtLibSolver<R> {
         props: impl IntoIterator<Item = ExprRef>,
     ) -> Result<CheckSatResponse> {
         let props: Vec<ExprRef> = props.into_iter().collect();
-        self.write_cmd_replay(|out| {
-            write!(out, "(check-sat-assuming")?;
-            let mut is_first = true;
-            for &prop in props.iter() {
-                write!(out, " ")?;
-                serialize_expr(out, ctx, prop)?;
-            }
-            writeln!(out, ")")
-        })?;
-        self.write_cmd(|out| {
-            write!(out, "(check-sat-assuming")?;
-            let mut is_first = true;
-            for &prop in props.iter() {
-                write!(out, " ")?;
-                serialize_expr(out, ctx, prop)?;
-            }
-            writeln!(out, ")")
-        })?;
+        self.write_cmd(Some(ctx), &SmtCommand::CheckSatAssuming(props))?;
         self.read_sat_response()
     }
 
     fn check_sat(&mut self) -> Result<CheckSatResponse> {
-        self.write_cmd_str("(check-sat)")?;
+        self.write_cmd(None, &SmtCommand::CheckSat)?;
         self.read_sat_response()
     }
 
     fn push(&mut self) -> Result<()> {
-        self.write_cmd_str("(push 1)")?;
+        self.write_cmd(None, &SmtCommand::Push(1))?;
         self.stack_depth += 1;
         Ok(())
     }
 
     fn pop(&mut self) -> Result<()> {
         if self.stack_depth > 0 {
-            self.write_cmd_str("(pop 1)")?;
+            self.write_cmd(None, &SmtCommand::Pop(1))?;
             self.stack_depth -= 1;
             Ok(())
         } else {
@@ -328,7 +319,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_bitwuzla() {
+    fn test_bitwuzla_error() {
         let mut ctx = Context::default();
         let replay = Some(std::fs::File::create("replay.smt").unwrap());
         let mut solver = SmtLibSolver::bitwuzla(replay).unwrap();
@@ -337,6 +328,19 @@ mod tests {
         solver.assert(&ctx, e).unwrap();
         let res = solver.check_sat();
         assert!(res.is_err(), "a was not declared!");
+        // after this error, the solver is dead and won't respond!
+        let res = solver.declare_const(&ctx, a);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_bitwuzla() {
+        let mut ctx = Context::default();
+        let a = ctx.bv_symbol("a", 3);
+        let e = ctx.build(|c| c.equal(a, c.bit_vec_val(3, 3)));
+
+        let replay = Some(std::fs::File::create("replay.smt").unwrap());
+        let mut solver = SmtLibSolver::bitwuzla(replay).unwrap();
         solver.declare_const(&ctx, a).unwrap();
         let res = solver.check_sat();
         assert_eq!(res.unwrap(), CheckSatResponse::Sat);

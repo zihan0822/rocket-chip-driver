@@ -3,7 +3,8 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
-use crate::expr::{Context, Expr, ExprRef, ForEachChild, Type};
+use crate::expr::{Context, Expr, ExprRef, ForEachChild, Type, TypeCheck};
+use crate::smt::solver::SmtCommand;
 use baa::BitVecOps;
 use std::io::Write;
 
@@ -87,6 +88,54 @@ fn find_next_child(pos: u32, e: &Expr) -> Option<ExprRef> {
         count += 1;
     });
     out
+}
+
+pub fn serialize_cmd(out: &mut impl Write, ctx: Option<&Context>, cmd: &SmtCommand) -> Result<()> {
+    match cmd {
+        SmtCommand::Exit => writeln!(out, "(exit)"),
+        SmtCommand::CheckSat => writeln!(out, "(check-sat)"),
+        SmtCommand::SetLogic(logic) => writeln!(out, "(set-logic {})", logic.to_smt_str()),
+        SmtCommand::SetOption(name, value) => writeln!(out, "(set-option :{name} {value})"),
+        SmtCommand::Assert(e) => {
+            write!(out, "(assert ")?;
+            serialize_expr(out, ctx.unwrap(), *e)?;
+            writeln!(out, ")")
+        }
+        SmtCommand::DeclareConst(symbol) => {
+            let ctx = ctx.unwrap();
+            write!(
+                out,
+                "(declare-const {} ",
+                ctx.get_symbol_name(*symbol).unwrap()
+            )?;
+            serialize_type(out, symbol.get_type(ctx))?;
+            writeln!(out, ")")
+        }
+        SmtCommand::DefineConst(symbol, value) => {
+            let ctx = ctx.unwrap();
+            // name, then empty arguments
+            write!(
+                out,
+                "(define-fun {} () ",
+                ctx.get_symbol_name(*symbol).unwrap()
+            )?;
+            serialize_type(out, symbol.get_type(ctx))?;
+            write!(out, " ")?;
+            serialize_expr(out, ctx, *value)?;
+            writeln!(out, ")")
+        }
+        SmtCommand::CheckSatAssuming(exprs) => {
+            let ctx = ctx.unwrap();
+            write!(out, "(check-sat-assuming")?;
+            for &e in exprs.iter() {
+                write!(out, " ")?;
+                serialize_expr(out, ctx, e)?;
+            }
+            writeln!(out, ")")
+        }
+        SmtCommand::Push(n) => writeln!(out, "(push {n})"),
+        SmtCommand::Pop(n) => writeln!(out, "(pop {n})"),
+    }
 }
 
 pub fn serialize_type(out: &mut impl Write, tpe: Type) -> Result<()> {
