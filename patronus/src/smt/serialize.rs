@@ -11,8 +11,6 @@ use std::io::Write;
 pub type Result<T> = std::io::Result<T>;
 
 pub fn serialize_expr(out: &mut impl Write, ctx: &Context, expr: ExprRef) -> Result<()> {
-    println!("{}", expr.serialize_to_str(ctx));
-
     // we need to visit each expression "number of children + 1" times
     let mut todo: Vec<(ExprRef, u32, bool)> = vec![(expr, 0, false)];
 
