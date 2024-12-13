@@ -11,6 +11,24 @@ pub enum ExprTransformMode {
     FixedPoint,
 }
 
+/// transform an expression with a single step (no fixed point) and no persistent cache
+#[inline]
+pub fn simple_transform_expr(
+    ctx: &mut Context,
+    e: ExprRef,
+    tran: impl FnMut(&mut Context, ExprRef, &[ExprRef]) -> Option<ExprRef>,
+) -> ExprRef {
+    let mut cache = SparseExprMap::default();
+    do_transform_expr(
+        ctx,
+        ExprTransformMode::SingleStep,
+        &mut cache,
+        vec![e],
+        tran,
+    );
+    cache[e].unwrap()
+}
+
 #[inline]
 pub(crate) fn do_transform_expr<T: ExprMap<Option<ExprRef>>>(
     ctx: &mut Context,

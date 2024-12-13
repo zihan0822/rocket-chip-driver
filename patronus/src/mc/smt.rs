@@ -46,7 +46,7 @@ impl<S: Solver> SmtModelChecker<S> {
         } else {
             None
         };
-        let mut smt_ctx = self.solver.start(replay_file);
+        let mut smt_ctx = self.solver.start(replay_file)?;
 
         // z3 only supports the non-standard as-const array syntax when the logic is set to ALL
         let logic = if self.solver.name() == "z3" {
@@ -87,7 +87,7 @@ impl<S: Solver> SmtModelChecker<S> {
             if self.opts.check_bad_states_individually {
                 for (_bs_id, expr_ref) in bad_states.iter().enumerate() {
                     let expr = enc.get_at(ctx, *expr_ref, k);
-                    let res = check_assuming(&mut smt_ctx, expr, &self.solver)?;
+                    let res = check_assuming(&ctx, &mut smt_ctx, [expr], &self.solver)?;
 
                     // count expression uses
                     let use_counts = count_expr_uses(ctx, sys);
@@ -108,10 +108,10 @@ impl<S: Solver> SmtModelChecker<S> {
             } else {
                 let all_bads = bad_states
                     .iter()
-                    .map(|expr_ref| enc.get_at(ctx, &mut smt_ctx, *expr_ref, k))
+                    .map(|expr_ref| enc.get_at(ctx, *expr_ref, k))
                     .collect::<Vec<_>>();
-                let any_bad = smt_ctx.or_many(all_bads);
-                let res = check_assuming(&mut smt_ctx, any_bad, &self.solver)?;
+                let any_bad = all_bads.into_iter().reduce(|a, b| ctx.or(a, b)).unwrap();
+                let res = check_assuming(&ctx, &mut smt_ctx, [any_bad], &self.solver)?;
 
                 // count expression uses
                 let use_counts = count_expr_uses(ctx, sys);
@@ -144,7 +144,7 @@ impl<S: Solver> SmtModelChecker<S> {
         sys: &TransitionSystem,
         ctx: &Context,
         _use_counts: &[UseCountInt], // TODO: analyze array expressions in order to record which indices are accessed
-        smt_ctx: &mut smt::Context,
+        smt_ctx: &mut impl SolverContext,
         enc: &UnrollSmtEncoding,
         k_max: u64,
         bad_states: &[ExprRef],
@@ -153,7 +153,7 @@ impl<S: Solver> SmtModelChecker<S> {
 
         // which bad states did we hit?
         for (bad_idx, expr) in bad_states.iter().enumerate() {
-            let sym_at = enc.get_at(ctx, smt_ctx, *expr, k_max);
+            let sym_at = enc.get_at(ctx, *expr, k_max);
             let value = get_smt_value(smt_ctx, sym_at, expr.get_type(ctx))?;
             let value = match value {
                 Value::Array(_) => unreachable!("should always be a bitvector!"),
@@ -167,7 +167,7 @@ impl<S: Solver> SmtModelChecker<S> {
 
         // collect initial values
         for (state_cnt, state) in sys.states.iter().enumerate() {
-            let sym_at = enc.get_at(ctx, smt_ctx, state.symbol, 0);
+            let sym_at = enc.get_at(ctx, state.symbol, 0);
             let value = get_smt_value(smt_ctx, sym_at, state.symbol.get_type(ctx))?;
             // we assume that state ids are monotonically increasing with +1
             assert_eq!(wit.init.len(), state_cnt);
@@ -197,7 +197,7 @@ impl<S: Solver> SmtModelChecker<S> {
         for k in 0..=k_max {
             let mut input_values = Vec::default();
             for input in sys.inputs.iter() {
-                let sym_at = enc.get_at(ctx, smt_ctx, *input, k);
+                let sym_at = enc.get_at(ctx, *input, k);
                 let value = get_smt_value(smt_ctx, sym_at, input.get_type(ctx))?;
                 input_values.push(Some(value));
             }
@@ -212,14 +212,16 @@ impl<S: Solver> SmtModelChecker<S> {
 pub fn check_assuming(
     ctx: &Context,
     smt_ctx: &mut impl SolverContext,
-    assumption: ExprRef,
+    props: impl IntoIterator<Item = ExprRef>,
     solver: &impl Solver,
 ) -> Result<CheckSatResponse> {
     if solver.supports_check_assuming() {
-        smt_ctx.check_sat_assuming(ctx, [assumption])
+        smt_ctx.check_sat_assuming(ctx, props)
     } else {
         smt_ctx.push()?; // add new assertion
-        smt_ctx.assert(ctx, assumption)?;
+        for prop in props.into_iter() {
+            smt_ctx.assert(ctx, prop)?;
+        }
         let res = smt_ctx.check_sat()?;
         Ok(res)
     }
@@ -373,15 +375,16 @@ impl UnrollSmtEncoding {
             if info.is_state {
                 continue;
             }
-            let skip = !(filter)(info);
+            let skip = !filter(info);
             if !skip {
-                let tpe = convert_tpe(smt_ctx, expr.get_type(ctx));
-                let name = name_at(&ctx[info.name], step);
+                let tpe = expr.get_type(ctx);
+                let name = ctx.string(name_at(&ctx[info.name], step).into());
+                let symbol_at = ctx.symbol(name, tpe);
                 if ctx[*expr].is_symbol() {
-                    smt_ctx.declare_const(escape_smt_identifier(&name), tpe)?;
+                    smt_ctx.declare_const(&ctx, symbol_at)?;
                 } else {
-                    let value = self.expr_in_step(ctx, smt_ctx, *expr, step);
-                    smt_ctx.define_const(escape_smt_identifier(&name), tpe, value)?;
+                    let value = self.expr_in_step(ctx, *expr, step);
+                    smt_ctx.define_const(&ctx, symbol_at, value)?;
                 }
             }
         }
@@ -422,18 +425,17 @@ impl UnrollSmtEncoding {
         }
     }
 
-    fn expr_in_step(&self, ctx: &Context, expr: ExprRef, step: u64) -> ExprRef {
+    fn expr_in_step(&self, ctx: &mut Context, expr: ExprRef, step: u64) -> ExprRef {
         let expr_is_symbol = ctx[expr].is_symbol();
-        let patch = |e: &ExprRef| -> Option<ExprRef> {
+        simple_transform_expr(ctx, expr, |_, e, _| {
             // If the expression we are trying to serialize is not a symbol, then wo
             // do not just want to replace it with one, as that would lead us to a tautology!
-            if !expr_is_symbol && *e == expr {
+            if !expr_is_symbol && e == expr {
                 None
             } else {
-                self.signal_sym_in_step(*e, step)
+                self.signal_sym_in_step(e, step)
             }
-        };
-        convert_expr(smt_ctx, ctx, expr, &patch)
+        })
     }
 }
 
@@ -463,20 +465,22 @@ impl TransitionSystemEncoding for UnrollSmtEncoding {
 
         // declare/define initial states
         for state in self.states.iter() {
-            let base_name = ctx.get_symbol_name(state.symbol).unwrap();
-            let name = if state.is_const() {
-                base_name.to_string()
+            let symbol_at = if state.is_const() {
+                state.symbol
             } else {
-                name_at(base_name, step)
+                let base_name = ctx.get_symbol_name(state.symbol).unwrap();
+                let name = ctx.string(name_at(base_name, step).into());
+                let tpe = state.symbol.get_type(ctx);
+                ctx.symbol(name, tpe)
             };
-            let out = convert_tpe(smt_ctx, state.symbol.get_type(ctx));
+
             match (step, state.init) {
                 (0, Some(value)) => {
-                    let body = self.expr_in_step(ctx, smt_ctx, value, step);
-                    smt_ctx.define_const(escape_smt_identifier(&name), out, body)?;
+                    let value_at = self.expr_in_step(ctx, value, step);
+                    smt_ctx.define_const(ctx, symbol_at, value_at)?;
                 }
                 _ => {
-                    smt_ctx.declare_const(escape_smt_identifier(&name), out)?;
+                    smt_ctx.declare_const(ctx, symbol_at)?;
                 }
             }
         }
@@ -508,18 +512,19 @@ impl TransitionSystemEncoding for UnrollSmtEncoding {
         // define next state
         for state in self.states.iter() {
             let name = name_at(ctx.get_symbol_name(state.symbol).unwrap(), next_step);
-            let out = convert_tpe(smt_ctx, state.symbol.get_type(ctx));
+            let name = ctx.string(name.into());
+            let tpe = state.symbol.get_type(ctx);
+            let symbol_at = ctx.symbol(name, tpe);
             match state.next {
                 Some(value) => {
-                    let is_const = value == state.symbol;
                     // constant states never change from their initial value
-                    if !is_const {
-                        let body = self.expr_in_step(ctx, smt_ctx, value, prev_step);
-                        smt_ctx.define_const(escape_smt_identifier(&name), out, body)?;
+                    if !state.is_const() {
+                        let value = self.expr_in_step(ctx, value, prev_step);
+                        smt_ctx.define_const(ctx, symbol_at, value)?;
                     }
                 }
                 None => {
-                    smt_ctx.declare_const(escape_smt_identifier(&name), out)?;
+                    smt_ctx.declare_const(ctx, symbol_at)?;
                 }
             }
         }
@@ -536,10 +541,9 @@ impl TransitionSystemEncoding for UnrollSmtEncoding {
         Ok(())
     }
 
-    fn get_at(&self, ctx: &Context, expr: ExprRef, step: u64) -> ExprRef {
+    fn get_at(&self, _ctx: &Context, expr: ExprRef, step: u64) -> ExprRef {
         assert!(step <= self.current_step.unwrap_or(0));
-        let sym = self.signal_sym_in_step(expr, step).unwrap();
-        convert_expr(smt_ctx, ctx, sym, &|_| None)
+        self.signal_sym_in_step(expr, step).unwrap()
     }
 }
 
