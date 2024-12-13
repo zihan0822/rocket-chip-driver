@@ -468,4 +468,18 @@ fn test_simplify_slice_of_op() {
     }
 }
 
+#[test]
+fn test_random_z3_issue_simplification() {
+    // someone was trying to simplify this with z3: https://github.com/Z3Prover/z3/issues/7460
+    // z3 currently returns:
+    // Concat(Extract(14, 0, V), 0) | Concat(0, Extract(15, 0, V)) >> 15
+    // -> or(concat(V[14:0], 0), shift_right(concat(0, V[15:0]), 15))
+    // it is nice to see that z3 implements some bit-mask support similar to ours
+    // we currently do slightly better by simplifying away the right shift by a constant
+    ts(
+      "or(shift_left(and(V : bv<32>, 32'd65535), 32'd17), shift_right(and(V, 32'd65535), 32'd15))",
+      "or(concat(V:bv<32>[14:0], 17'x00000), concat(31'x00000000, V[15]))"
+    );
+}
+
 // TODO: add missing literals simplifications: https://github.com/ekiwi/maltese-private/blob/main/test/maltese/smt/SMTSimplifierLiteralsSpec.scala
