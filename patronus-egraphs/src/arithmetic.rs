@@ -296,7 +296,14 @@ pub fn from_arith(ctx: &mut Context, expr: &RecExpr<Arith>) -> ExprRef {
             Arith::Sign(sign) => ctx.bit_vec_val(*sign, 1),
             Arith::Const(value) => {
                 debug_assert!(expected_width > 0, "unknown width for constant `{value}`!");
-                ctx.bit_vec_val(*value, expected_width)
+                // patronus will normally throw an error, if the value does not fit into the width
+                // however, in our case, we want to just ignore the bits that get lost
+                let value = if expected_width < u64::BITS {
+                    *value & ((1u64 << expected_width) - 1)
+                } else {
+                    *value
+                };
+                ctx.bit_vec_val(value, expected_width)
             }
         };
         stack.push(result);
