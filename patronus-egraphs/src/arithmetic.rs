@@ -513,10 +513,10 @@ pub fn create_rewrites() -> Vec<ArithRewrite> {
             // wa == wb && wo >= wa
             if["?wo", "?wa", "?wb"], |w| w[1] == w[2] && w[0] >= w[1]),
         arith_rewrite!("mult-to-add";
-            "(+ ?wo ?wa ?sa ?a ?wb ?sb 2)" =>
+            "(* ?wo ?wa ?sa ?a ?wb ?sb 2)" =>
             "(+ ?wo ?wa ?sa ?a ?wa ?sa ?a)";
-            // wo > wa && wo > wb  && ((wb == 0 && wa > 1) || (wb == 1 && wa > 2) ))
-           if["?wo", "?wa", "?wb"], |w| w[0] > w[1] && w[0] > w[2] && ( (w[2] == 0 && w[1] > 1) || (w[2] == 1 && w[1] > 2) )),
+            // wo > wa && wo > wb  && ((!sb && wb > 1) || (sb && wb > 2))
+           if["?wo", "?wa", "?wb", "?wb"], |w| w[0] > w[1] && w[0] > w[2] && ((w[3] == 0 && w[2] > 1) || (w[3] == 1 && w[2] > 2))),
     ]
 }
 

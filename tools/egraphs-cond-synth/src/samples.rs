@@ -513,8 +513,11 @@ pub fn gen_substitution(rule: &RuleInfo, assignment: &Assignment) -> FxHashMap<V
         out.insert(width_var, assignment[&width_var].into());
     }
     for &sign_var in rule.signs.iter() {
-        debug_assert!(assignment[&sign_var] <= 1);
-        out.insert(sign_var, assignment[&sign_var].into());
+        match assignment[&sign_var] {
+            0 => out.insert(sign_var, Sign::Unsigned.into()),
+            1 => out.insert(sign_var, Sign::Signed.into()),
+            other => unreachable!("signed value should either be 0 or 1 not {other}"),
+        };
     }
     for child in rule.symbols.iter() {
         let name = child.var.to_string().chars().skip(1).collect::<String>();
@@ -604,5 +607,14 @@ mod tests {
         assert_eq!(lhs.to_string(), "(+ ?wo ?wa ?sa ?a ?wb ?sb ?b)");
         let lhs_sub = instantiate_pattern(lhs, &subst);
         assert_eq!(lhs_sub.to_string(), "(+ W<2> W<1> sign a W<1> sign b)");
+    }
+
+    #[test]
+    fn test_rule_info() {
+        let r = create_rewrites()
+            .into_iter()
+            .find(|r| r.name() == "mult-to-add")
+            .unwrap();
+        let _info = get_rule_info(&r);
     }
 }
