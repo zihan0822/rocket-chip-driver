@@ -147,7 +147,7 @@ pub fn parse_get_value_response(ctx: &mut Context, input: &[u8]) -> Result<ExprR
 
 fn skip_expr(lexer: &mut Lexer) -> bool {
     let mut open_count = 0u64;
-    while let Some(token) = lexer.next() {
+    for token in lexer.by_ref() {
         match token {
             Token::Open => {
                 open_count += 1;
@@ -158,7 +158,11 @@ fn skip_expr(lexer: &mut Lexer) -> bool {
                     return true;
                 }
             }
-            _ => return true,
+            _ => {
+                if open_count == 0 {
+                    return true;
+                }
+            }
         }
     }
     // reached end of tokens
@@ -420,6 +424,11 @@ mod tests {
         let mut ctx = Context::default();
         let expr = parse_get_value_response(&mut ctx, "((a #b011))".as_bytes()).unwrap();
         assert_eq!(expr, ctx.bit_vec_val(3, 3));
+
+        // calling get-value on a more complext response
+        let solver_response = "(((bvadd ((_ zero_extend 1) a) (ite false #b0001 #b0000)) #b0001))";
+        let expr = parse_get_value_response(&mut ctx, solver_response.as_bytes()).unwrap();
+        assert_eq!(expr, ctx.bit_vec_val(1, 4));
     }
 
     #[test]
