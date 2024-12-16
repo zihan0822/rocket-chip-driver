@@ -506,7 +506,7 @@ pub fn to_smt(
 }
 
 /// Generates a complete substitution from an assignment.
-fn gen_substitution(rule: &RuleInfo, assignment: &Assignment) -> FxHashMap<Var, Arith> {
+pub fn gen_substitution(rule: &RuleInfo, assignment: &Assignment) -> FxHashMap<Var, Arith> {
     let assignment = FxHashMap::from_iter(assignment.clone());
     let mut out = FxHashMap::default();
     for &width_var in rule.widths.iter() {
@@ -524,7 +524,7 @@ fn gen_substitution(rule: &RuleInfo, assignment: &Assignment) -> FxHashMap<Var, 
 }
 
 /// Instantiates a pattern, replacing all vars with concrete e-nodes based on the given substitutions
-fn instantiate_pattern<L: Language>(
+pub fn instantiate_pattern<L: Language>(
     pattern: &PatternAst<L>,
     subst: &FxHashMap<Var, L>,
 ) -> RecExpr<L> {

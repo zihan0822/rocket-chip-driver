@@ -9,18 +9,15 @@ mod features;
 mod samples;
 mod summarize;
 
-use crate::features::{apply_features, FeatureResult};
-use crate::samples::{
-    check_eq, find_symbols_in_expr, get_rule_info, get_var_name, start_solver, to_smt, RuleInfo,
-    Samples,
-};
+use crate::features::*;
+use crate::samples::*;
 use crate::summarize::bdd_summarize;
 use baa::BitVecOps;
 use clap::Parser;
 use patronus::expr::*;
 use patronus::mc::get_smt_value;
 use patronus::smt::{CheckSatResponse, SolverContext};
-use patronus_egraphs::{create_rewrites, ArithRewrite};
+use patronus_egraphs::*;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use std::io::Write;
@@ -271,8 +268,11 @@ fn check_conditions(rule: &ArithRewrite, samples: &Samples, info: &RuleInfo) {
 
             // generate smt expressions
             let (lhs, rhs) = rule.patterns();
-            let lhs_expr = to_smt(&mut ctx, lhs, info, &a);
-            let rhs_expr = to_smt(&mut ctx, rhs, info, &a);
+            let substitution = gen_substitution(info, a);
+            let lhs_egg = instantiate_pattern(lhs, &substitution);
+            let rhs_egg = instantiate_pattern(rhs, &substitution);
+            let lhs_expr = from_arith(&mut ctx, &lhs_egg);
+            let rhs_expr = from_arith(&mut ctx, &rhs_egg);
 
             // run SMT solver to get a counter example
             smt_ctx.push().unwrap();
@@ -300,12 +300,13 @@ fn check_conditions(rule: &ArithRewrite, samples: &Samples, info: &RuleInfo) {
             ));
             smt_ctx.pop().unwrap();
 
+            println!("  EGG: {} =/= {}", lhs_egg, rhs_egg);
             println!(
-                "  {} =/= {}",
+                "  SMT: {} =/= {}",
                 lhs_expr.serialize_to_str(&ctx),
                 rhs_expr.serialize_to_str(&ctx)
             );
-            println!("  with: {}", values.join(", "));
+            println!("    with: {}", values.join(", "));
         }
     }
 }
