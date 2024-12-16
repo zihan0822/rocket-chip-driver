@@ -21,6 +21,8 @@ use patronus::expr::*;
 use patronus::mc::get_smt_value;
 use patronus::smt::{CheckSatResponse, SolverContext};
 use patronus_egraphs::{create_rewrites, ArithRewrite};
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
@@ -246,9 +248,7 @@ fn check_conditions(rule: &ArithRewrite, samples: &Samples, info: &RuleInfo) {
         let condition_res = rule.eval_condition(&a);
         match (condition_res, is_eq) {
             (true, false) => {
-                if false_pos_examples.len() < 10 && false_positive % 100 == 0 {
-                    false_pos_examples.push(a);
-                }
+                false_pos_examples.push(a);
                 false_positive += 1;
             }
             (false, true) => {
@@ -261,11 +261,13 @@ fn check_conditions(rule: &ArithRewrite, samples: &Samples, info: &RuleInfo) {
     println!("False positives (BAD): {false_positive: >10}");
     println!("False negatives (OK):  {false_negative: >10}");
     if !false_pos_examples.is_empty() {
+        let mut rnd = StdRng::seed_from_u64(0);
         println!("Some example assignments that are incorrectly classified as OK by our current condition:");
         let mut ctx = Context::default();
         let mut smt_ctx = start_solver(false);
-        for a in false_pos_examples {
-            println!("{a:?}");
+        for _ in 0..10 {
+            let a_idx = rnd.gen::<usize>() % false_pos_examples.len();
+            let a = &false_pos_examples[a_idx];
 
             // generate smt expressions
             let (lhs, rhs) = rule.patterns();
