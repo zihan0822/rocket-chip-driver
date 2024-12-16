@@ -21,6 +21,7 @@ use baa::BitVecOps;
 use clap::Parser;
 use patronus::expr::*;
 use patronus::mc::get_smt_value;
+use patronus::smt::{CheckSatResponse, SolverContext};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
@@ -265,9 +266,9 @@ fn check_conditions(rule: &ArithRewrite, samples: &Samples, info: &RuleInfo) {
             let rhs_expr = to_smt(&mut ctx, rhs, info, &a);
 
             // run SMT solver to get a counter example
-            smt_ctx.push_many(1).unwrap();
+            smt_ctx.push().unwrap();
             let resp = check_eq(&mut ctx, &mut smt_ctx, lhs_expr, rhs_expr);
-            assert_eq!(resp, easy_smt::Response::Sat);
+            assert_eq!(resp, CheckSatResponse::Sat);
 
             // get assignments to variables
             let is_eq = ctx.equal(lhs_expr, rhs_expr);
@@ -275,20 +276,20 @@ fn check_conditions(rule: &ArithRewrite, samples: &Samples, info: &RuleInfo) {
             let mut values: Vec<String> = vars
                 .into_iter()
                 .map(|v| {
+                    let value = get_value(&mut ctx, &mut smt_ctx, v);
                     let name = ctx.get_symbol_name(v).unwrap();
-                    let value = get_value(&ctx, &mut smt_ctx, v);
                     format!("{name}={value}")
                 })
                 .collect();
             values.push(format!(
                 "lhs_result={}",
-                get_value(&ctx, &mut smt_ctx, lhs_expr)
+                get_value(&mut ctx, &mut smt_ctx, lhs_expr)
             ));
             values.push(format!(
                 "rhs_result={}",
-                get_value(&ctx, &mut smt_ctx, rhs_expr)
+                get_value(&mut ctx, &mut smt_ctx, rhs_expr)
             ));
-            smt_ctx.pop_many(1).unwrap();
+            smt_ctx.pop().unwrap();
 
             println!(
                 "  {} =/= {}",
@@ -300,10 +301,8 @@ fn check_conditions(rule: &ArithRewrite, samples: &Samples, info: &RuleInfo) {
     }
 }
 
-fn get_value(ctx: &Context, smt_ctx: &mut easy_smt::Context, expr: ExprRef) -> String {
-    let tpe = expr.get_type(&ctx);
-    let v = patronus::smt::convert_expr(smt_ctx, &ctx, expr, &|_| None);
-    let value = get_smt_value(smt_ctx, v, tpe).unwrap();
+fn get_value(ctx: &mut Context, smt_ctx: &mut impl SolverContext, expr: ExprRef) -> String {
+    let value = get_smt_value(ctx, smt_ctx, expr).unwrap();
     if let baa::Value::BitVec(v) = value {
         format!("{}", v.to_u64().unwrap())
     } else {

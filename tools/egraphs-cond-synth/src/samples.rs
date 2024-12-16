@@ -6,7 +6,8 @@ use crate::rewrites::ArithRewrite;
 use egg::*;
 use indicatif::ProgressBar;
 use patronus::expr::traversal::TraversalCmd;
-use patronus::expr::{Context, ExprRef, TypeCheck, WidthInt};
+use patronus::expr::{Context, ExprRef, WidthInt};
+use patronus::smt::{CheckSatResponse, Logic, Solver, SolverContext, BITWUZLA};
 use patronus_egraphs::*;
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -63,14 +64,14 @@ pub fn generate_samples(
                 let lhs_expr = to_smt(&mut ctx, lhs, &lhs_info, &assignment);
                 let rhs_expr = to_smt(&mut ctx, rhs, &rhs_info, &assignment);
 
-                smt_ctx.push_many(1).unwrap();
+                smt_ctx.push().unwrap();
                 let resp = check_eq(&mut ctx, &mut smt_ctx, lhs_expr, rhs_expr);
-                smt_ctx.pop_many(1).unwrap();
+                smt_ctx.pop().unwrap();
 
                 match resp {
-                    easy_smt::Response::Sat => samples.add(assignment, false),
-                    easy_smt::Response::Unsat => samples.add(assignment, true),
-                    easy_smt::Response::Unknown => println!("{assignment:?} => Unknown!"),
+                    CheckSatResponse::Sat => samples.add(assignment, false),
+                    CheckSatResponse::Unsat => samples.add(assignment, true),
+                    CheckSatResponse::Unknown => println!("{assignment:?} => Unknown!"),
                 }
             }
 
@@ -86,31 +87,25 @@ pub fn generate_samples(
 
 pub fn check_eq(
     ctx: &mut Context,
-    smt_ctx: &mut easy_smt::Context,
+    smt_ctx: &mut impl SolverContext,
     lhs_expr: ExprRef,
     rhs_expr: ExprRef,
-) -> easy_smt::Response {
+) -> CheckSatResponse {
     let is_eq = ctx.equal(lhs_expr, rhs_expr);
     let is_not_eq = ctx.not(is_eq);
-    let smt_expr = patronus::smt::convert_expr(&smt_ctx, &ctx, is_not_eq, &|_| None);
     declare_vars(smt_ctx, &ctx, is_not_eq);
-    smt_ctx.assert(smt_expr).unwrap();
-    smt_ctx.check().unwrap()
+    smt_ctx.assert(ctx, is_not_eq).unwrap();
+    smt_ctx.check_sat().unwrap()
 }
 
-pub fn start_solver(dump_smt: bool) -> easy_smt::Context {
-    let solver: patronus::mc::SmtSolverCmd = patronus::mc::BITWUZLA_CMD;
+pub fn start_solver(dump_smt: bool) -> impl SolverContext {
     let dump_file = if dump_smt {
         Some(std::fs::File::create("replay.smt").unwrap())
     } else {
         None
     };
-    let mut smt_ctx = easy_smt::ContextBuilder::new()
-        .solver(solver.name, solver.args)
-        .replay_file(dump_file)
-        .build()
-        .unwrap();
-    smt_ctx.set_logic("QF_ABV").unwrap();
+    let mut smt_ctx = BITWUZLA.start(dump_file).expect("failed to start solver");
+    smt_ctx.set_logic(Logic::QfAbv).unwrap();
     smt_ctx
 }
 
@@ -250,14 +245,11 @@ pub fn find_symbols_in_expr(ctx: &Context, expr: ExprRef) -> Vec<ExprRef> {
     vars
 }
 
-fn declare_vars(smt_ctx: &mut easy_smt::Context, ctx: &Context, expr: ExprRef) {
+fn declare_vars(smt_ctx: &mut impl SolverContext, ctx: &Context, expr: ExprRef) {
     let vars = find_symbols_in_expr(ctx, expr);
     for v in vars.into_iter() {
-        let expr = &ctx[v];
-        let tpe = patronus::smt::convert_tpe(smt_ctx, expr.get_type(ctx));
-        let name = expr.get_symbol_name(ctx).unwrap();
         smt_ctx
-            .declare_const(name, tpe)
+            .declare_const(ctx, v)
             .expect("failed to declare const");
     }
 }
