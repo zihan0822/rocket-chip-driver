@@ -15,6 +15,7 @@ pub struct Interpreter<'a> {
     step_count: u64,
     data: SymbolValueStore,
     snapshots: Vec<SymbolValueStore>,
+    #[allow(dead_code)]
     do_trace: bool,
 }
 
