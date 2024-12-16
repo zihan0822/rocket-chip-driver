@@ -12,6 +12,8 @@ use patronus_egraphs::*;
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
+use std::ops::DerefMut;
+use std::sync::Mutex;
 
 pub fn get_rule_info(rule: &ArithRewrite) -> RuleInfo {
     let (lhs, rhs) = rule.patterns();
@@ -41,47 +43,48 @@ pub fn generate_samples(
         None
     };
 
-    // split up work across threads
+    // thread local storage in order to re-use smt solver process
     let num_threads = rayon::current_num_threads();
-    let assignment_range = 0..rule_info.num_assignments(max_width);
-    let assignments_per_thread = assignment_range.end as usize / num_threads;
-
-    // check all rewrites in parallel
-    let samples = assignment_range
-        .collect::<Vec<_>>()
-        .par_chunks(assignments_per_thread)
-        .map(|assignment_indices| {
-            // create context and samples
-            let mut ctx = Context::default();
-            let mut smt_ctx = start_solver(dump_smt);
-            let mut samples = Samples::new(&rule_info);
-
-            for &assignment_index in assignment_indices.iter() {
-                if let Some(p) = &prog {
-                    p.inc(1);
-                }
-                let assignment = rule_info.get_assignment(max_width, assignment_index);
-                let lhs_expr = to_smt(&mut ctx, lhs, &lhs_info, &assignment);
-                let rhs_expr = to_smt(&mut ctx, rhs, &rhs_info, &assignment);
-
-                smt_ctx.push().unwrap();
-                let resp = check_eq(&mut ctx, &mut smt_ctx, lhs_expr, rhs_expr);
-                smt_ctx.pop().unwrap();
-
-                match resp {
-                    CheckSatResponse::Sat => samples.add(assignment, false),
-                    CheckSatResponse::Unsat => samples.add(assignment, true),
-                    CheckSatResponse::Unknown => println!("{assignment:?} => Unknown!"),
-                }
-            }
-
-            samples
-        })
+    let solvers = (0..num_threads)
+        .map(|_| Mutex::new(start_solver(dump_smt)))
         .collect::<Vec<_>>();
 
-    // merge results from different threads
-    samples
+    // check all rewrites in parallel
+    let assignment_range = 0..rule_info.num_assignments(max_width);
+    assignment_range
         .into_par_iter()
+        .map(|index| {
+            // create context and samples
+            let mut ctx = Context::default();
+            let idx = rayon::current_thread_index().unwrap();
+            let mut smt_ctx = solvers[idx].lock().unwrap();
+
+            if let Some(p) = &prog {
+                p.inc(1);
+            }
+            let assignment = rule_info.get_assignment(max_width, index);
+            let lhs_expr = to_smt(&mut ctx, lhs, &lhs_info, &assignment);
+            let rhs_expr = to_smt(&mut ctx, rhs, &rhs_info, &assignment);
+
+            smt_ctx.push().unwrap();
+            let resp = check_eq(&mut ctx, smt_ctx.deref_mut(), lhs_expr, rhs_expr);
+            smt_ctx.pop().unwrap();
+
+            let is_eq = match resp {
+                CheckSatResponse::Sat => false,
+                CheckSatResponse::Unsat => true,
+                CheckSatResponse::Unknown => panic!("{assignment:?} => Unknown!"),
+            };
+
+            (assignment, is_eq)
+        })
+        .fold(
+            || Samples::new(&rule_info),
+            |mut samples, (a, e)| {
+                samples.add(a, e);
+                samples
+            },
+        )
         .reduce(|| Samples::new(&rule_info), Samples::merge)
 }
 
