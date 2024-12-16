@@ -179,6 +179,9 @@ jobs:
       - name: synthesize commute-add condition
         run: |
           cargo run --release -p patronus-egraphs-cond-synth -- --bdd-formula commute-add
+      - name: check mult-to-add condition
+        run: |
+          cargo run --release -p patronus-egraphs-cond-synth -- --check-cond mult-to-add
 
   semver:
     name: Check Semantic Versioning of Patronus
