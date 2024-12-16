@@ -183,6 +183,25 @@ jobs:
         run: |
           cargo run --release -p patronus-egraphs-cond-synth -- --check-cond mult-to-add
 
+  smt-simplify:
+    name: Test SMT Simplifier
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        toolchain:
+          - stable
+
+    steps:
+      - name: Update Rust to ${{ matrix.toolchain }}
+        run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+      - uses: actions/checkout@v4
+      - name: Build
+        run: cargo build --verbose --release -p simplify
+      - name: run
+        run: cargo run --release -p simplify -- in.smt out.smt
+
+
   semver:
     name: Check Semantic Versioning of Patronus
     runs-on: ubuntu-24.04
