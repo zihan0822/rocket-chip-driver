@@ -3,10 +3,11 @@
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
 use baa::BitVecOps;
-use egg::{define_language, rewrite, Id, Language, RecExpr, Var};
-use lazy_static::lazy_static;
+use egg::{
+    define_language, ConditionalApplier, Id, Language, Pattern, PatternAst, RecExpr, Rewrite,
+    Subst, Var,
+};
 use patronus::expr::*;
-use regex::Regex;
 use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
@@ -22,40 +23,109 @@ define_language! {
         "<<" = LeftShift([Id; 7]),
         ">>" = RightShift([Id; 7]),
         ">>>" = ArithmeticRightShift([Id; 7]),
-        Symbol(ArithSymbol),
-        // used for signedness (0 = unsigned, 1 = signed) or width parameters
-        WidthConst(WidthInt),
+        Width(WidthValue),
+        Sign(Sign),
+        // not a width, but a value constant
+        Const(u64),
+        Symbol(String),
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
-pub struct ArithSymbol {
-    pub name: StringRef,
-    pub width: WidthInt,
+/// Wrapper struct in order to do custom parsing.
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
+pub struct WidthValue(WidthInt);
+
+// this allows us to use ArithWidthConst as an argument to ctx.bit_vec_val
+impl From<WidthValue> for u128 {
+    fn from(value: WidthValue) -> Self {
+        value.0 as u128
+    }
 }
 
-lazy_static! {
-    static ref ARITH_SYMBOL_REGEX: Regex =
-        Regex::new(r"^StringRef\(([[:digit:]]+)\)\s*:\s*bv<\s*([[:digit:]]+)\s*>\s*$").unwrap();
+impl From<WidthValue> for WidthInt {
+    fn from(value: WidthValue) -> Self {
+        value.0
+    }
 }
 
-impl FromStr for ArithSymbol {
+impl From<WidthInt> for Arith {
+    fn from(value: WidthInt) -> Self {
+        Arith::Width(WidthValue(value))
+    }
+}
+
+impl FromStr for WidthValue {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Some(c) = ARITH_SYMBOL_REGEX.captures(s) {
-            let name_index: usize = c.get(1).unwrap().as_str().parse().unwrap();
-            let width: WidthInt = c.get(2).unwrap().as_str().parse().unwrap();
-            todo!("{s} ==> {name_index} {width}")
+        if let Some(suffix) = s.strip_prefix("W<") {
+            if let Some(value) = suffix.strip_suffix(">") {
+                match value.parse() {
+                    Err(_) => Err(()),
+                    Ok(w) => Ok(Self(w)),
+                }
+            } else {
+                Err(())
+            }
         } else {
             Err(())
         }
     }
 }
 
-impl Display for ArithSymbol {
+impl Display for WidthValue {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}:bv<{}>", self.name, self.width)
+        write!(f, "W<{}>", self.0)
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
+pub enum Sign {
+    Signed,
+    Unsigned,
+}
+
+// this allows us to use Sign as an argument to ctx.bit_vec_val
+impl From<Sign> for u128 {
+    fn from(value: Sign) -> Self {
+        let w: WidthInt = value.into();
+        w as u128
+    }
+}
+
+impl From<Sign> for WidthInt {
+    fn from(value: Sign) -> Self {
+        match value {
+            Sign::Signed => 1,
+            Sign::Unsigned => 0,
+        }
+    }
+}
+
+impl From<Sign> for Arith {
+    fn from(value: Sign) -> Self {
+        Arith::Sign(value)
+    }
+}
+
+impl FromStr for Sign {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "sign" => Ok(Self::Signed),
+            "unsign" => Ok(Self::Signed),
+            _ => Err(()),
+        }
+    }
+}
+
+impl Display for Sign {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Sign::Signed => write!(f, "sign"),
+            Sign::Unsigned => write!(f, "unsign"),
+        }
     }
 }
 
@@ -72,7 +142,7 @@ pub fn to_arith(ctx: &Context, e: ExprRef) -> egg::RecExpr<Arith> {
             });
         },
         |_ctx, expr, children| match ctx[expr].clone() {
-            Expr::BVSymbol { name, width } => out.add(Arith::Symbol(ArithSymbol { name, width })),
+            Expr::BVSymbol { name, .. } => out.add(Arith::Symbol(ctx[name].to_string())),
             Expr::BVAdd(a, b, width) => convert_bin_op(
                 ctx,
                 &mut out,
@@ -158,11 +228,11 @@ fn convert_bin_op(
     debug_assert_eq!(width_out, a.get_bv_type(ctx).unwrap());
     debug_assert_eq!(width_out, b.get_bv_type(ctx).unwrap());
     // convert signedness and widths into e-nodes
-    let width_out = out.add(Arith::WidthConst(width_out));
-    let width_a = out.add(Arith::WidthConst(width_a));
-    let width_b = out.add(Arith::WidthConst(width_b));
-    let sign_a = out.add(Arith::WidthConst(sign_a as WidthInt));
-    let sign_b = out.add(Arith::WidthConst(sign_b as WidthInt));
+    let width_out = out.add(width_out.into());
+    let width_a = out.add(width_a.into());
+    let width_b = out.add(width_b.into());
+    let sign_a = out.add(sign_a.into());
+    let sign_b = out.add(sign_b.into());
     out.add(op([
         width_out,
         width_a,
@@ -175,35 +245,41 @@ fn convert_bin_op(
 }
 
 /// Removes any sign or zero extend expressions and returns whether the removed extension was signed.
-fn remove_ext(ctx: &Context, e: ExprRef) -> (ExprRef, bool) {
+fn remove_ext(ctx: &Context, e: ExprRef) -> (ExprRef, Sign) {
     match ctx[e] {
-        Expr::BVZeroExt { e, .. } => (remove_ext(ctx, e).0, false),
-        Expr::BVSignExt { e, .. } => (remove_ext(ctx, e).0, true),
-        _ => (e, false),
+        Expr::BVZeroExt { e, .. } => (remove_ext(ctx, e).0, Sign::Unsigned),
+        Expr::BVSignExt { e, .. } => (remove_ext(ctx, e).0, Sign::Signed),
+        _ => (e, Sign::Unsigned),
     }
 }
 
 /// Convert from the arithmetic expression IR back to our internal SMTLib based IR.
 pub fn from_arith(ctx: &mut Context, expr: &RecExpr<Arith>) -> ExprRef {
     let expressions = expr.as_ref();
-    let mut todo = vec![(expressions.len() - 1, false)];
+    let mut todo = vec![(expressions.len() - 1, false, 0)];
     let mut stack = Vec::with_capacity(4);
+    let mut child_widths = Vec::with_capacity(8);
 
-    while let Some((e, bottom_up)) = todo.pop() {
+    while let Some((e, bottom_up, expected_width)) = todo.pop() {
         let expr = &expressions[e];
 
         // Check if there are children that we need to compute first.
         if !bottom_up && !expr.children().is_empty() {
-            todo.push((e, true));
-            for child_id in expr.children() {
-                todo.push((usize::from(*child_id), false));
+            todo.push((e, true, expected_width));
+            get_child_widths(e, expressions, &mut child_widths);
+            for (child_id, expected_w) in expr.children().iter().zip(child_widths.iter()) {
+                todo.push((usize::from(*child_id), false, *expected_w));
             }
+            child_widths.clear();
             continue;
         }
 
         // Otherwise, all arguments are available on the stack for us to use.
         let result = match expr {
-            Arith::Symbol(ArithSymbol { name, width }) => ctx.symbol(*name, Type::BV(*width)),
+            Arith::Symbol(name) => {
+                debug_assert!(expected_width > 0, "unknown width for symbol `{name}`!");
+                ctx.bv_symbol(name, expected_width)
+            }
             Arith::Add(_) => patronus_bin_op(ctx, &mut stack, |ctx, a, b| ctx.add(a, b)),
             Arith::Sub(_) => patronus_bin_op(ctx, &mut stack, |ctx, a, b| ctx.sub(a, b)),
             Arith::Mul(_) => patronus_bin_op(ctx, &mut stack, |ctx, a, b| ctx.mul(a, b)),
@@ -216,13 +292,53 @@ pub fn from_arith(ctx: &mut Context, expr: &RecExpr<Arith>) -> ExprRef {
             Arith::ArithmeticRightShift(_) => patronus_bin_op(ctx, &mut stack, |ctx, a, b| {
                 ctx.arithmetic_shift_right(a, b)
             }),
-            Arith::WidthConst(width) => ctx.bit_vec_val(*width, 32),
+            Arith::Width(width) => ctx.bit_vec_val(*width, 32),
+            Arith::Sign(sign) => ctx.bit_vec_val(*sign, 1),
+            Arith::Const(value) => {
+                debug_assert!(expected_width > 0, "unknown width for constant `{value}`!");
+                ctx.bit_vec_val(*value, expected_width)
+            }
         };
         stack.push(result);
     }
 
     debug_assert_eq!(stack.len(), 1);
     stack.pop().unwrap()
+}
+
+/// extracts the expected widths of all proper child expressions
+fn get_child_widths(root: usize, expressions: &[Arith], out: &mut Vec<WidthInt>) {
+    debug_assert!(out.is_empty());
+    let expr = &expressions[root];
+    if is_bin_op(expr) {
+        // w, w_a, s_a, a, w_b, s_b, b
+        let a_width = get_width(usize::from(expr.children()[1]), expressions);
+        let b_width = get_width(usize::from(expr.children()[4]), expressions);
+        // we set don't cares to zero
+        out.extend_from_slice(&[0, 0, 0, a_width, 0, 0, b_width]);
+    } else {
+        // otherwise there is nothing to do
+        debug_assert!(expr.children().is_empty(), "{expr:?}")
+    }
+}
+
+fn get_width(root: usize, expressions: &[Arith]) -> WidthInt {
+    match &expressions[root] {
+        Arith::Width(w) => w.0,
+        other => todo!("calculate width for {other:?}"),
+    }
+}
+
+fn is_bin_op(a: &Arith) -> bool {
+    matches!(
+        a,
+        Arith::Add(_)
+            | Arith::Sub(_)
+            | Arith::Mul(_)
+            | Arith::LeftShift(_)
+            | Arith::RightShift(_)
+            | Arith::ArithmeticRightShift(_)
+    )
 }
 
 fn patronus_bin_op(
@@ -279,42 +395,137 @@ fn extend(
     }
 }
 
-type EGraph = egg::EGraph<Arith, ()>;
+/// our version of the egg re-write macro
+macro_rules! arith_rewrite {
+    (
+        $name:expr;
+        $lhs:expr => $rhs:expr
+    ) => {{
+        ArithRewrite::new::<&str>($name, $lhs, $rhs, [], None)
+    }};
+    (
+        $name:expr;
+        $lhs:expr => $rhs:expr;
+        if $vars:expr, $cond:expr
+    ) => {{
+        ArithRewrite::new($name, $lhs, $rhs, $vars, Some($cond))
+    }};
+}
 
-fn create_rewrites() -> Vec<egg::Rewrite<Arith, ()>> {
+pub struct ArithRewrite {
+    name: String,
+    /// most general lhs pattern
+    lhs: Pattern<Arith>,
+    /// rhs pattern with all widths derived from the lhs, maybe be the same as rhs
+    rhs_derived: Pattern<Arith>,
+    /// variables use by the condition
+    cond_vars: Vec<Var>,
+    /// condition of the re_write
+    cond: Option<fn(&[WidthInt]) -> bool>,
+}
+
+impl ArithRewrite {
+    fn new<S: AsRef<str>>(
+        name: &str,
+        lhs: &str,
+        rhs_derived: &str,
+        cond_vars: impl IntoIterator<Item = S>,
+        cond: Option<fn(&[WidthInt]) -> bool>,
+    ) -> Self {
+        let cond_vars = cond_vars
+            .into_iter()
+            .map(|n| n.as_ref().parse().unwrap())
+            .collect();
+        Self {
+            name: name.to_string(),
+            lhs: lhs.parse::<_>().unwrap(),
+            rhs_derived: rhs_derived.parse::<_>().unwrap(),
+            cond,
+            cond_vars,
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn patterns(&self) -> (&PatternAst<Arith>, &PatternAst<Arith>) {
+        (&self.lhs.ast, &self.rhs_derived.ast)
+    }
+
+    pub fn to_egg(&self) -> Vec<Rewrite<Arith, ()>> {
+        // TODO: support bi-directional rules
+        if let Some(cond) = self.cond {
+            let vars: Vec<Var> = self.cond_vars.clone();
+            let condition = move |egraph: &mut EGraph, _, subst: &Subst| {
+                let values: Vec<WidthInt> = vars
+                    .iter()
+                    .map(|v| get_const_width_or_sign(egraph, subst, *v))
+                    .collect();
+                cond(values.as_slice())
+            };
+            let cond_app = ConditionalApplier {
+                condition,
+                applier: self.rhs_derived.clone(),
+            };
+            vec![Rewrite::new(self.name.clone(), self.lhs.clone(), cond_app).unwrap()]
+        } else {
+            vec![Rewrite::new(
+                self.name.clone(),
+                self.lhs.clone(),
+                self.rhs_derived.clone(),
+            )
+            .unwrap()]
+        }
+    }
+
+    pub fn eval_condition(&self, a: &[(Var, WidthInt)]) -> bool {
+        if let Some(cond) = self.cond {
+            let values: Vec<WidthInt> = self
+                .cond_vars
+                .iter()
+                .map(|v| a.iter().find(|(k, _)| k == v).unwrap().1)
+                .collect();
+            cond(values.as_slice())
+        } else {
+            // unconditional rewrite
+            true
+        }
+    }
+}
+
+pub fn create_rewrites() -> Vec<ArithRewrite> {
     vec![
-        rewrite!("commute-add"; "(+ ?wo ?wa ?sa ?a ?wb ?sb ?b)" => "(+ ?wo ?wb ?sb ?b ?wa ?sa ?a)" if commute_add_condition("?wo", "?wa", "?sa", "?wb", "?sb")),
+        arith_rewrite!("commute-add"; "(+ ?wo ?wa ?sa ?a ?wb ?sb ?b)" => "(+ ?wo ?wb ?sb ?b ?wa ?sa ?a)"),
+        arith_rewrite!("merge-left-shift";
+            // we require that b, c and (b + c) are all unsigned
+            "(<< ?wo ?wab ?sab (<< ?wab ?wa ?sa ?a ?wb unsign ?b) ?wc unsign ?c)" =>
+            // note: in this version we set the width of (b + c) on the RHS to be the width of the
+            //       result (w_o)
+            "(<< ?wo ?wa ?sa ?a ?wo unsign (+ ?wo ?wb unsign ?b ?wc unsign ?c))";
+            // wa == wb && wo >= wa
+            if["?wo", "?wa", "?wb"], |w| w[1] == w[2] && w[0] >= w[1]),
+        arith_rewrite!("mult-to-add";
+            "(+ ?wo ?wa ?sa ?a ?wb ?sb 2)" =>
+            "(+ ?wo ?wa ?sa ?a ?wa ?sa ?a)";
+            // wo > wa && wo > wb  && ((wb == 0 && wa > 1) || (wb == 1 && wa > 2) ))
+           if["?wo", "?wa", "?wb"], |w| w[0] > w[1] && w[0] > w[2] && ( (w[2] == 0 && w[1] > 1) || (w[2] == 1 && w[1] > 2) )),
     ]
 }
 
-fn commute_add_condition(
-    wo: &'static str,
-    wa: &'static str,
-    sa: &'static str,
-    wb: &'static str,
-    sb: &'static str,
-) -> impl Fn(&mut EGraph, egg::Id, &egg::Subst) -> bool {
-    let wo = wo.parse().unwrap();
-    let wa = wa.parse().unwrap();
-    let sa = sa.parse().unwrap();
-    let wb = wb.parse().unwrap();
-    let sb = sb.parse().unwrap();
-    move |egraph, _, subst| {
-        let wo = get_width_from_e_graph(egraph, subst, wo);
-        let wa = get_width_from_e_graph(egraph, subst, wa);
-        let wb = get_width_from_e_graph(egraph, subst, wb);
-        let sa = get_width_from_e_graph(egraph, subst, sa);
-        let sb = get_width_from_e_graph(egraph, subst, sb);
-        // actual condition
-        wa == wb && wo >= wa
-    }
-}
+type EGraph = egg::EGraph<Arith, ()>;
 
-fn get_width_from_e_graph(egraph: &mut EGraph, subst: &egg::Subst, v: Var) -> WidthInt {
-    match egraph[subst[v]].nodes.as_slice() {
-        [Arith::WidthConst(w)] => *w,
-        _ => unreachable!("expected a width!"),
-    }
+fn get_const_width_or_sign(egraph: &EGraph, subst: &Subst, v: Var) -> WidthInt {
+    egraph[subst[v]]
+        .nodes
+        .iter()
+        .flat_map(|n| match n {
+            Arith::Width(w) => Some((*w).into()),
+            Arith::Sign(s) => Some((*s).into()),
+            _ => None,
+        })
+        .next()
+        .expect("failed to find constant width")
 }
 
 #[cfg(test)]
@@ -363,9 +574,17 @@ mod tests {
 
         // run egraph operations
         let egg_expr_in = to_arith(&ctx, in_smt_expr);
+        let egg_rewrites: Vec<Rewrite<_, _>> = create_rewrites()
+            .into_iter()
+            .map(|r| r.to_egg())
+            .reduce(|mut a, mut b| {
+                a.append(&mut b);
+                a
+            })
+            .unwrap();
         let runner = egg::Runner::default()
             .with_expr(&egg_expr_in)
-            .run(&create_rewrites());
+            .run(&egg_rewrites);
 
         // check how many different nodes are representing the root node now
         let root = runner.roots[0];

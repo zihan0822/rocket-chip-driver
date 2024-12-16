@@ -2,7 +2,6 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
-use crate::rewrites::ArithRewrite;
 use egg::*;
 use indicatif::ProgressBar;
 use patronus::expr::traversal::TraversalCmd;
@@ -27,6 +26,7 @@ pub fn generate_samples(
     max_width: WidthInt,
     show_progress: bool,
     dump_smt: bool,
+    single_thread: bool,
 ) -> Samples {
     let (lhs, rhs) = rule.patterns();
     let lhs_info = analyze_pattern(lhs);
@@ -43,49 +43,88 @@ pub fn generate_samples(
         None
     };
 
-    // thread local storage in order to re-use smt solver process
-    let num_threads = rayon::current_num_threads();
-    let solvers = (0..num_threads)
-        .map(|_| Mutex::new(start_solver(dump_smt)))
-        .collect::<Vec<_>>();
+    if single_thread {
+        let mut smt_ctx = start_solver(dump_smt);
+        let mut samples = Samples::new(&rule_info);
+        for assignment in rule_info.iter_assignments(max_width) {
+            let is_eq = check_rule(
+                &mut smt_ctx,
+                &assignment,
+                prog.as_ref(),
+                lhs,
+                &lhs_info,
+                rhs,
+                &rhs_info,
+            );
+            samples.add(assignment, is_eq);
+        }
+        samples
+    } else {
+        // thread local storage in order to re-use smt solver process
+        let num_threads = rayon::current_num_threads();
+        let solvers = (0..num_threads)
+            .map(|_| Mutex::new(start_solver(dump_smt)))
+            .collect::<Vec<_>>();
 
-    // check all rewrites in parallel
-    let assignment_range = 0..rule_info.num_assignments(max_width);
-    assignment_range
-        .into_par_iter()
-        .map(|index| {
-            // create context and samples
-            let mut ctx = Context::default();
-            let idx = rayon::current_thread_index().unwrap();
-            let mut smt_ctx = solvers[idx].lock().unwrap();
+        // check all rewrites in parallel
+        let assignment_range = 0..rule_info.num_assignments(max_width);
+        assignment_range
+            .into_par_iter()
+            .map(|index| {
+                // create context and samples
+                let idx = rayon::current_thread_index().unwrap();
+                let mut smt_ctx = solvers[idx].lock().unwrap();
+                let assignment = rule_info.get_assignment(max_width, index);
+                let is_eq = check_rule(
+                    smt_ctx.deref_mut(),
+                    &assignment,
+                    prog.as_ref(),
+                    lhs,
+                    &lhs_info,
+                    rhs,
+                    &rhs_info,
+                );
+                (assignment, is_eq)
+            })
+            .fold(
+                || Samples::new(&rule_info),
+                |mut samples, (a, e)| {
+                    samples.add(a, e);
+                    samples
+                },
+            )
+            .reduce(|| Samples::new(&rule_info), Samples::merge)
+    }
+}
 
-            if let Some(p) = &prog {
-                p.inc(1);
-            }
-            let assignment = rule_info.get_assignment(max_width, index);
-            let lhs_expr = to_smt(&mut ctx, lhs, &lhs_info, &assignment);
-            let rhs_expr = to_smt(&mut ctx, rhs, &rhs_info, &assignment);
+fn check_rule(
+    smt_ctx: &mut impl SolverContext,
+    assignment: &Assignment,
+    prog: Option<&ProgressBar>,
+    lhs: &PatternAst<Arith>,
+    lhs_info: &RuleInfo,
+    rhs: &PatternAst<Arith>,
+    rhs_info: &RuleInfo,
+) -> bool {
+    // create context and samples
+    let mut ctx = Context::default();
 
-            smt_ctx.push().unwrap();
-            let resp = check_eq(&mut ctx, smt_ctx.deref_mut(), lhs_expr, rhs_expr);
-            smt_ctx.pop().unwrap();
+    if let Some(p) = prog {
+        p.inc(1);
+    }
 
-            let is_eq = match resp {
-                CheckSatResponse::Sat => false,
-                CheckSatResponse::Unsat => true,
-                CheckSatResponse::Unknown => panic!("{assignment:?} => Unknown!"),
-            };
+    let lhs_expr = to_smt(&mut ctx, lhs, lhs_info, assignment);
+    let rhs_expr = to_smt(&mut ctx, rhs, &rhs_info, assignment);
 
-            (assignment, is_eq)
-        })
-        .fold(
-            || Samples::new(&rule_info),
-            |mut samples, (a, e)| {
-                samples.add(a, e);
-                samples
-            },
-        )
-        .reduce(|| Samples::new(&rule_info), Samples::merge)
+    smt_ctx.push().unwrap();
+    let resp = check_eq(&mut ctx, smt_ctx, lhs_expr, rhs_expr);
+    smt_ctx.pop().unwrap();
+
+    match resp {
+        CheckSatResponse::Sat => false,
+        CheckSatResponse::Unsat => true,
+        CheckSatResponse::Unknown => panic!("{assignment:?} => Unknown!"),
+    }
 }
 
 pub fn check_eq(
@@ -256,20 +295,6 @@ fn declare_vars(smt_ctx: &mut impl SolverContext, ctx: &Context, expr: ExprRef) 
             .expect("failed to declare const");
     }
 }
-
-fn extract_patterns<L: Language>(
-    rule: &Rewrite<L, ()>,
-) -> Option<(&PatternAst<L>, &PatternAst<L>)> {
-    let left = rule.searcher.get_pattern_ast()?;
-    let right = rule.applier.get_pattern_ast()?;
-    Some((left, right))
-}
-
-// fn extract_condition<L: Language>(
-//     rule: &Rewrite<L, ()>,
-// ) {
-//     rule.applier.apply_matches()
-// }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct RuleInfo {
@@ -461,7 +486,7 @@ fn symbol_from_pattern(pat: &PatternAst<Arith>, a: Id, w: Id, s: Id) -> Option<R
 fn width_const_from_pattern(pat: &PatternAst<Arith>, id: Id) -> VarOrConst {
     match &pat[id] {
         ENodeOrVar::ENode(node) => match node {
-            &Arith::WidthConst(w) => VarOrConst::C(w),
+            &Arith::Width(w) => VarOrConst::C(w.into()),
             _ => unreachable!("not a width!"),
         },
         ENodeOrVar::Var(var) => VarOrConst::V(*var),
@@ -475,39 +500,25 @@ pub fn to_smt(
     rule: &RuleInfo,
     assignment: &Assignment,
 ) -> ExprRef {
-    let subst = gen_substitution(ctx, rule, assignment);
+    let subst = gen_substitution(rule, assignment);
     let arith_expr = instantiate_pattern(pattern, &subst);
     from_arith(ctx, &arith_expr)
 }
 
 /// Generates a complete substitution from an assignment.
-fn gen_substitution(
-    ctx: &mut Context,
-    rule: &RuleInfo,
-    assignment: &Assignment,
-) -> FxHashMap<Var, Arith> {
+fn gen_substitution(rule: &RuleInfo, assignment: &Assignment) -> FxHashMap<Var, Arith> {
     let assignment = FxHashMap::from_iter(assignment.clone());
     let mut out = FxHashMap::default();
     for &width_var in rule.widths.iter() {
-        out.insert(width_var, Arith::WidthConst(assignment[&width_var]));
+        out.insert(width_var, assignment[&width_var].into());
     }
     for &sign_var in rule.signs.iter() {
         debug_assert!(assignment[&sign_var] <= 1);
-        out.insert(sign_var, Arith::WidthConst(assignment[&sign_var]));
+        out.insert(sign_var, assignment[&sign_var].into());
     }
     for child in rule.symbols.iter() {
-        let width = match child.width {
-            VarOrConst::C(w) => w,
-            VarOrConst::V(v) => assignment[&v],
-        };
         let name = child.var.to_string().chars().skip(1).collect::<String>();
-        let symbol = ctx.bv_symbol(&name, width);
-        let name_ref = ctx[symbol].get_symbol_name_ref().unwrap();
-        let sym = ArithSymbol {
-            name: name_ref,
-            width,
-        };
-        out.insert(child.var, Arith::Symbol(sym));
+        out.insert(child.var, Arith::Symbol(name));
     }
     out
 }
@@ -532,6 +543,14 @@ fn instantiate_pattern<L: Language>(
 mod tests {
     use super::*;
     use patronus::expr::TypeCheck;
+
+    fn extract_patterns<L: Language>(
+        rule: &Rewrite<L, ()>,
+    ) -> Option<(&PatternAst<L>, &PatternAst<L>)> {
+        let left = rule.searcher.get_pattern_ast()?;
+        let right = rule.applier.get_pattern_ast()?;
+        Some((left, right))
+    }
 
     #[test]
     fn test_assignment_iter() {
@@ -559,36 +578,31 @@ mod tests {
             extract_patterns(&rule).expect("failed to extract patterns from rewrite rule");
         let mut ctx = Context::default();
         let a = ctx.bv_symbol("a", 1);
-        let a_arith = ArithSymbol {
-            name: ctx[a].get_symbol_name_ref().unwrap(),
-            width: a.get_bv_type(&ctx).unwrap(),
-        };
         let b = ctx.bv_symbol("b", 1);
-        let b_arith = ArithSymbol {
-            name: ctx[b].get_symbol_name_ref().unwrap(),
-            width: b.get_bv_type(&ctx).unwrap(),
-        };
         let subst = FxHashMap::from_iter([
-            (Var::from_str("?wo").unwrap(), Arith::WidthConst(2)),
+            (Var::from_str("?wo").unwrap(), 2.into()),
             (
                 Var::from_str("?wa").unwrap(),
-                Arith::WidthConst(a_arith.width),
+                a.get_bv_type(&ctx).unwrap().into(),
             ),
-            (Var::from_str("?sa").unwrap(), Arith::WidthConst(1)),
-            (Var::from_str("?a").unwrap(), Arith::Symbol(a_arith)),
+            (Var::from_str("?sa").unwrap(), Sign::Signed.into()),
+            (
+                Var::from_str("?a").unwrap(),
+                Arith::Symbol(ctx.get_symbol_name(a).unwrap().to_string()),
+            ),
             (
                 Var::from_str("?wb").unwrap(),
-                Arith::WidthConst(b_arith.width),
+                b.get_bv_type(&ctx).unwrap().into(),
             ),
-            (Var::from_str("?sb").unwrap(), Arith::WidthConst(1)),
-            (Var::from_str("?b").unwrap(), Arith::Symbol(b_arith)),
+            (Var::from_str("?sb").unwrap(), Sign::Signed.into()),
+            (
+                Var::from_str("?b").unwrap(),
+                Arith::Symbol(ctx.get_symbol_name(b).unwrap().to_string()),
+            ),
         ]);
 
         assert_eq!(lhs.to_string(), "(+ ?wo ?wa ?sa ?a ?wb ?sb ?b)");
         let lhs_sub = instantiate_pattern(lhs, &subst);
-        assert_eq!(
-            lhs_sub.to_string(),
-            "(+ 2 1 1 \"StringRef(0):bv<1>\" 1 1 \"StringRef(1):bv<1>\")"
-        );
+        assert_eq!(lhs_sub.to_string(), "(+ W<2> W<1> sign a W<1> sign b)");
     }
 }

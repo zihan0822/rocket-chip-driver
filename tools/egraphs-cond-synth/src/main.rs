@@ -6,12 +6,10 @@
 // author: Mohanna Shahrad <mohanna@princeton.edu>
 
 mod features;
-mod rewrites;
 mod samples;
 mod summarize;
 
 use crate::features::{apply_features, FeatureResult};
-use crate::rewrites::{create_rewrites, ArithRewrite};
 use crate::samples::{
     check_eq, find_symbols_in_expr, get_rule_info, get_var_name, start_solver, to_smt, RuleInfo,
     Samples,
@@ -22,6 +20,7 @@ use clap::Parser;
 use patronus::expr::*;
 use patronus::mc::get_smt_value;
 use patronus::smt::{CheckSatResponse, SolverContext};
+use patronus_egraphs::{create_rewrites, ArithRewrite};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
@@ -40,6 +39,8 @@ struct Args {
     bdd_formula: bool,
     #[arg(long, help = "checks the current condition of the re-write rules")]
     check_cond: bool,
+    #[arg(long, help = "disable multi-threading")]
+    single_thread: bool,
     #[arg(long, help = "write the generated assignments to a JSON file")]
     write_assignments: Option<PathBuf>,
     #[arg(
@@ -86,7 +87,13 @@ fn main() {
     } else {
         // remember start time
         let start = std::time::Instant::now();
-        let samples = samples::generate_samples(rule, args.max_width, true, args.dump_smt);
+        let samples = samples::generate_samples(
+            rule,
+            args.max_width,
+            true,
+            args.dump_smt,
+            args.single_thread,
+        );
         let delta_t = std::time::Instant::now() - start;
         println!(
             "Took {delta_t:?} on {} threads.",
