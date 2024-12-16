@@ -38,6 +38,11 @@ struct Args {
     bdd_formula: bool,
     #[arg(long, help = "checks the current condition of the re-write rules")]
     check_cond: bool,
+    #[arg(
+        long,
+        help = "display up to N false negatives when checking conditions"
+    )]
+    show_false_negatives: Option<usize>,
     #[arg(long, help = "disable multi-threading")]
     single_thread: bool,
     #[arg(long, help = "write the generated assignments to a JSON file")]
@@ -110,7 +115,7 @@ fn main() {
     let rule_info = get_rule_info(rule);
 
     if args.check_cond {
-        check_conditions(rule, &samples, &rule_info);
+        check_conditions(rule, &samples, &rule_info, args.show_false_negatives);
     }
 
     if let Some(out_filename) = args.write_assignments {
@@ -235,12 +240,18 @@ fn write_espresso(filename: impl AsRef<Path>, features: &FeatureResult) -> std::
     Ok(())
 }
 
-fn check_conditions(rule: &ArithRewrite, samples: &Samples, info: &RuleInfo) {
+fn check_conditions(
+    rule: &ArithRewrite,
+    samples: &Samples,
+    info: &RuleInfo,
+    show_false_negatives: Option<usize>,
+) {
     // false positive => our current condition says it is equivalent, while it actually is not
     let mut false_positive = 0u64;
     // false negative => our current condition says the rule does not apply, while it actually could
     let mut false_negative = 0u64;
     let mut false_pos_examples = vec![];
+    let mut false_neg_examples = vec![];
     for (a, is_eq) in samples.iter() {
         let condition_res = rule.eval_condition(&a);
         match (condition_res, is_eq) {
@@ -249,6 +260,9 @@ fn check_conditions(rule: &ArithRewrite, samples: &Samples, info: &RuleInfo) {
                 false_positive += 1;
             }
             (false, true) => {
+                if show_false_negatives.is_some() {
+                    false_neg_examples.push(a);
+                }
                 false_negative += 1;
             }
             _ => {} // ignore
@@ -258,27 +272,61 @@ fn check_conditions(rule: &ArithRewrite, samples: &Samples, info: &RuleInfo) {
     println!("False positives (BAD): {false_positive: >10}");
     println!("False negatives (OK):  {false_negative: >10}");
     if !false_pos_examples.is_empty() {
-        let mut rnd = StdRng::seed_from_u64(0);
         println!("Some example assignments that are incorrectly classified as OK by our current condition:");
-        let mut ctx = Context::default();
-        let mut smt_ctx = start_solver(false);
-        for _ in 0..10 {
-            let a_idx = rnd.gen::<usize>() % false_pos_examples.len();
-            let a = &false_pos_examples[a_idx];
+        show_assignments(rule, info, &false_pos_examples, 10, CheckSatResponse::Sat);
+    }
+    if !false_neg_examples.is_empty() {
+        println!("Some example assignments that are incorrectly classified as DOES NOT APPLY by our current condition:");
+        show_assignments(
+            rule,
+            info,
+            &false_neg_examples,
+            show_false_negatives.unwrap(),
+            CheckSatResponse::Unsat,
+        );
+    }
+}
 
-            // generate smt expressions
-            let (lhs, rhs) = rule.patterns();
-            let substitution = gen_substitution(info, a);
-            let lhs_egg = instantiate_pattern(lhs, &substitution);
-            let rhs_egg = instantiate_pattern(rhs, &substitution);
-            let lhs_expr = from_arith(&mut ctx, &lhs_egg);
-            let rhs_expr = from_arith(&mut ctx, &rhs_egg);
+fn show_assignments(
+    rule: &ArithRewrite,
+    info: &RuleInfo,
+    examples: &[Assignment],
+    num_samples: usize,
+    expected: CheckSatResponse,
+) {
+    let mut rnd = StdRng::seed_from_u64(0);
+    let mut ctx = Context::default();
+    let mut smt_ctx = start_solver(false);
+    for _ in 0..num_samples {
+        let a_idx = rnd.gen::<usize>() % examples.len();
+        let a = &examples[a_idx];
 
-            // run SMT solver to get a counter example
-            smt_ctx.push().unwrap();
-            let resp = check_eq(&mut ctx, &mut smt_ctx, lhs_expr, rhs_expr);
-            assert_eq!(resp, CheckSatResponse::Sat);
+        // generate smt expressions
+        let (lhs, rhs) = rule.patterns();
+        let substitution = gen_substitution(info, a);
+        let lhs_egg = instantiate_pattern(lhs, &substitution);
+        let rhs_egg = instantiate_pattern(rhs, &substitution);
+        let lhs_expr = from_arith(&mut ctx, &lhs_egg);
+        let rhs_expr = from_arith(&mut ctx, &rhs_egg);
 
+        // run SMT solver to get a counter example
+        smt_ctx.push().unwrap();
+        let resp = check_eq(&mut ctx, &mut smt_ctx, lhs_expr, rhs_expr);
+        assert_eq!(resp, expected);
+
+        let equality = if resp == CheckSatResponse::Sat {
+            "=/="
+        } else {
+            "=="
+        };
+        println!("- EGG: {} {equality} {}", lhs_egg, rhs_egg);
+        println!(
+            "  SMT: {} {equality} {}",
+            lhs_expr.serialize_to_str(&ctx),
+            rhs_expr.serialize_to_str(&ctx)
+        );
+
+        if resp == CheckSatResponse::Sat {
             // get assignments to variables
             let is_eq = ctx.equal(lhs_expr, rhs_expr);
             let vars = find_symbols_in_expr(&ctx, is_eq);
@@ -298,16 +346,9 @@ fn check_conditions(rule: &ArithRewrite, samples: &Samples, info: &RuleInfo) {
                 "rhs_result={}",
                 get_value(&mut ctx, &mut smt_ctx, rhs_expr)
             ));
-            smt_ctx.pop().unwrap();
-
-            println!("  EGG: {} =/= {}", lhs_egg, rhs_egg);
-            println!(
-                "  SMT: {} =/= {}",
-                lhs_expr.serialize_to_str(&ctx),
-                rhs_expr.serialize_to_str(&ctx)
-            );
             println!("    with: {}", values.join(", "));
         }
+        smt_ctx.pop().unwrap();
     }
 }
 
