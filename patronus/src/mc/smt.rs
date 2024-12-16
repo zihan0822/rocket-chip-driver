@@ -11,6 +11,7 @@ use crate::system::analysis::{analyze_for_serialization, count_expr_uses, UseCou
 use crate::system::{State, TransitionSystem};
 use baa::*;
 use rustc_hash::FxHashSet;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy)]
 pub struct SmtModelCheckerOptions {
@@ -142,7 +143,7 @@ impl<S: Solver> SmtModelChecker<S> {
     fn get_witness(
         &self,
         sys: &TransitionSystem,
-        ctx: &Context,
+        ctx: &mut Context,
         _use_counts: &[UseCountInt], // TODO: analyze array expressions in order to record which indices are accessed
         smt_ctx: &mut impl SolverContext,
         enc: &UnrollSmtEncoding,
@@ -154,7 +155,7 @@ impl<S: Solver> SmtModelChecker<S> {
         // which bad states did we hit?
         for (bad_idx, expr) in bad_states.iter().enumerate() {
             let sym_at = enc.get_at(ctx, *expr, k_max);
-            let value = get_smt_value(smt_ctx, sym_at, expr.get_type(ctx))?;
+            let value = get_smt_value(ctx, smt_ctx, sym_at)?;
             let value = match value {
                 Value::Array(_) => unreachable!("should always be a bitvector!"),
                 Value::BitVec(v) => v,
@@ -168,7 +169,7 @@ impl<S: Solver> SmtModelChecker<S> {
         // collect initial values
         for (state_cnt, state) in sys.states.iter().enumerate() {
             let sym_at = enc.get_at(ctx, state.symbol, 0);
-            let value = get_smt_value(smt_ctx, sym_at, state.symbol.get_type(ctx))?;
+            let value = get_smt_value(ctx, smt_ctx, sym_at)?;
             // we assume that state ids are monotonically increasing with +1
             assert_eq!(wit.init.len(), state_cnt);
             // convert to a witness value
@@ -198,7 +199,7 @@ impl<S: Solver> SmtModelChecker<S> {
             let mut input_values = Vec::default();
             for input in sys.inputs.iter() {
                 let sym_at = enc.get_at(ctx, *input, k);
-                let value = get_smt_value(smt_ctx, sym_at, input.get_type(ctx))?;
+                let value = get_smt_value(ctx, smt_ctx, sym_at)?;
                 input_values.push(Some(value));
             }
             wit.inputs.push(input_values);
@@ -237,15 +238,14 @@ pub fn check_assuming_end(smt_ctx: &mut impl SolverContext, solver: &impl Solver
     }
 }
 
-pub fn get_smt_value(smt_ctx: &mut impl SolverContext, expr: ExprRef, tpe: Type) -> Result<Value> {
-    // let smt_value = smt_ctx.get_value(vec![expr])?[0].1;
-    // let res = if tpe.is_array() {
-    //     Value::Array(parse_smt_array(smt_ctx, smt_value).unwrap())
-    // } else {
-    //     Value::BitVec(parse_smt_bit_vec(smt_ctx, smt_value).unwrap())
-    // };
-    // Ok('res)
-    todo!("extract value from solver!")
+pub fn get_smt_value(
+    ctx: &mut Context,
+    smt_ctx: &mut impl SolverContext,
+    expr: ExprRef,
+) -> Result<Value> {
+    let value_expr = smt_ctx.get_value(ctx, expr)?;
+    let value = eval_expr(ctx, &HashMap::new(), value_expr);
+    Ok(value)
 }
 
 pub enum ModelCheckResult {

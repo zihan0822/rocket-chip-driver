@@ -258,18 +258,11 @@ impl<R: Write + Send> Drop for SmtLibSolverCtx<R> {
                 panic!("failed to send exit command");
             }
         }
-        let status = self
+        let _status = self
             .proc
             .wait()
             .expect("failed to wait for SMT solver to exit");
-        if !self.has_error {
-            // if everything has gone smoothly so far, we expect a successful exit
-            assert!(
-                status.success(),
-                "There was an error with the solver exiting: {:?}",
-                status
-            );
-        }
+        // we don't care whether the solver crashed or returned success, as long as it is cleaned up
     }
 }
 

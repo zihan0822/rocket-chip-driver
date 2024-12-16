@@ -108,7 +108,7 @@ fn parse_expr_internal(
     if let [PExpr(e)] = stack.as_slice() {
         Ok((*e, orphan_closing_count))
     } else {
-        todo!("error message!")
+        todo!("error message!: {stack:?}")
     }
 }
 
@@ -238,6 +238,8 @@ fn early_parse_number_literals<'a>(ctx: &mut Context, value: &'a [u8]) -> Result
                 "decimal constant: {}",
                 String::from_utf8_lossy(value)
             ))),
+            3 => Ok(ParserItem::PExpr(ctx.tru())),
+            4 => Ok(ParserItem::PExpr(ctx.fals())),
             _ => unreachable!("not part of the regex!"),
         }
     } else {
@@ -276,6 +278,8 @@ lazy_static! {
         r"^#b[01]+$",                    // binary
         r"^#x[[:xdigit:]]+$",            // hex
         r"^[[:digit:]]+\.[[:digit:]]+$", // decimal
+        r"^true$",                       // true == 1
+        r"^false$",                       // false == 0
     ]).unwrap();
 }
 
