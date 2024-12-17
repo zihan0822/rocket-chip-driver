@@ -199,7 +199,7 @@ jobs:
       - name: Build
         run: cargo build --verbose --release -p simplify
       - name: run
-        run: cargo run --release -p simplify -- in.smt out.smt
+        run: cargo run --release -p simplify -- inputs/smtlib/arbiter_array_cex_w32d32q16n4b34.smt2 out.smt
 
 
   semver:
