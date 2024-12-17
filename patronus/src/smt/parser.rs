@@ -3,7 +3,7 @@
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
 use crate::expr::{ArrayType, Context, ExprRef, Type, TypeCheck, WidthInt};
-use crate::smt::SmtCommand;
+use crate::smt::{Logic, SmtCommand};
 use regex::bytes::RegexSet;
 use rustc_hash::FxHashMap;
 use std::fmt::{Debug, Formatter};
@@ -13,6 +13,8 @@ use thiserror::Error;
 pub enum SmtParserError {
     #[error("[smt] unknown command: `{0}`")]
     UnknownCommand(String),
+    #[error("[smt] unsupported logic: `{0}`")]
+    UnknownLogic(String),
     #[error("[smt] only part of the input string was parsed into an expr. Next token: `{0}`")]
     ExprSuffix(String),
     #[error("[smt] expected an opening parenthesis, encountered this instead: {0}")]
@@ -171,6 +173,10 @@ pub fn parse_command(ctx: &mut Context, st: &mut SymbolTable, input: &[u8]) -> R
         Some(Token::Value(name)) => match name {
             b"exit" => SmtCommand::Exit,
             b"check-sat" => SmtCommand::CheckSat,
+            b"set-logic" => {
+                let logic = parse_logic(&mut lexer)?;
+                SmtCommand::SetLogic(logic)
+            }
             _ => {
                 return Err(SmtParserError::UnknownCommand(format!(
                     "{}",
@@ -184,6 +190,20 @@ pub fn parse_command(ctx: &mut Context, st: &mut SymbolTable, input: &[u8]) -> R
     // `)`
     skip_close_parens(&mut lexer)?;
     Ok(cmd)
+}
+
+fn parse_logic(lexer: &mut Lexer) -> Result<Logic> {
+    match lexer.next() {
+        Some(Token::Value(name)) => match name {
+            b"QF_ABV" => Ok(Logic::QfAbv),
+            b"QF_AUFBV" => Ok(Logic::QfAufbv),
+            b"ALL" => Ok(Logic::All),
+            other => Err(SmtParserError::UnknownLogic(
+                String::from_utf8_lossy(other).into(),
+            )),
+        },
+        other => Err(SmtParserError::UnknownLogic(format!("{other:?}"))),
+    }
 }
 
 fn skip_expr(lexer: &mut Lexer) -> Result<()> {
@@ -437,6 +457,7 @@ impl<'a> Iterator for Lexer<'a> {
 mod tests {
     use super::*;
     use crate::expr::SerializableIrNode;
+    use crate::smt::Logic;
 
     fn lex_to_token_str(input: &str) -> String {
         let tokens = Lexer::new(input.as_bytes())
@@ -531,5 +552,17 @@ mod tests {
             parse_command(&mut ctx, &mut st, "(check-sat)".as_bytes()).unwrap(),
             SmtCommand::CheckSat
         );
+
+        assert_eq!(
+            parse_command(&mut ctx, &mut st, "(set-logic QF_AUFBV)".as_bytes()).unwrap(),
+            SmtCommand::SetLogic(Logic::QfAufbv)
+        );
+
+        assert!(matches!(
+            parse_command(&mut ctx, &mut st, "(set-logic AUFBV)".as_bytes())
+                .err()
+                .unwrap(),
+            SmtParserError::UnknownLogic(_)
+        ));
     }
 }
