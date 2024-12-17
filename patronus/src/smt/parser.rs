@@ -11,6 +11,8 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum SmtParserError {
+    #[error("[smt] invalid key in set-option command: `{0}`")]
+    InvalidOptionKey(String),
     #[error("[smt] unknown command: `{0}`")]
     UnknownCommand(String),
     #[error("[smt] unsupported logic: `{0}`")]
@@ -23,6 +25,8 @@ pub enum SmtParserError {
     MissingClose(String),
     #[error("[smt] get-value response: {0}")]
     GetValueResponse(String),
+    #[error("[smt] expected an identifier token but got: {0}")]
+    ExpectedIdentifer(String),
     #[error("[smt] expected an expression but got: {0}")]
     ExpectedExpr(String),
     #[error("[smt] expected a type but got: {0}")]
@@ -177,6 +181,20 @@ pub fn parse_command(ctx: &mut Context, st: &mut SymbolTable, input: &[u8]) -> R
                 let logic = parse_logic(&mut lexer)?;
                 SmtCommand::SetLogic(logic)
             }
+            b"set-option" => {
+                let key = value_token(&mut lexer)?;
+                let value = value_token(&mut lexer)?;
+                if let Some(key) = key.strip_prefix(b":") {
+                    SmtCommand::SetOption(
+                        String::from_utf8_lossy(key).into(),
+                        String::from_utf8_lossy(value).into(),
+                    )
+                } else {
+                    return Err(SmtParserError::InvalidOptionKey(
+                        String::from_utf8_lossy(key).into(),
+                    ));
+                }
+            }
             _ => {
                 return Err(SmtParserError::UnknownCommand(format!(
                     "{}",
@@ -193,16 +211,21 @@ pub fn parse_command(ctx: &mut Context, st: &mut SymbolTable, input: &[u8]) -> R
 }
 
 fn parse_logic(lexer: &mut Lexer) -> Result<Logic> {
+    match value_token(lexer)? {
+        b"QF_ABV" => Ok(Logic::QfAbv),
+        b"QF_AUFBV" => Ok(Logic::QfAufbv),
+        b"ALL" => Ok(Logic::All),
+        other => Err(SmtParserError::UnknownLogic(
+            String::from_utf8_lossy(other).into(),
+        )),
+    }
+}
+
+fn value_token<'a>(lexer: &mut Lexer<'a>) -> Result<&'a [u8]> {
     match lexer.next() {
-        Some(Token::Value(name)) => match name {
-            b"QF_ABV" => Ok(Logic::QfAbv),
-            b"QF_AUFBV" => Ok(Logic::QfAufbv),
-            b"ALL" => Ok(Logic::All),
-            other => Err(SmtParserError::UnknownLogic(
-                String::from_utf8_lossy(other).into(),
-            )),
-        },
-        other => Err(SmtParserError::UnknownLogic(format!("{other:?}"))),
+        Some(Token::Value(v)) => Ok(v),
+        Some(Token::EscapedValue(v)) => Ok(v),
+        other => Err(SmtParserError::ExpectedIdentifer(format!("{other:?}"))),
     }
 }
 
@@ -547,12 +570,13 @@ mod tests {
             SmtCommand::Exit
         );
 
-        // test other commands
+        // check-sat
         assert_eq!(
             parse_command(&mut ctx, &mut st, "(check-sat)".as_bytes()).unwrap(),
             SmtCommand::CheckSat
         );
 
+        // set-logic
         assert_eq!(
             parse_command(&mut ctx, &mut st, "(set-logic QF_AUFBV)".as_bytes()).unwrap(),
             SmtCommand::SetLogic(Logic::QfAufbv)
@@ -563,6 +587,19 @@ mod tests {
                 .err()
                 .unwrap(),
             SmtParserError::UnknownLogic(_)
+        ));
+
+        // set-option
+        assert_eq!(
+            parse_command(&mut ctx, &mut st, "(set-option :a b)".as_bytes()).unwrap(),
+            SmtCommand::SetOption("a".to_string(), "b".to_string())
+        );
+
+        assert!(matches!(
+            parse_command(&mut ctx, &mut st, "(set-option a b)".as_bytes())
+                .err()
+                .unwrap(),
+            SmtParserError::InvalidOptionKey(_)
         ));
     }
 }
