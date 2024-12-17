@@ -11,6 +11,8 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum SmtParserError {
+    #[error("[smt] {0} requires at least {1} arguments, only {2} found.")]
+    MissingArgs(String, u16, u16),
     #[error("[smt] expected type, got expression: {0}")]
     ExprInsteadOfType(String),
     #[error("[smt] expected expression, got type: {0}")]
@@ -239,6 +241,16 @@ pub fn parse_command(ctx: &mut Context, st: &SymbolTable, input: &[u8]) -> Resul
                 let sym = ctx.symbol(name_ref, tpe);
                 SmtCommand::DeclareConst(sym)
             }
+            b"declare-fun" => {
+                // parses the `declare-const` subset (i.e. no arguments!)
+                let name = String::from_utf8_lossy(value_token(&mut lexer)?);
+                skip_open_parens(&mut lexer)?;
+                skip_close_parens(&mut lexer)?;
+                let tpe = parse_type(ctx, st, &mut lexer)?;
+                let name_ref = ctx.string(name);
+                let sym = ctx.symbol(name_ref, tpe);
+                SmtCommand::DeclareConst(sym)
+            }
             b"define-const" => {
                 let name = String::from_utf8_lossy(value_token(&mut lexer)?);
                 let tpe = parse_type(ctx, st, &mut lexer)?;
@@ -365,12 +377,15 @@ fn parse_pattern<'a>(
     pattern: &[ParserItem<'a>],
 ) -> Result<ParserItem<'a>> {
     use ParserItem::*;
+
     let item = match pattern {
+        // core
+        [Sym(b"and"), args @ ..] => bin_op(st, "and", args, |a, b| ctx.and(a, b))?,
         // bit vector type
         [Sym(b"_"), Sym(b"BitVec"), Sym(width)] => PType(Type::BV(parse_width(width)?)),
         // bit vector expressions
-        [Sym(b"bvand"), a, b] => PExpr(ctx.and(expr(st, a)?, expr(st, b)?)),
-        [Sym(b"bvadd"), a, b] => PExpr(ctx.add(expr(st, a)?, expr(st, b)?)),
+        [Sym(b"bvand"), args @ ..] => bin_op(st, "bvand", args, |a, b| ctx.and(a, b))?,
+        [Sym(b"bvadd"), args @ ..] => bin_op(st, "bvadd", args, |a, b| ctx.add(a, b))?,
         // array type
         [Sym(b"Array"), PType(Type::BV(index_width)), PType(Type::BV(data_width))] => {
             PType(Type::Array(ArrayType {
@@ -392,6 +407,25 @@ fn parse_pattern<'a>(
         }
     };
     Ok(item)
+}
+
+fn bin_op<'a>(
+    st: &SymbolTable,
+    name: &str,
+    args: &[ParserItem<'a>],
+    op: impl FnMut(ExprRef, ExprRef) -> ExprRef,
+) -> Result<ParserItem<'a>> {
+    if args.len() < 2 {
+        Err(SmtParserError::MissingArgs(
+            name.to_string(),
+            2,
+            args.len() as u16,
+        ))
+    } else {
+        let args: Result<Vec<ExprRef>> = args.iter().map(|a| expr(st, a)).collect();
+        let res = args?.into_iter().reduce(op).unwrap();
+        Ok(ParserItem::PExpr(res))
+    }
 }
 
 fn parse_width(value: &[u8]) -> Result<WidthInt> {
