@@ -54,6 +54,7 @@ pub enum SmtCommand {
     CheckSat,
     SetLogic(Logic),
     SetOption(String, String),
+    SetInfo(String, String),
     Assert(ExprRef),
     DeclareConst(ExprRef),
     DefineConst(ExprRef, ExprRef),

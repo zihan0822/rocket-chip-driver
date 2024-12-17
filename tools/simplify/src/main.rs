@@ -4,8 +4,9 @@
 
 use clap::Parser;
 use patronus::expr::*;
-use patronus::smt::SmtCommand;
+use patronus::smt::{parse_command, SmtCommand};
 use patronus::*;
+use rustc_hash::FxHashMap;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 
@@ -28,13 +29,72 @@ fn main() {
     let in_file = std::fs::File::open(args.input_file).expect("failed to open input file");
     let mut in_reader = BufReader::new(in_file);
     let mut ctx = Context::default();
-    let cmds = parse_commands(&mut in_reader, &mut ctx);
+    let mut st = FxHashMap::default();
+    let cmds = read_cmds(&mut in_reader, &mut ctx, &mut st);
 
     todo!();
 }
 
-fn parse_commands(inp: &mut impl BufRead, ctx: &mut Context) -> Vec<SmtCommand> {
+fn read_cmds(inp: &mut impl BufRead, ctx: &mut Context, st: &mut SymbolTable) -> Vec<SmtCommand> {
     let mut out = vec![];
-
+    while let Some(cmd) = read_cmd(inp, ctx, st).unwrap() {
+        out.push(cmd);
+    }
     out
+}
+
+type SymbolTable = FxHashMap<String, ExprRef>;
+
+fn read_cmd(
+    inp: &mut impl BufRead,
+    ctx: &mut Context,
+    st: &mut SymbolTable,
+) -> std::io::Result<Option<SmtCommand>> {
+    let mut response = String::new();
+    inp.read_line(&mut response)?;
+
+    // skip lines that are just comments
+    while is_comment(&response) {
+        response.clear();
+        inp.read_line(&mut response)?;
+    }
+
+    // ensure that the response contains balanced parentheses
+    while count_parens(&response) > 0 {
+        response.push(' ');
+        inp.read_line(&mut response)?;
+    }
+
+    // debug print
+    println!("{response}");
+    let cmd = parse_command(ctx, st, response.as_bytes());
+    println!("{cmd:?}");
+    let cmd = cmd.unwrap();
+
+    // add symbols to table
+    match cmd {
+        SmtCommand::DefineConst(sym, _) | SmtCommand::DeclareConst(sym) => {
+            st.insert(ctx.get_symbol_name(sym).unwrap().into(), sym);
+        }
+        _ => {}
+    }
+    Ok(Some(cmd))
+}
+
+fn is_comment(line: &str) -> bool {
+    for c in line.chars() {
+        if !c.is_ascii_whitespace() {
+            return c == ';';
+        }
+    }
+    // all whilespace
+    false
+}
+
+fn count_parens(s: &str) -> i64 {
+    s.chars().fold(0, |count, cc| match cc {
+        '(' => count + 1,
+        ')' => count - 1,
+        _ => count,
+    })
 }

@@ -288,7 +288,12 @@ pub fn serialize_cmd(out: &mut impl Write, ctx: Option<&Context>, cmd: &SmtComma
         SmtCommand::Exit => writeln!(out, "(exit)"),
         SmtCommand::CheckSat => writeln!(out, "(check-sat)"),
         SmtCommand::SetLogic(logic) => writeln!(out, "(set-logic {})", logic.to_smt_str()),
-        SmtCommand::SetOption(name, value) => writeln!(out, "(set-option :{name} {value})"),
+        SmtCommand::SetOption(name, value) => {
+            writeln!(out, "(set-option :{name} {})", escape_smt_identifier(value))
+        }
+        SmtCommand::SetInfo(name, value) => {
+            writeln!(out, "(set-option :{name} {})", escape_smt_identifier(value))
+        }
         SmtCommand::Assert(e) => {
             write!(out, "(assert ")?;
             serialize_expr(out, ctx.unwrap(), *e)?;
