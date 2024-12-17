@@ -2,7 +2,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
-use crate::expr::{ArrayType, Context, ExprRef, Type, TypeCheck, WidthInt};
+use crate::expr::{ArrayType, Context, ExprRef, SerializableIrNode, Type, TypeCheck, WidthInt};
 use crate::smt::{Logic, SmtCommand};
 use regex::bytes::RegexSet;
 use rustc_hash::FxHashMap;
@@ -11,6 +11,10 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum SmtParserError {
+    #[error("[smt] expected type, got expression: {0}")]
+    ExprInsteadOfType(String),
+    #[error("[smt] expected expression, got type: {0}")]
+    TypeInsteadOfExpr(String),
     #[error("[smt] invalid key in set-option command: `{0}`")]
     InvalidOptionKey(String),
     #[error("[smt] unknown command: `{0}`")]
@@ -81,6 +85,32 @@ fn parse_expr_internal(
     st: &mut SymbolTable,
     lexer: &mut Lexer,
 ) -> Result<ExprRef> {
+    match parse_expr_or_type(ctx, st, lexer)? {
+        ExprOrType::E(e) => Ok(e),
+        ExprOrType::T(t) => Err(SmtParserError::TypeInsteadOfExpr(format!("{t:?}"))),
+    }
+}
+
+fn parse_type(ctx: &mut Context, st: &mut SymbolTable, lexer: &mut Lexer) -> Result<Type> {
+    match parse_expr_or_type(ctx, st, lexer)? {
+        ExprOrType::T(t) => Ok(t),
+        ExprOrType::E(e) => Err(SmtParserError::ExprInsteadOfType(format!(
+            "{}",
+            e.serialize_to_str(ctx)
+        ))),
+    }
+}
+
+enum ExprOrType {
+    E(ExprRef),
+    T(Type),
+}
+
+fn parse_expr_or_type(
+    ctx: &mut Context,
+    st: &mut SymbolTable,
+    lexer: &mut Lexer,
+) -> Result<ExprOrType> {
     use ParserItem::*;
     let mut stack: Vec<ParserItem> = Vec::with_capacity(64);
     // keep track of how many closing parenthesis without an opening one are encountered
@@ -122,8 +152,10 @@ fn parse_expr_internal(
         }
 
         // are we done?
-        if let [PExpr(e)] = stack.as_slice() {
-            return Ok(*e);
+        match stack.as_slice() {
+            [PExpr(e)] => return Ok(ExprOrType::E(*e)),
+            [PType(t)] => return Ok(ExprOrType::T(*t)),
+            _ => {} // cotinue parsing
         }
     }
     todo!("error message!")
@@ -194,6 +226,45 @@ pub fn parse_command(ctx: &mut Context, st: &mut SymbolTable, input: &[u8]) -> R
                         String::from_utf8_lossy(key).into(),
                     ));
                 }
+            }
+            b"assert" => {
+                let expr = parse_expr_internal(ctx, st, &mut lexer)?;
+                SmtCommand::Assert(expr)
+            }
+            b"declare-const" => {
+                let name = String::from_utf8_lossy(value_token(&mut lexer)?);
+                let tpe = parse_type(ctx, st, &mut lexer)?;
+                let name_ref = ctx.string(name);
+                let sym = ctx.symbol(name_ref, tpe);
+                SmtCommand::DeclareConst(sym)
+            }
+            b"define-const" => {
+                let name = String::from_utf8_lossy(value_token(&mut lexer)?);
+                let tpe = parse_type(ctx, st, &mut lexer)?;
+                let value = parse_expr_internal(ctx, st, &mut lexer)?;
+                // TODO: turn this into a proper error
+                debug_assert_eq!(ctx[value].get_type(ctx), tpe);
+                let name_ref = ctx.string(name);
+                let sym = ctx.symbol(name_ref, tpe);
+                SmtCommand::DefineConst(sym, value)
+            }
+            b"check-sat-assuming" => {
+                let expressions = vec![parse_expr_internal(ctx, st, &mut lexer)?];
+                // TODO: deal with more than one expression
+                SmtCommand::CheckSatAssuming(expressions)
+            }
+            b"push" | b"pop" => {
+                let n = value_token(&mut lexer)?;
+                let n: u64 = String::from_utf8_lossy(n).parse()?;
+                if name == b"push" {
+                    SmtCommand::Push(n)
+                } else {
+                    SmtCommand::Pop(n)
+                }
+            }
+            b"get-value" => {
+                let expr = parse_expr_internal(ctx, st, &mut lexer)?;
+                SmtCommand::GetValue(expr)
             }
             _ => {
                 return Err(SmtParserError::UnknownCommand(format!(
