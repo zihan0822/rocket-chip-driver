@@ -3,24 +3,34 @@
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
 use crate::expr::{ArrayType, Context, ExprRef, Type, TypeCheck, WidthInt};
+use crate::smt::SmtCommand;
 use regex::bytes::RegexSet;
 use rustc_hash::FxHashMap;
-use std::cmp::Ordering;
 use std::fmt::{Debug, Formatter};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum SmtParserError {
+    #[error("[smt] unknown command: `{0}`")]
+    UnknownCommand(String),
+    #[error("[smt] only part of the input string was parsed into an expr. Next token: `{0}`")]
+    ExprSuffix(String),
+    #[error("[smt] expected an opening parenthesis, encountered this instead: {0}")]
+    MissingOpen(String),
+    #[error("[smt] expected a closing parenthesis, encountered this instead: {0}")]
+    MissingClose(String),
     #[error("[smt] get-value response: {0}")]
     GetValueResponse(String),
     #[error("[smt] expected an expression but got: {0}")]
     ExpectedExpr(String),
     #[error("[smt] expected a type but got: {0}")]
     ExpectedType(String),
+    #[error("[smt] expected a command but got: {0}")]
+    ExpectedCommand(String),
     #[error("[smt] unknown pattern: {0}")]
     Pattern(String),
     #[error("[smt] missing opening parenthesis for closing parenthesis")]
-    MissingOpen,
+    ClosingParenWithoutOpening,
     #[error("[smt] unsupported feature {0}")]
     Unsupported(String),
     #[error("[smt] unknown symbol {0}")]
@@ -50,20 +60,21 @@ type Result<T> = std::result::Result<T, SmtParserError>;
 type SymbolTable = FxHashMap<String, ExprRef>;
 
 pub fn parse_expr(ctx: &mut Context, st: &mut SymbolTable, input: &[u8]) -> Result<ExprRef> {
-    let lexer = Lexer::new(input);
-    let (expr, extra_closing_parens) = parse_expr_internal(ctx, st, lexer)?;
-    if extra_closing_parens == 0 {
-        Ok(expr)
+    let mut lexer = Lexer::new(input);
+    let expr = parse_expr_internal(ctx, st, &mut lexer)?;
+    let token_after_expr = lexer.next();
+    if token_after_expr.is_some() {
+        Err(SmtParserError::ExprSuffix(format!("{token_after_expr:?}")))
     } else {
-        Err(SmtParserError::MissingOpen)
+        Ok(expr)
     }
 }
 
 fn parse_expr_internal(
     ctx: &mut Context,
     st: &mut SymbolTable,
-    lexer: Lexer,
-) -> Result<(ExprRef, u64)> {
+    lexer: &mut Lexer,
+) -> Result<ExprRef> {
     use ParserItem::*;
     let mut stack: Vec<ParserItem> = Vec::with_capacity(64);
     // keep track of how many closing parenthesis without an opening one are encountered
@@ -72,7 +83,7 @@ fn parse_expr_internal(
         match token {
             Token::Open => {
                 if orphan_closing_count > 0 {
-                    return Err(SmtParserError::MissingOpen);
+                    return Err(SmtParserError::ClosingParenWithoutOpening);
                 }
                 stack.push(Open);
             }
@@ -91,25 +102,25 @@ fn parse_expr_internal(
             }
             Token::Value(value) => {
                 if orphan_closing_count > 0 {
-                    return Err(SmtParserError::MissingOpen);
+                    return Err(SmtParserError::ClosingParenWithoutOpening);
                 }
                 // we eagerly parse number literals, but we do not make decisions on symbols yet
                 stack.push(early_parse_number_literals(ctx, value)?);
             }
             Token::EscapedValue(value) => {
                 if orphan_closing_count > 0 {
-                    return Err(SmtParserError::MissingOpen);
+                    return Err(SmtParserError::ClosingParenWithoutOpening);
                 }
                 stack.push(PExpr(lookup_sym(st, value)?))
             }
         }
-    }
 
-    if let [PExpr(e)] = stack.as_slice() {
-        Ok((*e, orphan_closing_count))
-    } else {
-        todo!("error message!: {stack:?}")
+        // are we done?
+        if let [PExpr(e)] = stack.as_slice() {
+            return Ok(*e);
+        }
     }
+    todo!("error message!")
 }
 
 /// Extracts the value expression from SMT solver responses of the form ((... value))
@@ -117,35 +128,65 @@ fn parse_expr_internal(
 pub fn parse_get_value_response(ctx: &mut Context, input: &[u8]) -> Result<ExprRef> {
     let mut lexer = Lexer::new(input);
 
-    // skip `(`
-    let open_one = lexer.next() == Some(Token::Open);
-    let open_two = lexer.next() == Some(Token::Open);
-    if !open_one || !open_two {
-        return Err(SmtParserError::GetValueResponse(
-            "expected two opening parentheses".to_string(),
-        ));
-    }
-
-    // skip next expr
-    if !skip_expr(&mut lexer) {
-        return Err(SmtParserError::GetValueResponse(
-            "failed to find first expression".to_string(),
-        ));
-    }
+    // skip `(`, `(` and first expression
+    skip_open_parens(&mut lexer)?;
+    skip_open_parens(&mut lexer)?;
+    skip_expr(&mut lexer)?;
 
     // parse next expr
     let mut st = FxHashMap::default();
-    let (expr, extra_closing_parens) = parse_expr_internal(ctx, &mut st, lexer)?;
-    match extra_closing_parens.cmp(&2) {
-        Ordering::Less => Err(SmtParserError::GetValueResponse(
-            "expected two closing parentheses".to_string(),
-        )),
-        Ordering::Equal => Ok(expr),
-        Ordering::Greater => Err(SmtParserError::MissingOpen),
+    let expr = parse_expr_internal(ctx, &mut st, &mut lexer)?;
+    skip_close_parens(&mut lexer)?;
+    skip_close_parens(&mut lexer)?;
+    Ok(expr)
+}
+
+fn skip_open_parens(lexer: &mut Lexer) -> Result<()> {
+    let token = lexer.next();
+    if token == Some(Token::Open) {
+        Ok(())
+    } else {
+        Err(SmtParserError::MissingOpen(format!("{token:?}")))
     }
 }
 
-fn skip_expr(lexer: &mut Lexer) -> bool {
+fn skip_close_parens(lexer: &mut Lexer) -> Result<()> {
+    let token = lexer.next();
+    if token == Some(Token::Close) {
+        Ok(())
+    } else {
+        Err(SmtParserError::MissingClose(format!("{token:?}")))
+    }
+}
+
+/// Parses a single command.
+pub fn parse_command(ctx: &mut Context, st: &mut SymbolTable, input: &[u8]) -> Result<SmtCommand> {
+    let mut lexer = Lexer::new(input);
+    // `(`
+    skip_open_parens(&mut lexer)?;
+
+    // next token should be the command
+    let cmd_token = lexer.next();
+    let cmd = match cmd_token {
+        Some(Token::Value(name)) => match name {
+            b"exit" => SmtCommand::Exit,
+            b"check-sat" => SmtCommand::CheckSat,
+            _ => {
+                return Err(SmtParserError::UnknownCommand(format!(
+                    "{}",
+                    String::from_utf8_lossy(name)
+                )))
+            }
+        },
+        _ => return Err(SmtParserError::ExpectedCommand(format!("{cmd_token:?}"))),
+    };
+
+    // `)`
+    skip_close_parens(&mut lexer)?;
+    Ok(cmd)
+}
+
+fn skip_expr(lexer: &mut Lexer) -> Result<()> {
     let mut open_count = 0u64;
     for token in lexer.by_ref() {
         match token {
@@ -155,18 +196,20 @@ fn skip_expr(lexer: &mut Lexer) -> bool {
             Token::Close => {
                 open_count -= 1;
                 if open_count == 0 {
-                    return true;
+                    return Ok(());
                 }
             }
             _ => {
                 if open_count == 0 {
-                    return true;
+                    return Ok(());
                 }
             }
         }
     }
     // reached end of tokens
-    false
+    Err(SmtParserError::ExpectedExpr(
+        "not an expression".to_string(),
+    ))
 }
 
 fn lookup_sym(st: &SymbolTable, name: &[u8]) -> Result<ExprRef> {
@@ -453,6 +496,40 @@ mod tests {
         assert_eq!(
             expr.serialize_to_str(&ctx),
             "([32'x00000033] x 2^5)[5'b01110 := 32'x00000000][5'b01110 := 32'x00000011]"
+        );
+    }
+
+    #[test]
+    fn test_parse_cmd() {
+        let mut ctx = Context::default();
+        let mut st = FxHashMap::default();
+
+        // test lexer on simple exit command
+        assert_eq!(
+            parse_command(&mut ctx, &mut st, "(exit)".as_bytes()).unwrap(),
+            SmtCommand::Exit
+        );
+        assert_eq!(
+            parse_command(&mut ctx, &mut st, "(exit) ".as_bytes()).unwrap(),
+            SmtCommand::Exit
+        );
+        assert_eq!(
+            parse_command(&mut ctx, &mut st, "(exit )".as_bytes()).unwrap(),
+            SmtCommand::Exit
+        );
+        assert_eq!(
+            parse_command(&mut ctx, &mut st, "( exit)".as_bytes()).unwrap(),
+            SmtCommand::Exit
+        );
+        assert_eq!(
+            parse_command(&mut ctx, &mut st, " ( exit ) ".as_bytes()).unwrap(),
+            SmtCommand::Exit
+        );
+
+        // test other commands
+        assert_eq!(
+            parse_command(&mut ctx, &mut st, "(check-sat)".as_bytes()).unwrap(),
+            SmtCommand::CheckSat
         );
     }
 }
