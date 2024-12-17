@@ -4,10 +4,10 @@
 
 use clap::Parser;
 use patronus::expr::*;
-use patronus::smt::{parse_command, SmtCommand};
+use patronus::smt::{parse_command, serialize_cmd, SmtCommand};
 use patronus::*;
 use rustc_hash::FxHashMap;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, BufWriter};
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -25,22 +25,23 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-    // read SMT file
+    // open input file
     let in_file = std::fs::File::open(args.input_file).expect("failed to open input file");
     let mut in_reader = BufReader::new(in_file);
+
+    // open output file
+    let out_file =
+        std::fs::File::create(args.output_file).expect("failed to open output file for writing");
+    let mut out = BufWriter::new(out_file);
+
+    // read and write commands
     let mut ctx = Context::default();
     let mut st = FxHashMap::default();
-    let cmds = read_cmds(&mut in_reader, &mut ctx, &mut st);
-
-    todo!();
-}
-
-fn read_cmds(inp: &mut impl BufRead, ctx: &mut Context, st: &mut SymbolTable) -> Vec<SmtCommand> {
-    let mut out = vec![];
-    while let Some(cmd) = read_cmd(inp, ctx, st).unwrap() {
-        out.push(cmd);
+    while let Some(cmd) =
+        read_cmd(&mut in_reader, &mut ctx, &mut st).expect("failed to read command")
+    {
+        serialize_cmd(&mut out, Some(&ctx), &cmd).expect("failed to write command");
     }
-    out
 }
 
 type SymbolTable = FxHashMap<String, ExprRef>;
@@ -50,26 +51,28 @@ fn read_cmd(
     ctx: &mut Context,
     st: &mut SymbolTable,
 ) -> std::io::Result<Option<SmtCommand>> {
-    let mut response = String::new();
-    inp.read_line(&mut response)?;
+    let mut cmd_str = String::new();
+    inp.read_line(&mut cmd_str)?;
 
     // skip lines that are just comments
-    while is_comment(&response) {
-        response.clear();
-        inp.read_line(&mut response)?;
+    while is_comment(&cmd_str) {
+        cmd_str.clear();
+        inp.read_line(&mut cmd_str)?;
     }
 
     // ensure that the response contains balanced parentheses
-    while count_parens(&response) > 0 {
-        response.push(' ');
-        inp.read_line(&mut response)?;
+    while count_parens(&cmd_str) > 0 {
+        cmd_str.push(' ');
+        inp.read_line(&mut cmd_str)?;
+    }
+
+    // if we did not get anything, we are probably done
+    if cmd_str.trim().is_empty() {
+        return Ok(None);
     }
 
     // debug print
-    println!("{response}");
-    let cmd = parse_command(ctx, st, response.as_bytes());
-    println!("{cmd:?}");
-    let cmd = cmd.unwrap();
+    let cmd = parse_command(ctx, st, cmd_str.as_bytes()).expect("failed to parse command");
 
     // add symbols to table
     match cmd {

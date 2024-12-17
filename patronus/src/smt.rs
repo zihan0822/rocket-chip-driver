@@ -8,4 +8,5 @@ mod serialize;
 mod solver;
 
 pub use parser::{parse_command, parse_expr};
+pub use serialize::serialize_cmd;
 pub use solver::*;

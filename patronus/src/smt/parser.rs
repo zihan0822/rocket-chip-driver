@@ -13,6 +13,8 @@ use thiserror::Error;
 pub enum SmtParserError {
     #[error("[smt] {0} requires at least {1} arguments, only {2} found.")]
     MissingArgs(String, u16, u16),
+    #[error("[smt] {0} requires at most {1} arguments, but {2} found.")]
+    TooManyArgs(String, u16, u16),
     #[error("[smt] expected type, got expression: {0}")]
     ExprInsteadOfType(String),
     #[error("[smt] expected expression, got type: {0}")]
@@ -376,31 +378,136 @@ fn parse_pattern<'a>(
     st: &SymbolTable,
     pattern: &[ParserItem<'a>],
 ) -> Result<ParserItem<'a>> {
+    use NAry::*;
     use ParserItem::*;
 
     let item = match pattern {
-        // core
-        [Sym(b"and"), args @ ..] => bin_op(st, "and", args, |a, b| ctx.and(a, b))?,
-        // bit vector type
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        // Expressions
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        // BVSymbol is handled inside the `expr` function
+        // BVLiteral is handled in the early parsing
+        [ZExt(by), e] => PExpr(ctx.zero_extend(expr(st, e)?, *by)),
+        [SExt(by), e] => PExpr(ctx.sign_extend(expr(st, e)?, *by)),
+        [Extract(hi, lo), e] => PExpr(ctx.slice(expr(st, e)?, *hi, *lo)),
+        [Sym(b"not"), e] => PExpr(ctx.not(expr(st, e)?)),
+        [Sym(b"bvnot"), e] => PExpr(ctx.not(expr(st, e)?)),
+        [Sym(b"bvneg"), e] => PExpr(ctx.negate(expr(st, e)?)),
+        [Sym(b"="), args @ ..] => bin_op(st, "equal", args, |a, b| ctx.equal(a, b), Chainable)?,
+        [Sym(b"=>"), args @ ..] => {
+            bin_op(st, "implies", args, |a, b| ctx.implies(a, b), RightAssoc)?
+        }
+        [Sym(b"bvugt"), args @ ..] => {
+            bin_op(st, "greater", args, |a, b| ctx.greater(a, b), Binary)?
+        }
+        [Sym(b"bvsgt"), args @ ..] => bin_op(
+            st,
+            "greater_signed",
+            args,
+            |a, b| ctx.greater_signed(a, b),
+            Binary,
+        )?,
+        [Sym(b"bvuge"), args @ ..] => bin_op(
+            st,
+            "greater_or_equal",
+            args,
+            |a, b| ctx.greater_or_equal(a, b),
+            Binary,
+        )?,
+        [Sym(b"bvsge"), args @ ..] => bin_op(
+            st,
+            "greater_or_equal_signed",
+            args,
+            |a, b| ctx.greater_or_equal_signed(a, b),
+            Binary,
+        )?,
+        [Sym(b"concat"), args @ ..] => bin_op(st, "concat", args, |a, b| ctx.concat(a, b), Binary)?,
+        [Sym(b"and"), args @ ..] => bin_op(st, "and", args, |a, b| ctx.and(a, b), LeftAssoc)?,
+        [Sym(b"bvand"), args @ ..] => bin_op(st, "bvand", args, |a, b| ctx.and(a, b), LeftAssoc)?,
+        [Sym(b"or"), args @ ..] => bin_op(st, "or", args, |a, b| ctx.or(a, b), LeftAssoc)?,
+        [Sym(b"bvor"), args @ ..] => bin_op(st, "bvor", args, |a, b| ctx.or(a, b), LeftAssoc)?,
+        [Sym(b"xor"), args @ ..] => bin_op(st, "xor", args, |a, b| ctx.xor(a, b), LeftAssoc)?,
+        [Sym(b"bvxor"), args @ ..] => bin_op(st, "bvxor", args, |a, b| ctx.xor(a, b), LeftAssoc)?,
+        [Sym(b"bvshl"), args @ ..] => {
+            bin_op(st, "bvshl", args, |a, b| ctx.shift_left(a, b), Binary)?
+        }
+        [Sym(b"bvashr"), args @ ..] => bin_op(
+            st,
+            "bvashr",
+            args,
+            |a, b| ctx.arithmetic_shift_right(a, b),
+            Binary,
+        )?,
+        [Sym(b"bvlshr"), args @ ..] => {
+            bin_op(st, "bvlshr", args, |a, b| ctx.shift_right(a, b), Binary)?
+        }
+        [Sym(b"bvadd"), args @ ..] => bin_op(st, "bvadd", args, |a, b| ctx.add(a, b), LeftAssoc)?,
+        [Sym(b"bvmul"), args @ ..] => bin_op(st, "bvmul", args, |a, b| ctx.mul(a, b), LeftAssoc)?,
+        [Sym(b"bvsdiv"), args @ ..] => {
+            bin_op(st, "bvsdiv", args, |a, b| ctx.signed_div(a, b), Binary)?
+        }
+        [Sym(b"bvudiv"), args @ ..] => bin_op(st, "bvudiv", args, |a, b| ctx.div(a, b), Binary)?,
+        [Sym(b"bvsmod"), args @ ..] => {
+            bin_op(st, "bvsmod", args, |a, b| ctx.signed_mod(a, b), Binary)?
+        }
+        [Sym(b"bvsrem"), args @ ..] => bin_op(
+            st,
+            "bvsrem",
+            args,
+            |a, b| ctx.signed_remainder(a, b),
+            Binary,
+        )?,
+        [Sym(b"bvurem"), args @ ..] => {
+            bin_op(st, "bvurem", args, |a, b| ctx.remainder(a, b), Binary)?
+        }
+        [Sym(b"bvsub"), args @ ..] => bin_op(st, "bvsub", args, |a, b| ctx.sub(a, b), Binary)?,
+        [Sym(b"select"), PExpr(array), PExpr(index)] => PExpr(ctx.array_read(*array, *index)),
+        [Sym(b"ite"), PExpr(cond), PExpr(t), PExpr(f)] => PExpr(ctx.ite(*cond, *t, *f)),
+        // ArraySymbol is handled inside of `expr`
+        [AsConst(tpe), PExpr(data)] => {
+            debug_assert_eq!(tpe.data_width, data.get_bv_type(ctx).unwrap());
+            PExpr(ctx.array_const(*data, tpe.index_width))
+        }
+        // ArrayEqual is handled above with the bv equal
+        [Sym(b"store"), PExpr(array), PExpr(index), PExpr(data)] => {
+            PExpr(ctx.array_store(*array, *index, *data))
+        }
+        // ArrayIte is handled above with the bv ite
+
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        // Expressions that are not directly represented in our IR
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        [Sym(b"bvult"), args @ ..] => bin_op(st, "bvult", args, |a, b| ctx.greater(b, a), Binary)?,
+        [Sym(b"bvslt"), args @ ..] => {
+            bin_op(st, "bvslt", args, |a, b| ctx.greater_signed(b, a), Binary)?
+        }
+        [Sym(b"distinct"), args @ ..] => bin_op(
+            st,
+            "distinct",
+            args,
+            |a, b| ctx.build(|c| c.not(c.equal(b, a))),
+            Pairwise,
+        )?,
+
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        // Types
+        ///////////////////////////////////////////////////////////////////////////////////////////
         [Sym(b"_"), Sym(b"BitVec"), Sym(width)] => PType(Type::BV(parse_width(width)?)),
-        // bit vector expressions
-        [Sym(b"bvand"), args @ ..] => bin_op(st, "bvand", args, |a, b| ctx.and(a, b))?,
-        [Sym(b"bvadd"), args @ ..] => bin_op(st, "bvadd", args, |a, b| ctx.add(a, b))?,
-        // array type
         [Sym(b"Array"), PType(Type::BV(index_width)), PType(Type::BV(data_width))] => {
             PType(Type::Array(ArrayType {
                 index_width: *index_width,
                 data_width: *data_width,
             }))
         }
-        // array expressions
+
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        // Parameterized Ops
+        ///////////////////////////////////////////////////////////////////////////////////////////
         [Sym(b"as"), Sym(b"const"), PType(Type::Array(tpe))] => AsConst(*tpe),
-        [AsConst(tpe), PExpr(data)] => {
-            debug_assert_eq!(tpe.data_width, data.get_bv_type(ctx).unwrap());
-            PExpr(ctx.array_const(*data, tpe.index_width))
-        }
-        [Sym(b"store"), PExpr(array), PExpr(index), PExpr(data)] => {
-            PExpr(ctx.array_store(*array, *index, *data))
+        [Sym(b"_"), Sym(b"zero_extend"), Sym(by)] => ZExt(parse_width(by)?),
+        [Sym(b"_"), Sym(b"sign_extend"), Sym(by)] => SExt(parse_width(by)?),
+        [Sym(b"_"), Sym(b"extract"), Sym(hi), Sym(lo)] => {
+            Extract(parse_width(hi)?, parse_width(lo)?)
         }
         other => {
             return Err(SmtParserError::Pattern(format!("{other:?}")));
@@ -413,19 +520,56 @@ fn bin_op<'a>(
     st: &SymbolTable,
     name: &str,
     args: &[ParserItem<'a>],
-    op: impl FnMut(ExprRef, ExprRef) -> ExprRef,
+    mut op: impl FnMut(ExprRef, ExprRef) -> ExprRef,
+    n_ary: NAry,
 ) -> Result<ParserItem<'a>> {
     if args.len() < 2 {
-        Err(SmtParserError::MissingArgs(
+        return Err(SmtParserError::MissingArgs(
             name.to_string(),
             2,
             args.len() as u16,
-        ))
-    } else {
-        let args: Result<Vec<ExprRef>> = args.iter().map(|a| expr(st, a)).collect();
-        let res = args?.into_iter().reduce(op).unwrap();
-        Ok(ParserItem::PExpr(res))
+        ));
     }
+    match n_ary {
+        NAry::LeftAssoc => {
+            let args: Result<Vec<ExprRef>> = args.iter().map(|a| expr(st, a)).collect();
+            let res = args?.into_iter().reduce(op).unwrap();
+            Ok(ParserItem::PExpr(res))
+        }
+        _ => {
+            // binary
+            match args {
+                [a, b] => Ok(ParserItem::PExpr(op(expr(st, a)?, expr(st, b)?))),
+                _ => Err(SmtParserError::TooManyArgs(
+                    name.to_string(),
+                    2,
+                    args.len() as u16,
+                )),
+            }
+        }
+    }
+}
+
+/// SMTLib defines several n-ary ops:
+///
+/// (=> Bool Bool Bool :right-assoc)
+/// (=> x y z) <-> (=> x (=> y z))
+///
+/// (and Bool Bool Bool :left-assoc)
+/// (and x y z) <-> (and (and x y) z)
+///
+/// (par (A) (= A A Bool :chainable))
+/// (= x y z) <-> (and (= x y) (= y z))
+///
+/// (par (A) (distinct A A Bool :pairwise))
+/// (distinct x y z) <-> (and (distinct x y) (distinct x z) (distinct y z))
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+enum NAry {
+    Binary,
+    RightAssoc,
+    LeftAssoc,
+    Chainable,
+    Pairwise,
 }
 
 fn parse_width(value: &[u8]) -> Result<WidthInt> {
@@ -490,6 +634,12 @@ enum ParserItem<'a> {
     Sym(&'a [u8]),
     /// as const function from the array theory
     AsConst(ArrayType),
+    /// zero extend function
+    ZExt(WidthInt),
+    /// sign extend function
+    SExt(WidthInt),
+    /// extract (aka slice) function
+    Extract(WidthInt, WidthInt),
 }
 
 impl<'a> Debug for ParserItem<'a> {
@@ -500,6 +650,9 @@ impl<'a> Debug for ParserItem<'a> {
             ParserItem::PType(t) => write!(f, "{t:?}"),
             ParserItem::Sym(v) => write!(f, "S({})", String::from_utf8_lossy(v)),
             ParserItem::AsConst(tpe) => write!(f, "AsConst({tpe:?})"),
+            ParserItem::ZExt(by) => write!(f, "ZExt({by})"),
+            ParserItem::SExt(by) => write!(f, "SExt({by})"),
+            ParserItem::Extract(hi, lo) => write!(f, "Slice({hi}, {lo})"),
         }
     }
 }
