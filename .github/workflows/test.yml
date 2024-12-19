@@ -175,13 +175,13 @@ jobs:
         with:
           version: ${{ env.BITWUZLA_VERSION }}
       - name: Build
-        run: cargo build --verbose --release -p patronus-egraphs-cond-synth
+        run: cargo build --verbose --release -p cond-synth
       - name: synthesize commute-add condition
         run: |
-          cargo run --release -p patronus-egraphs-cond-synth -- --bdd-formula commute-add
+          cargo run --release -p cond-synth -- --bdd-formula commute-add
       - name: check mult-to-add condition
         run: |
-          cargo run --release -p patronus-egraphs-cond-synth -- --check-cond mult-to-add
+          cargo run --release -p cond-synth -- --check-cond mult-to-add
 
   smt-simplify:
     name: Test SMT Simplifier

@@ -1,5 +1,5 @@
 [package]
-name = "patronus-egraphs-cond-synth"
+name = "cond-synth"
 version = "0.1.0"
 edition.workspace = true
 authors.workspace = true
