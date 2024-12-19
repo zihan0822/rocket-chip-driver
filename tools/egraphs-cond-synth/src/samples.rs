@@ -476,7 +476,7 @@ fn analyze_pattern(pat: &PatternAst<Arith>) -> RuleInfo {
 fn symbol_from_pattern(pat: &PatternAst<Arith>, a: Id, w: Id, s: Id) -> Option<RuleSymbol> {
     if let ENodeOrVar::Var(var) = pat[a] {
         let width = width_const_from_pattern(pat, w);
-        let sign = width_const_from_pattern(pat, s);
+        let sign = sign_const_from_pattern(pat, s);
         Some(RuleSymbol { var, width, sign })
     } else {
         None
@@ -487,7 +487,17 @@ fn width_const_from_pattern(pat: &PatternAst<Arith>, id: Id) -> VarOrConst {
     match &pat[id] {
         ENodeOrVar::ENode(node) => match node {
             &Arith::Width(w) => VarOrConst::C(w.into()),
-            _ => unreachable!("not a width!"),
+            other => unreachable!("`{other:?}` is not a width!"),
+        },
+        ENodeOrVar::Var(var) => VarOrConst::V(*var),
+    }
+}
+
+fn sign_const_from_pattern(pat: &PatternAst<Arith>, id: Id) -> VarOrConst {
+    match &pat[id] {
+        ENodeOrVar::ENode(node) => match node {
+            &Arith::Sign(s) => VarOrConst::C(s.into()),
+            other => unreachable!("`{other:?}` is not a width!"),
         },
         ENodeOrVar::Var(var) => VarOrConst::V(*var),
     }
