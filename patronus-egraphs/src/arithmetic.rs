@@ -12,6 +12,7 @@ use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
+
 define_language! {
     /// Intermediate expression language for bit vector arithmetic rewrites.
     /// Inspired by: "ROVER: RTL Optimization via Verified E-Graph Rewriting" (TCAD'24)
@@ -154,7 +155,7 @@ impl FromStr for Sign {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "sign" => Ok(Self::Signed),
-            "unsign" => Ok(Self::Signed),
+            "unsign" => Ok(Self::Unsigned),
             _ => Err(()),
         }
     }
