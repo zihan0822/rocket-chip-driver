@@ -3,12 +3,9 @@
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
 use baa::BitVecOps;
-use egg::{
-    define_language, ConditionalApplier, Id, Language, Pattern, PatternAst, RecExpr, Rewrite,
-    Subst, Var,
-};
+use egg::{define_language, ConditionalApplier, ENodeOrVar, Id, Language, Pattern, PatternAst, RecExpr, Rewrite, Subst, Var};
 use patronus::expr::*;
-use std::cmp::Ordering;
+use std::cmp::{max, Ordering};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
@@ -18,12 +15,15 @@ define_language! {
     /// Inspired by: "ROVER: RTL Optimization via Verified E-Graph Rewriting" (TCAD'24)
     /// arguments for binop: w, w_a, s_a, a, w_b, s_b, b
     pub enum Arith {
+        // operations on actual bit-vec values
         "+" = Add([Id; 7]),
         "-" = Sub([Id; 7]),
         "*" = Mul([Id; 7]),
         "<<" = LeftShift([Id; 7]),
         ">>" = RightShift([Id; 7]),
         ">>>" = ArithmeticRightShift([Id; 7]),
+        // operations on widths
+        "max+1" = WidthMaxPlus1([Id; 2]),
         Width(WidthValue),
         Sign(Sign),
         // not a width, but a value constant
@@ -57,12 +57,11 @@ pub fn create_rewrites() -> Vec<ArithRewrite> {
         // (a << b) << x <=> a << (b + c)
         arith_rewrite!("merge-left-shift";
             // we require that b, c and (b + c) are all unsigned
-            "(<< ?wo ?wab unsign (<< ?wab ?wa ?sa ?a ?wb unsign ?b) ?wc unsign ?c)" =>
-            // note: in this version we set the width of (b + c) on the RHS to be the width of the
-            //       result (w_o)
-            "(<< ?wo ?wa ?sa ?a ?wo unsign (+ ?wo ?wb unsign ?b ?wc unsign ?c))";
-            // wa == wb && wo >= wa
-            if["?wo", "?wa", "?wb"], |w| w[1] == w[2] && w[0] >= w[1]),
+            "(<< ?wo ?wab unsign (<< ?wab ?wa unsign ?a ?wb unsign ?b) ?wc unsign ?c)" =>
+            "(<< ?wo ?wa unsign ?a (max+1 ?wb ?wc) unsign (+ (max+1 ?wb ?wc) ?wb unsign ?b ?wc unsign ?c))";
+            // we do not want (b + c) to wrap, because in that case the result would always be zero
+            // wa == wb && wo >= wa && wab == wo
+            if["?wo", "?wa", "?wb", "?wab"], |w| w[1] == w[2] && w[0] >= w[1] && w[0] == w[3]),
         // a * 2 <=> a + a
         arith_rewrite!("mult-to-add";
             "(* ?wo ?wa ?sa ?a ?wb ?sb 2)" =>
@@ -333,6 +332,11 @@ pub fn from_arith(ctx: &mut Context, expr: &RecExpr<Arith>) -> ExprRef {
             Arith::ArithmeticRightShift(_) => patronus_bin_op(ctx, &mut stack, |ctx, a, b| {
                 ctx.arithmetic_shift_right(a, b)
             }),
+            Arith::WidthMaxPlus1(_) => {
+                let a = get_u64(ctx, stack.pop().unwrap()) as WidthInt;
+                let b = get_u64(ctx, stack.pop().unwrap()) as WidthInt;
+                ctx.bit_vec_val(max(a, b) + 1, 32)
+            }
             Arith::Width(width) => ctx.bit_vec_val(*width, 32),
             Arith::Sign(sign) => ctx.bit_vec_val(*sign, 1),
             Arith::Const(value) => {
@@ -365,14 +369,29 @@ fn get_child_widths(root: usize, expressions: &[Arith], out: &mut Vec<WidthInt>)
         // we set don't cares to zero
         out.extend_from_slice(&[0, 0, 0, a_width, 0, 0, b_width]);
     } else {
-        // otherwise there is nothing to do
-        debug_assert!(expr.children().is_empty(), "{expr:?}")
+        match expr {
+            // calculated width
+            Arith::WidthMaxPlus1(_) => {
+                // widths are always propagated as 32-bit values
+                out.extend_from_slice(&[32, 32]);
+            }
+            _ => {
+                // otherwise there is nothing to do
+                debug_assert!(expr.children().is_empty(), "{expr:?}")
+            }
+        }
+
     }
 }
 
 fn get_width(root: usize, expressions: &[Arith]) -> WidthInt {
     match &expressions[root] {
         Arith::Width(w) => w.0,
+        Arith::WidthMaxPlus1([a, b]) => {
+            let a = get_width(usize::from(*a), expressions);
+            let b = get_width(usize::from(*b), expressions);
+            max(a, b) + 1
+        }
         other => todo!("calculate width for {other:?}"),
     }
 }
@@ -404,8 +423,8 @@ fn patronus_bin_op(
     let b = stack.pop().unwrap();
 
     // slice and extend appropriately
-    let arg_max_width = std::cmp::max(wa, wb);
-    let calc_width = std::cmp::max(arg_max_width, wo);
+    let arg_max_width = max(wa, wb);
+    let calc_width = max(arg_max_width, wo);
     let a = extend(ctx, a, calc_width, wa, sa);
     let b = extend(ctx, b, calc_width, wb, sb);
     let res = op(ctx, a, b);
@@ -434,7 +453,7 @@ fn extend(
     w_in: WidthInt,
     signed: bool,
 ) -> ExprRef {
-    debug_assert_eq!(expr.get_bv_type(ctx).unwrap(), w_in);
+    debug_assert_eq!(expr.get_bv_type(ctx).unwrap(), w_in, "{}", expr.serialize_to_str(ctx));
     match w_out.cmp(&w_in) {
         Ordering::Less => unreachable!("cannot extend from {w_in} to {w_out}"),
         Ordering::Equal => expr,
@@ -469,10 +488,14 @@ impl ArithRewrite {
             .into_iter()
             .map(|n| n.as_ref().parse().unwrap())
             .collect();
+        let lhs = lhs.parse::<_>().unwrap();
+        check_width_consistency(&lhs);
+        let rhs_derived = rhs_derived.parse::<_>().unwrap();
+        check_width_consistency(&rhs_derived);
         Self {
             name: name.to_string(),
-            lhs: lhs.parse::<_>().unwrap(),
-            rhs_derived: rhs_derived.parse::<_>().unwrap(),
+            lhs,
+            rhs_derived,
             cond,
             cond_vars,
         }
@@ -531,6 +554,8 @@ impl ArithRewrite {
 
 type EGraph = egg::EGraph<Arith, ()>;
 
+/// Finds a width or sign constant in the e-class referred to by the substitution
+/// and returns its value. Errors if no such constant can be found.
 fn get_const_width_or_sign(egraph: &EGraph, subst: &Subst, v: Var) -> WidthInt {
     egraph[subst[v]]
         .nodes
@@ -542,6 +567,43 @@ fn get_const_width_or_sign(egraph: &EGraph, subst: &Subst, v: Var) -> WidthInt {
         })
         .next()
         .expect("failed to find constant width")
+}
+
+
+/// Checks that input and output widths of operations are consistent.
+fn check_width_consistency(pattern: &Pattern<Arith>) {
+    let exprs = pattern.ast.as_ref();
+    for e_node_or_var in exprs.iter() {
+        if let ENodeOrVar::ENode(expr) = e_node_or_var {
+            if is_bin_op(expr) {
+                // w, w_a, s_a, a, w_b, s_b, b
+                let a_width_id = usize::from(expr.children()[1]);
+                let a_id = usize::from(expr.children()[3]);
+                if let Some(a_op_out_width_id) = get_output_width_id(&exprs[a_id]) {
+                    assert_eq!(a_width_id, a_op_out_width_id, "In `{expr}`, subexpression `{}` has inconsistent width: {} != {}", &exprs[a_id], &exprs[a_width_id], &exprs[a_op_out_width_id]);
+                }
+                let b_width_id = usize::from(expr.children()[4]);
+                let b_id = usize::from(expr.children()[6]);
+                if let Some(b_op_out_width_id) = get_output_width_id(&exprs[b_id]) {
+                    assert_eq!(b_width_id, b_op_out_width_id, "In `{expr}`, subexpression `{}` has inconsistent width: {} != {}", &exprs[b_id], &exprs[b_width_id], &exprs[b_op_out_width_id]);
+                }
+            }
+        }
+    }
+}
+
+/// returns the egg id of the output width, if `expr` has one
+fn get_output_width_id(expr: &ENodeOrVar<Arith>) -> Option<usize> {
+    if let ENodeOrVar::ENode(expr) = expr {
+        if is_bin_op(expr) {
+            // w, w_a, s_a, a, w_b, s_b, b
+            Some(usize::from(expr.children()[0]))
+        } else {
+            None
+        }
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
