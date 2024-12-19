@@ -57,11 +57,11 @@ pub fn create_rewrites() -> Vec<ArithRewrite> {
         // (a << b) << x <=> a << (b + c)
         arith_rewrite!("merge-left-shift";
             // we require that b, c and (b + c) are all unsigned
-            "(<< ?wo ?wab unsign (<< ?wab ?wa unsign ?a ?wb unsign ?b) ?wc unsign ?c)" =>
-            "(<< ?wo ?wa unsign ?a (max+1 ?wb ?wc) unsign (+ (max+1 ?wb ?wc) ?wb unsign ?b ?wc unsign ?c))";
             // we do not want (b + c) to wrap, because in that case the result would always be zero
-            // wa == wb && wo >= wa && wab == wo
-            if["?wo", "?wa", "?wb", "?wab"], |w| w[1] == w[2] && w[0] >= w[1] && w[0] == w[3]),
+            "(<< ?wo ?wab unsign (<< ?wab ?wa ?sa ?a ?wb unsign ?b) ?wc unsign ?c)" =>
+            "(<< ?wo ?wa ?sa ?a (max+1 ?wb ?wc) unsign (+ (max+1 ?wb ?wc) ?wb unsign ?b ?wc unsign ?c))";
+            // wab >= wo
+            if["?wo", "?wab"], |w| w[1] >= w[0]),
         // a * 2 <=> a + a
         arith_rewrite!("mult-to-add";
             "(* ?wo ?wa ?sa ?a ?wb ?sb 2)" =>
