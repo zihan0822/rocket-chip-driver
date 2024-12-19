@@ -325,6 +325,13 @@ fn show_assignments(
             lhs_expr.serialize_to_str(&ctx),
             rhs_expr.serialize_to_str(&ctx)
         );
+        println!(
+            "  ASN: {}",
+            a.iter()
+                .map(|(k, v)| format!("{k}={v}"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
 
         if resp == CheckSatResponse::Sat {
             // get assignments to variables
