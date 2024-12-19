@@ -710,6 +710,12 @@ mod tests {
             .run(&egg_rewrites);
 
         runner.print_report();
+
+        let spec_class = runner.roots[0];
+        let impl_class = runner.roots[1];
+        // println!("{spec_class} {impl_class}");
+
+        // runner.egraph.dot().to_pdf("graph.pdf").unwrap();
     }
 
     #[test]
