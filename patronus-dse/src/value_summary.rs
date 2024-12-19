@@ -21,10 +21,10 @@ impl Default for GuardCtx {
 }
 
 impl GuardCtx {
-    pub fn tru(&mut self) -> Guard {
+    pub fn get_true(&mut self) -> Guard {
         self.bdd.constant(true)
     }
-    pub fn fals(&mut self) -> Guard {
+    pub fn get_false(&mut self) -> Guard {
         self.bdd.constant(false)
     }
 
@@ -110,7 +110,7 @@ impl<V: Value> ValueSummary<V> {
     pub fn new(gc: &mut GuardCtx, value: V) -> Self {
         Self {
             entries: vec![Entry {
-                guard: gc.tru(),
+                guard: gc.get_true(),
                 value,
             }],
         }
@@ -286,7 +286,7 @@ impl<V: Value + ToGuard> ValueSummary<V> {
     /// Converts the value summary into a guard.
     fn to_guard(&self, ec: &mut V::Context, gc: &mut GuardCtx) -> (Guard, Vec<Entry<V>>) {
         let mut results = vec![];
-        let mut guard = gc.fals();
+        let mut guard = gc.get_false();
         for e in self.entries.iter() {
             match e.value.to_guard(ec, gc) {
                 GuardResult::Guard(value_as_guard) => {
@@ -318,7 +318,7 @@ impl<V: Value + ToGuard> ValueSummary<V> {
         if gc.is_true(value_as_guard) {
             debug_assert!(others.is_empty());
             self.entries = vec![Entry {
-                guard: gc.tru(),
+                guard: gc.get_true(),
                 value: V::true_value(ec),
             }];
             return;
@@ -326,7 +326,7 @@ impl<V: Value + ToGuard> ValueSummary<V> {
         if gc.is_false(value_as_guard) {
             debug_assert!(others.is_empty());
             self.entries = vec![Entry {
-                guard: gc.tru(),
+                guard: gc.get_true(),
                 value: V::false_value(ec),
             }];
             return;
@@ -409,11 +409,11 @@ impl ToGuard for ExprRef {
         GuardResult::Guard(guard)
     }
     fn true_value(ec: &mut Self::Context) -> Self {
-        ec.tru()
+        ec.get_true()
     }
 
     fn false_value(ec: &mut Self::Context) -> Self {
-        ec.fals()
+        ec.get_false()
     }
 }
 

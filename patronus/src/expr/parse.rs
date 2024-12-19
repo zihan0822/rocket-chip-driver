@@ -107,10 +107,10 @@ impl<'a> Parser<'a> {
         } else if let Some(c) = TRUE_FALSE_REGEX.captures(self.inp) {
             self.consume_c(&c);
             if c.get(2).is_some() {
-                Some(self.ctx.tru())
+                Some(self.ctx.get_true())
             } else {
                 debug_assert!(c.get(3).is_some());
-                Some(self.ctx.fals())
+                Some(self.ctx.get_false())
             }
         } else {
             None
@@ -376,7 +376,7 @@ mod tests {
 
         assert_eq!(
             parse_expr(&mut ctx, "and(true, false)"),
-            ctx.build(|c| c.and(c.tru(), c.fals()))
+            ctx.build(|c| c.and(c.get_true(), c.get_false()))
         );
 
         assert_eq!(
@@ -396,11 +396,11 @@ mod tests {
         // nested functions
         assert_eq!(
             parse_expr(&mut ctx, "or(and(true, true), false)"),
-            ctx.build(|c| c.or(c.and(c.tru(), c.tru()), c.fals()))
+            ctx.build(|c| c.or(c.and(c.get_true(), c.get_true()), c.get_false()))
         );
         assert_eq!(
             parse_expr(&mut ctx, "or(false, and(true, true))"),
-            ctx.build(|c| c.or(c.fals(), c.and(c.tru(), c.tru())))
+            ctx.build(|c| c.or(c.get_false(), c.and(c.get_true(), c.get_true())))
         );
     }
 }

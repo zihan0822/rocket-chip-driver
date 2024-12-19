@@ -41,10 +41,10 @@ pub fn serialize_expr(out: &mut impl Write, ctx: &Context, expr: ExprRef) -> Res
                     let value = v.get(ctx);
                     if value.width() > 1 {
                         write!(out, "#b{}", v.get(ctx).to_bit_str())?;
-                    } else if value.is_tru() {
+                    } else if value.is_true() {
                         write!(out, "true")?;
                     } else {
-                        debug_assert!(value.is_fals());
+                        debug_assert!(value.is_false());
                         write!(out, "false")?;
                     }
                 }
@@ -482,8 +482,8 @@ mod tests {
         let mut ctx = Context::default();
         let a = ctx.bv_symbol("a", 2);
         assert_eq!(s_expr(&ctx, a), "a");
-        assert_eq!(s_expr(&ctx, ctx.fals()), "false");
-        assert_eq!(s_expr(&ctx, ctx.tru()), "true");
+        assert_eq!(s_expr(&ctx, ctx.get_false()), "false");
+        assert_eq!(s_expr(&ctx, ctx.get_true()), "true");
         let bv_lit = ctx.bit_vec_val(3, 3);
         assert_eq!(s_expr(&ctx, bv_lit), "#b011");
     }

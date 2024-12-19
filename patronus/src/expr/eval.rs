@@ -391,16 +391,16 @@ mod tests {
         // boolean
         let a = c.bv_symbol("a", 1);
         let a_and_1 = c.build(|c| c.and(a, c.one(1)));
-        assert!(eval_bv_expr(&c, [(a, BitVecValue::tru())].as_slice(), a_and_1).is_tru());
-        assert!(eval_bv_expr(&c, [(a, BitVecValue::fals())].as_slice(), a_and_1).is_fals());
+        assert!(eval_bv_expr(&c, [(a, BitVecValue::new_true())].as_slice(), a_and_1).is_true());
+        assert!(eval_bv_expr(&c, [(a, BitVecValue::new_false())].as_slice(), a_and_1).is_false());
         let b = c.bv_symbol("b", 1);
         let expr = c.build(|c| c.or(c.and(a, c.not(b)), c.and(a, b)));
         assert!(eval_bv_expr(
             &c,
-            [(a, BitVecValue::fals()), (b, BitVecValue::fals())].as_slice(),
+            [(a, BitVecValue::new_false()), (b, BitVecValue::new_false())].as_slice(),
             expr
         )
-        .is_fals());
+        .is_false());
 
         // arithmetic and ite
         let a = c.bv_symbol("a", 128);

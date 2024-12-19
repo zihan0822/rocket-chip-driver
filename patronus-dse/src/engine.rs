@@ -7,6 +7,7 @@ use patronus::system::TransitionSystem;
 
 /// Symbolic execution engine.
 pub struct SymEngine {
+    #[allow(dead_code)]
     sys: TransitionSystem,
 }
 

@@ -607,8 +607,8 @@ fn early_parse_single_token<'a>(
                 "decimal constant: {}",
                 String::from_utf8_lossy(value)
             ))),
-            3 => Ok(ParserItem::PExpr(ctx.tru())),
-            4 => Ok(ParserItem::PExpr(ctx.fals())),
+            3 => Ok(ParserItem::PExpr(ctx.get_true())),
+            4 => Ok(ParserItem::PExpr(ctx.get_false())),
             _ => unreachable!("not part of the regex!"),
         }
     } else {

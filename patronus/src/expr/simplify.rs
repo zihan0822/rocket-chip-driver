@@ -72,7 +72,7 @@ fn simplify_ite(ctx: &mut Context, cond: ExprRef, tru: ExprRef, fals: ExprRef) -
 
     // constant condition
     if let Expr::BVLiteral(value) = ctx[cond] {
-        if value.get(ctx).is_fals() {
+        if value.get(ctx).is_false() {
             // ite(false, a, b) -> b
             return Some(fals);
         } else {
@@ -154,14 +154,14 @@ fn find_one_concat(ctx: &Context, a: ExprRef, b: ExprRef) -> Option<(ExprRef, Ex
 fn simplify_bv_equal(ctx: &mut Context, a: ExprRef, b: ExprRef) -> Option<ExprRef> {
     // a == a -> true
     if a == b {
-        return Some(ctx.tru());
+        return Some(ctx.get_true());
     }
 
     match find_lits_commutative(ctx, a, b) {
         Lits::Two(va, vb) => {
             // two values that are the same should always be hash-consed to the same ExprRef
             debug_assert!(!va.get(ctx).is_equal(&vb.get(ctx)));
-            return Some(ctx.fals());
+            return Some(ctx.get_false());
         }
         Lits::One((lit, _), expr) => {
             if lit.is_true() {

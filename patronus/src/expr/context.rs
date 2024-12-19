@@ -74,8 +74,8 @@ pub struct Context {
     exprs: indexmap::IndexSet<Expr, FxBuildHasher>,
     values: baa::ValueInterner,
     // cached special values
-    tru_expr_ref: ExprRef,
-    fals_expr_ref: ExprRef,
+    true_expr_ref: ExprRef,
+    false_expr_ref: ExprRef,
 }
 
 impl Default for Context {
@@ -85,12 +85,12 @@ impl Default for Context {
             strings: Default::default(),
             exprs: Default::default(),
             values: Default::default(),
-            tru_expr_ref: ExprRef::from_index(0),
-            fals_expr_ref: ExprRef::from_index(0),
+            true_expr_ref: ExprRef::from_index(0),
+            false_expr_ref: ExprRef::from_index(0),
         };
         // create valid cached expressions
-        out.fals_expr_ref = out.zero(1);
-        out.tru_expr_ref = out.one(1);
+        out.false_expr_ref = out.zero(1);
+        out.true_expr_ref = out.one(1);
         out
     }
 }
@@ -196,12 +196,12 @@ impl Context {
         self.array_const(data, tpe.index_width)
     }
 
-    pub fn tru(&self) -> ExprRef {
-        self.tru_expr_ref
+    pub fn get_true(&self) -> ExprRef {
+        self.true_expr_ref
     }
 
-    pub fn fals(&self) -> ExprRef {
-        self.fals_expr_ref
+    pub fn get_false(&self) -> ExprRef {
+        self.false_expr_ref
     }
 
     pub fn one(&mut self, width: WidthInt) -> ExprRef {
@@ -422,12 +422,12 @@ impl<'a> Builder<'a> {
         self.ctx.borrow_mut().zero(width)
     }
 
-    pub fn tru(&self) -> ExprRef {
-        self.ctx.borrow().tru()
+    pub fn get_true(&self) -> ExprRef {
+        self.ctx.borrow().get_true()
     }
 
-    pub fn fals(&self) -> ExprRef {
-        self.ctx.borrow().fals()
+    pub fn get_false(&self) -> ExprRef {
+        self.ctx.borrow().get_false()
     }
 
     pub fn zero_array(&self, tpe: ArrayType) -> ExprRef {
@@ -558,8 +558,8 @@ mod tests {
         let mut ctx = Context::default();
 
         // ids 1 and 2 are reserved for true and false
-        assert_eq!(ctx.fals().0.get(), 1);
-        assert_eq!(ctx.tru().0.get(), 2);
+        assert_eq!(ctx.get_false().0.get(), 1);
+        assert_eq!(ctx.get_true().0.get(), 2);
 
         let str_id0 = ctx.string("a".into());
         let id0 = ctx.add_expr(Expr::BVSymbol {
