@@ -56,7 +56,7 @@ pub fn create_rewrites() -> Vec<ArithRewrite> {
     vec![
         // a + b <=> b + a
         arith_rewrite!("commute-add"; "(+ ?wo ?wa ?sa ?a ?wb ?sb ?b)" => "(+ ?wo ?wb ?sb ?b ?wa ?sa ?a)"),
-        // (a << b) << x <=> a << (b + c)
+        // (a << b) << x => a << (b + c)
         arith_rewrite!("merge-left-shift";
             // we require that b, c and (b + c) are all unsigned
             // we do not want (b + c) to wrap, because in that case the result would always be zero
@@ -65,6 +65,15 @@ pub fn create_rewrites() -> Vec<ArithRewrite> {
             "(<< ?wo ?wa ?sa ?a (max+1 ?wb ?wc) unsign (+ (max+1 ?wb ?wc) ?wb unsign ?b ?wc unsign ?c))";
             // wab >= wo
             if["?wo", "?wab"], |w| w[1] >= w[0]),
+        // a << (b + c) => (a << b) << x
+        arith_rewrite!("unmerge-left-shift";
+            // we require that b, c and (b + c) are all unsigned
+            // we do not want (b + c) to wrap, because in that case the result would always be zero
+            // the value being shifted has to be consistently signed or unsigned
+            "(<< ?wo ?wa ?sa ?a ?wbc unsign (+ ?wbc ?wb unsign ?b ?wc unsign ?c))" =>
+            "(<< ?wo ?wo ?sa (<< ?wo ?wa ?sa ?a ?wb unsign ?b) ?wc unsign ?c)";
+            // ?wbc >= max(wb, wc) + 1
+            if["?wbc", "?wb", "?wc"], |w| w[0] >= (max(w[1], w[2]) + 1)),
         // a * 2 <=> a + a
         arith_rewrite!("mult-to-add";
             "(* ?wo ?wa ?sa ?a ?wb ?sb 2)" =>
@@ -616,13 +625,23 @@ fn get_output_width_id(expr: &ENodeOrVar<Arith>) -> Option<usize> {
     }
 }
 
+/// returns all our rewrites in a format that can be directly used by egg
+pub fn create_egg_rewrites() -> Vec<Rewrite<Arith, ()>> {
+    create_rewrites()
+        .into_iter()
+        .map(|r| r.to_egg())
+        .reduce(|mut a, mut b| {
+            a.append(&mut b);
+            a
+        })
+        .unwrap_or(vec![])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_data_path_verification_fig_1() {
-        let mut ctx = Context::default();
+    fn verification_fig_1(ctx: &mut Context) -> (ExprRef, ExprRef) {
         let a = ctx.bv_symbol("A", 16);
         let b = ctx.bv_symbol("B", 16);
         let m = ctx.bv_symbol("M", 4);
@@ -639,6 +658,13 @@ mod tests {
                 c.zero_extend(c.add(c.zero_extend(m, 1), c.zero_extend(n, 1)), 58),
             )
         });
+        (spec, implementation)
+    }
+
+    #[test]
+    fn test_data_path_verification_fig_1_conversion() {
+        let mut ctx = Context::default();
+        let (spec, implementation) = verification_fig_1(&mut ctx);
 
         let spec_e = to_arith(&ctx, spec);
         let impl_e = to_arith(&ctx, implementation);
@@ -653,6 +679,28 @@ mod tests {
     }
 
     #[test]
+    fn test_data_path_verification_fig_1_rewrites() {
+        let mut ctx = Context::default();
+        let (spec, implementation) = verification_fig_1(&mut ctx);
+        let spec_e = to_arith(&ctx, spec);
+        let impl_e = to_arith(&ctx, implementation);
+
+        println!("{spec_e}");
+        println!("{impl_e}");
+
+        // run egraph operations
+        let egg_rewrites = create_egg_rewrites();
+        // let runner = egg::Runner::default()
+        //     .with_expr(&spec_e)
+        //     .with_expr(&impl_e)
+        //     .run(&egg_rewrites);
+        //
+        // runner.print_report();
+
+        // todo!();
+    }
+
+    #[test]
     fn test_rewrites() {
         let mut ctx = Context::default();
         let a = ctx.bv_symbol("A", 16);
@@ -662,14 +710,7 @@ mod tests {
 
         // run egraph operations
         let egg_expr_in = to_arith(&ctx, in_smt_expr);
-        let egg_rewrites: Vec<Rewrite<_, _>> = create_rewrites()
-            .into_iter()
-            .map(|r| r.to_egg())
-            .reduce(|mut a, mut b| {
-                a.append(&mut b);
-                a
-            })
-            .unwrap();
+        let egg_rewrites = create_egg_rewrites();
         let runner = egg::Runner::default()
             .with_expr(&egg_expr_in)
             .run(&egg_rewrites);
