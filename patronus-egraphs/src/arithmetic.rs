@@ -79,7 +79,16 @@ pub fn create_rewrites() -> Vec<ArithRewrite> {
             "(* ?wo ?wa ?sa ?a ?wb ?sb 2)" =>
             "(+ ?wo ?wa ?sa ?a ?wa ?sa ?a)";
             // (!sb && wb > 1) || (sb && wb > 2) || (wo <= wb)
-           if["?wb", "?sb", "?wo"], |w| (w[1] == 0 && w[0] > 1) || (w[1] == 1 && w[0] > 2) || w[2] <= w[0]),
+           if["?wb", "?sb", "?wo"],
+            |w| (w[1] == 0 && w[0] > 1) || (w[1] == 1 && w[0] > 2) || w[2] <= w[0]),
+        // (a * b) << c => (a << c) * b
+        arith_rewrite!("left-shift-mult";
+            // TODO: currently all signs are forced to unsigned
+            "(<< ?wo ?wab unsign (* ?wab ?wa unsign ?a ?wb unsign ?b) ?wc unsign ?c)" =>
+            // we set the width of (a << c) to the result width to satisfy wac >= wo
+            "(* ?wo ?wo unsign (<< ?wo ?wa unsign ?a ?wc unsign ?c) ?wb unsign ?b)";
+            // wab >= wo && all_signs_the_same
+            if["?wab", "?wo"], |w| w[0] >= w[1]),
     ]
 }
 
@@ -701,8 +710,6 @@ mod tests {
             .run(&egg_rewrites);
 
         runner.print_report();
-
-        // todo!();
     }
 
     #[test]
