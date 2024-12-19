@@ -58,7 +58,8 @@ pub fn create_rewrites() -> Vec<ArithRewrite> {
         arith_rewrite!("merge-left-shift";
             // we require that b, c and (b + c) are all unsigned
             // we do not want (b + c) to wrap, because in that case the result would always be zero
-            "(<< ?wo ?wab unsign (<< ?wab ?wa ?sa ?a ?wb unsign ?b) ?wc unsign ?c)" =>
+            // the value being shifted has to be consistently signed or unsigned
+            "(<< ?wo ?wab ?sa (<< ?wab ?wa ?sa ?a ?wb unsign ?b) ?wc unsign ?c)" =>
             "(<< ?wo ?wa ?sa ?a (max+1 ?wb ?wc) unsign (+ (max+1 ?wb ?wc) ?wb unsign ?b ?wc unsign ?c))";
             // wab >= wo
             if["?wo", "?wab"], |w| w[1] >= w[0]),
