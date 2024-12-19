@@ -31,6 +31,46 @@ define_language! {
     }
 }
 
+/// our version of the egg re-write macro
+macro_rules! arith_rewrite {
+    (
+        $name:expr;
+        $lhs:expr => $rhs:expr
+    ) => {{
+        ArithRewrite::new::<&str>($name, $lhs, $rhs, [], None)
+    }};
+    (
+        $name:expr;
+        $lhs:expr => $rhs:expr;
+        if $vars:expr, $cond:expr
+    ) => {{
+        ArithRewrite::new($name, $lhs, $rhs, $vars, Some($cond))
+    }};
+}
+
+/// Generate our ROVER inspired rewrite rules.
+pub fn create_rewrites() -> Vec<ArithRewrite> {
+    vec![
+        // a + b <=> b + a
+        arith_rewrite!("commute-add"; "(+ ?wo ?wa ?sa ?a ?wb ?sb ?b)" => "(+ ?wo ?wb ?sb ?b ?wa ?sa ?a)"),
+        // (a << b) << x <=> a << (b + c)
+        arith_rewrite!("merge-left-shift";
+            // we require that b, c and (b + c) are all unsigned
+            "(<< ?wo ?wab unsign (<< ?wab ?wa ?sa ?a ?wb unsign ?b) ?wc unsign ?c)" =>
+            // note: in this version we set the width of (b + c) on the RHS to be the width of the
+            //       result (w_o)
+            "(<< ?wo ?wa ?sa ?a ?wo unsign (+ ?wo ?wb unsign ?b ?wc unsign ?c))";
+            // wa == wb && wo >= wa
+            if["?wo", "?wa", "?wb"], |w| w[1] == w[2] && w[0] >= w[1]),
+        // a * 2 <=> a + a
+        arith_rewrite!("mult-to-add";
+            "(* ?wo ?wa ?sa ?a ?wb ?sb 2)" =>
+            "(+ ?wo ?wa ?sa ?a ?wa ?sa ?a)";
+            // (!sb && wb > 1) || (sb && wb > 2) || (wo <= wb)
+           if["?wb", "?sb", "?wo"], |w| (w[1] == 0 && w[0] > 1) || (w[1] == 1 && w[0] > 2) || w[2] <= w[0]),
+    ]
+}
+
 /// Wrapper struct in order to do custom parsing.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct WidthValue(WidthInt);
@@ -402,22 +442,7 @@ fn extend(
     }
 }
 
-/// our version of the egg re-write macro
-macro_rules! arith_rewrite {
-    (
-        $name:expr;
-        $lhs:expr => $rhs:expr
-    ) => {{
-        ArithRewrite::new::<&str>($name, $lhs, $rhs, [], None)
-    }};
-    (
-        $name:expr;
-        $lhs:expr => $rhs:expr;
-        if $vars:expr, $cond:expr
-    ) => {{
-        ArithRewrite::new($name, $lhs, $rhs, $vars, Some($cond))
-    }};
-}
+
 
 pub struct ArithRewrite {
     name: String,
@@ -501,24 +526,7 @@ impl ArithRewrite {
     }
 }
 
-pub fn create_rewrites() -> Vec<ArithRewrite> {
-    vec![
-        arith_rewrite!("commute-add"; "(+ ?wo ?wa ?sa ?a ?wb ?sb ?b)" => "(+ ?wo ?wb ?sb ?b ?wa ?sa ?a)"),
-        arith_rewrite!("merge-left-shift";
-            // we require that b, c and (b + c) are all unsigned
-            "(<< ?wo ?wab ?sab (<< ?wab ?wa ?sa ?a ?wb unsign ?b) ?wc unsign ?c)" =>
-            // note: in this version we set the width of (b + c) on the RHS to be the width of the
-            //       result (w_o)
-            "(<< ?wo ?wa ?sa ?a ?wo unsign (+ ?wo ?wb unsign ?b ?wc unsign ?c))";
-            // wa == wb && wo >= wa
-            if["?wo", "?wa", "?wb"], |w| w[1] == w[2] && w[0] >= w[1]),
-        arith_rewrite!("mult-to-add";
-            "(* ?wo ?wa ?sa ?a ?wb ?sb 2)" =>
-            "(+ ?wo ?wa ?sa ?a ?wa ?sa ?a)";
-            // (!sb && wb > 1) || (sb && wb > 2) || (wo <= wb)
-           if["?wb", "?sb", "?wo"], |w| (w[1] == 0 && w[0] > 1) || (w[1] == 1 && w[0] > 2) || w[2] <= w[0]),
-    ]
-}
+
 
 type EGraph = egg::EGraph<Arith, ()>;
 
