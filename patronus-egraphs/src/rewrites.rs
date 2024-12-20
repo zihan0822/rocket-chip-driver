@@ -163,6 +163,9 @@ impl ArithRewrite {
         }
     }
 
+    /// Find all matches of the left-hand-side and returns information about them.
+    /// This can be very useful when debugging why a certain rules does not match, when you expect
+    /// it to match.
     pub fn find_lhs_matches(&self, egraph: &EGraph) -> Vec<ArithMatch> {
         self.lhs
             .search(egraph)
@@ -189,10 +192,7 @@ fn substitution_to_assignment(
     pattern: &PatternAst<Arith>,
 ) -> Assignment {
     vars_in_pattern(pattern)
-        .flat_map(|v| match get_const_width_or_sign(egraph, s[v]) {
-            Some(w) => Some((v, w)),
-            None => None,
-        })
+        .flat_map(|v| get_const_width_or_sign(egraph, s[v]).map(|w| (v, w)))
         .collect()
 }
 
@@ -207,9 +207,9 @@ pub type Assignment = Vec<(Var, WidthInt)>;
 
 #[derive(Debug, Clone)]
 pub struct ArithMatch {
-    eclass: Id,
-    assign: Assignment,
-    cond_res: bool,
+    pub eclass: Id,
+    pub assign: Assignment,
+    pub cond_res: bool,
 }
 
 /// Checks that input and output widths of operations are consistent.
@@ -301,6 +301,7 @@ mod tests {
             .into_iter()
             .find(|r| r.name == "left-shift-mult")
             .unwrap();
+        println!("{}", left_shift_mult.patterns().0);
         let r = left_shift_mult.find_lhs_matches(&runner.egraph);
         for m in r {
             println!("{m:?}");
