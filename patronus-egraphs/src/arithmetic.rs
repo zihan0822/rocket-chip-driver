@@ -23,6 +23,7 @@ define_language! {
         ">>>" = ArithmeticRightShift([Id; 7]),
         // operations on widths
         "max+1" = WidthMaxPlus1([Id; 2]),
+        "wlsh" = WidthLeftShift([Id; 2]),
         Width(WidthValue),
         Sign(Sign),
         // not a width, but a value constant
@@ -35,8 +36,18 @@ define_language! {
 #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct WidthValue(WidthInt);
 
-fn eval_width_max_plus_1(a: WidthInt, b: WidthInt) -> WidthInt {
-    max(a, b) + 1
+pub(crate) fn eval_width_max_plus_1(wa: WidthInt, wb: WidthInt) -> WidthInt {
+    max(wa, wb) + 1
+}
+
+pub(crate) fn eval_width_left_shift(wa: WidthInt, wb: WidthInt) -> WidthInt {
+    if wb >= WidthInt::BITS {
+        // very very very large width, not what you want
+        WidthInt::MAX
+    } else {
+        let max_shift: WidthInt = (1 << wb) - 1;
+        wa + max_shift
+    }
 }
 
 // this allows us to use ArithWidthConst as an argument to ctx.bit_vec_val
@@ -146,6 +157,7 @@ impl Analysis<Arith> for WidthConstantFold {
         match expr {
             &Arith::Width(w) => Some(w.0),
             Arith::WidthMaxPlus1([a, b]) => Some(eval_width_max_plus_1(x(a)?, x(b)?)),
+            Arith::WidthLeftShift([a, b]) => Some(eval_width_left_shift(x(a)?, x(b)?)),
             _ => None,
         }
     }
@@ -330,6 +342,11 @@ pub fn from_arith(ctx: &mut Context, expr: &RecExpr<Arith>) -> ExprRef {
                 let b = get_u64(ctx, stack.pop().unwrap()) as WidthInt;
                 ctx.bit_vec_val(eval_width_max_plus_1(a, b), 32)
             }
+            Arith::WidthLeftShift(_) => {
+                let a = get_u64(ctx, stack.pop().unwrap()) as WidthInt;
+                let b = get_u64(ctx, stack.pop().unwrap()) as WidthInt;
+                ctx.bit_vec_val(eval_width_left_shift(a, b), 32)
+            }
             Arith::Width(width) => ctx.bit_vec_val(*width, 32),
             Arith::Sign(sign) => ctx.bit_vec_val(*sign, 1),
             Arith::Const(value) => {
@@ -383,6 +400,11 @@ fn get_width(root: usize, expressions: &[Arith]) -> WidthInt {
             let a = get_width(usize::from(*a), expressions);
             let b = get_width(usize::from(*b), expressions);
             eval_width_max_plus_1(a, b)
+        }
+        Arith::WidthLeftShift([a, b]) => {
+            let a = get_width(usize::from(*a), expressions);
+            let b = get_width(usize::from(*b), expressions);
+            eval_width_left_shift(a, b)
         }
         other => todo!("calculate width for {other:?}"),
     }

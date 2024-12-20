@@ -39,6 +39,8 @@ fn write_to_dot(out: &mut impl Write, egraph: &EGraph) -> std::io::Result<()> {
     // set compound=true to enable edges to clusters
     writeln!(out, "  compound=true")?;
     writeln!(out, "  clusterrank=local")?;
+    // more spacing
+    writeln!(out, "  ranksep=2")?;
 
     // create a map from e-class id to width
     let widths = FxHashMap::from_iter(
