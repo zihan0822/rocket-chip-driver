@@ -3,7 +3,7 @@
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
 use baa::BitVecOps;
-use egg::{define_language, Id, Language, RecExpr};
+use egg::{define_language, Analysis, DidMerge, Id, Language, RecExpr};
 use patronus::expr::*;
 use std::cmp::{max, Ordering};
 use std::fmt::{Display, Formatter};
@@ -34,6 +34,10 @@ define_language! {
 /// Wrapper struct in order to do custom parsing.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct WidthValue(WidthInt);
+
+fn eval_width_max_plus_1(a: WidthInt, b: WidthInt) -> WidthInt {
+    max(a, b) + 1
+}
 
 // this allows us to use ArithWidthConst as an argument to ctx.bit_vec_val
 impl From<WidthValue> for u128 {
@@ -125,6 +129,35 @@ impl Display for Sign {
         match self {
             Sign::Signed => write!(f, "sign"),
             Sign::Unsigned => write!(f, "unsign"),
+        }
+    }
+}
+
+/// Ensures that derived width constants on the rhs of our rules are correctly
+/// simplified and unioned with their constant version.
+#[derive(Default)]
+pub struct WidthConstantFold;
+
+impl Analysis<Arith> for WidthConstantFold {
+    type Data = Option<WidthInt>;
+
+    fn make(egraph: &egg::EGraph<Arith, Self>, expr: &Arith) -> Self::Data {
+        let x = |i: &Id| egraph[*i].data;
+        match expr {
+            &Arith::Width(w) => Some(w.0),
+            Arith::WidthMaxPlus1([a, b]) => Some(eval_width_max_plus_1(x(a)?, x(b)?)),
+            _ => None,
+        }
+    }
+
+    fn merge(&mut self, to: &mut Self::Data, from: Self::Data) -> DidMerge {
+        egg::merge_max(to, from)
+    }
+
+    fn modify(egraph: &mut EGraph, id: Id) {
+        if let Some(w) = egraph[id].data {
+            let added = egraph.add(Arith::Width(WidthValue(w)));
+            egraph.union(id, added);
         }
     }
 }
@@ -295,7 +328,7 @@ pub fn from_arith(ctx: &mut Context, expr: &RecExpr<Arith>) -> ExprRef {
             Arith::WidthMaxPlus1(_) => {
                 let a = get_u64(ctx, stack.pop().unwrap()) as WidthInt;
                 let b = get_u64(ctx, stack.pop().unwrap()) as WidthInt;
-                ctx.bit_vec_val(max(a, b) + 1, 32)
+                ctx.bit_vec_val(eval_width_max_plus_1(a, b), 32)
             }
             Arith::Width(width) => ctx.bit_vec_val(*width, 32),
             Arith::Sign(sign) => ctx.bit_vec_val(*sign, 1),
@@ -349,7 +382,7 @@ fn get_width(root: usize, expressions: &[Arith]) -> WidthInt {
         Arith::WidthMaxPlus1([a, b]) => {
             let a = get_width(usize::from(*a), expressions);
             let b = get_width(usize::from(*b), expressions);
-            max(a, b) + 1
+            eval_width_max_plus_1(a, b)
         }
         other => todo!("calculate width for {other:?}"),
     }
@@ -426,7 +459,7 @@ fn extend(
     }
 }
 
-pub type EGraph = egg::EGraph<Arith, ()>;
+pub type EGraph = egg::EGraph<Arith, WidthConstantFold>;
 
 /// Finds a width or sign constant in the e-class referred to by the substitution
 /// and returns its value. Errors if no such constant can be found.
@@ -437,11 +470,6 @@ pub fn get_const_width_or_sign(egraph: &EGraph, id: Id) -> Option<WidthInt> {
         .flat_map(|n| match n {
             Arith::Width(w) => Some((*w).into()),
             Arith::Sign(s) => Some((*s).into()),
-            Arith::WidthMaxPlus1([a, b]) => {
-                let a = get_const_width_or_sign(egraph, *a).expect("failed to find constant width");
-                let b = get_const_width_or_sign(egraph, *b).expect("failed to find constant width");
-                Some(max(a, b) + 1)
-            }
             _ => None,
         })
         .next()

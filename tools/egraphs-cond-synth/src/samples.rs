@@ -2,7 +2,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
-use egg::*;
+use egg::{rewrite, ENodeOrVar, Id, Language, PatternAst, RecExpr, Var};
 use indicatif::ProgressBar;
 use patronus::expr::traversal::TraversalCmd;
 use patronus::expr::{Context, ExprRef, WidthInt};
@@ -557,10 +557,11 @@ pub fn instantiate_pattern<L: Language>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use egg::Analysis;
     use patronus::expr::TypeCheck;
 
-    fn extract_patterns<L: Language>(
-        rule: &Rewrite<L, ()>,
+    fn extract_patterns<L: Language, A: Analysis<L>>(
+        rule: &egg::Rewrite<L, A>,
     ) -> Option<(&PatternAst<L>, &PatternAst<L>)> {
         let left = rule.searcher.get_pattern_ast()?;
         let right = rule.applier.get_pattern_ast()?;
@@ -569,7 +570,7 @@ mod tests {
 
     #[test]
     fn test_assignment_iter() {
-        let r: Rewrite<Arith, ()> = rewrite!("commute-add"; "(+ ?wo ?wa ?sa ?a ?wb ?sb ?b)" => "(+ ?wo ?wb ?sb ?b ?wa ?sa ?a)");
+        let r: Rewrite = rewrite!("commute-add"; "(+ ?wo ?wa ?sa ?a ?wb ?sb ?b)" => "(+ ?wo ?wb ?sb ?b ?wa ?sa ?a)");
         let rule = &r;
         let (lhs, _rhs) =
             extract_patterns(rule).expect("failed to extract patterns from rewrite rule");
@@ -588,7 +589,7 @@ mod tests {
     #[test]
     fn test_instantiate_pattern() {
         use std::str::FromStr;
-        let rule: Rewrite<Arith, ()> = rewrite!("commute-add"; "(+ ?wo ?wa ?sa ?a ?wb ?sb ?b)" => "(+ ?wo ?wb ?sb ?b ?wa ?sa ?a)");
+        let rule: Rewrite = rewrite!("commute-add"; "(+ ?wo ?wa ?sa ?a ?wb ?sb ?b)" => "(+ ?wo ?wb ?sb ?b ?wa ?sa ?a)");
         let (lhs, _rhs) =
             extract_patterns(&rule).expect("failed to extract patterns from rewrite rule");
         let mut ctx = Context::default();

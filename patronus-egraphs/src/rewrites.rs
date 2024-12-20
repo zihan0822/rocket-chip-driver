@@ -9,10 +9,9 @@ introspect them in order to check re-write conditions or debug matches.
 
 !*/
 
-use crate::{get_const_width_or_sign, is_bin_op, Arith, EGraph};
+use crate::{get_const_width_or_sign, is_bin_op, Arith, EGraph, WidthConstantFold};
 use egg::{
-    ConditionalApplier, ENodeOrVar, Id, Language, Pattern, PatternAst, Rewrite, Searcher, Subst,
-    Var,
+    ConditionalApplier, ENodeOrVar, Id, Language, Pattern, PatternAst, Searcher, Subst, Var,
 };
 use patronus::expr::WidthInt;
 use std::cmp::max;
@@ -112,6 +111,8 @@ pub struct ArithRewrite {
     cond: Option<fn(&[WidthInt]) -> bool>,
 }
 
+pub type Rewrite = egg::Rewrite<Arith, WidthConstantFold>;
+
 impl ArithRewrite {
     fn new<S: AsRef<str>>(
         name: &str,
@@ -145,7 +146,7 @@ impl ArithRewrite {
         (&self.lhs.ast, &self.rhs_derived.ast)
     }
 
-    pub fn to_egg(&self) -> Vec<Rewrite<Arith, ()>> {
+    pub fn to_egg(&self) -> Vec<Rewrite> {
         // TODO: support bi-directional rules
         if let Some(cond) = self.cond {
             let vars: Vec<Var> = self.cond_vars.clone();
@@ -282,7 +283,7 @@ fn get_output_width_id(expr: &ENodeOrVar<Arith>) -> Option<usize> {
 }
 
 /// returns all our rewrites in a format that can be directly used by egg
-pub fn create_egg_rewrites() -> Vec<Rewrite<Arith, ()>> {
+pub fn create_egg_rewrites() -> Vec<Rewrite> {
     create_rewrites()
         .into_iter()
         .map(|r| r.to_egg())
