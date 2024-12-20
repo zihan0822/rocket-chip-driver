@@ -321,8 +321,6 @@ pub struct RuleSymbol {
     sign: VarOrConst,
 }
 
-pub type Assignment = Vec<(Var, WidthInt)>;
-
 impl RuleInfo {
     pub fn signs(&self) -> impl Iterator<Item = Var> + '_ {
         self.signs.iter().cloned()

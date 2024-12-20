@@ -7,4 +7,4 @@ mod rewrites;
 pub use arithmetic::{
     from_arith, get_const_width_or_sign, is_bin_op, to_arith, Arith, EGraph, Sign,
 };
-pub use rewrites::{create_egg_rewrites, create_rewrites, ArithRewrite};
+pub use rewrites::{create_egg_rewrites, create_rewrites, ArithRewrite, Assignment};
