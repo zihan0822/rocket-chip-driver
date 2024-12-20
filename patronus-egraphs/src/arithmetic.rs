@@ -453,12 +453,14 @@ pub(crate) fn verification_fig_1(ctx: &mut Context) -> (ExprRef, ExprRef) {
     let b = ctx.bv_symbol("B", 16);
     let m = ctx.bv_symbol("M", 4);
     let n = ctx.bv_symbol("N", 4);
+    // (A << M) * (B << N)
     let spec = ctx.build(|c| {
         c.mul(
             c.zero_extend(c.shift_left(c.zero_extend(a, 15), c.zero_extend(m, 27)), 32),
             c.zero_extend(c.shift_left(c.zero_extend(b, 15), c.zero_extend(n, 27)), 32),
         )
     });
+    // (A * B) << (M + N)
     let implementation = ctx.build(|c| {
         c.shift_left(
             c.zero_extend(c.mul(c.zero_extend(a, 16), c.zero_extend(b, 16)), 31),

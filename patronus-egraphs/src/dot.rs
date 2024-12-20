@@ -6,7 +6,7 @@
 use crate::{get_const_width_or_sign, is_bin_op, EGraph};
 use egg::Language;
 use rustc_hash::FxHashMap;
-use std::io::Write;
+use std::io::{BufWriter, Write};
 
 pub fn to_pdf(filename: &str, egraph: &EGraph) -> std::io::Result<()> {
     use std::process::{Command, Stdio};
@@ -24,10 +24,16 @@ pub fn to_pdf(filename: &str, egraph: &EGraph) -> std::io::Result<()> {
     }
 }
 
+pub fn to_dot(filename: &str, egraph: &EGraph) -> std::io::Result<()> {
+    let mut out = BufWriter::new(std::fs::File::create(filename)?);
+    write_to_dot(&mut out, egraph)?;
+    Ok(())
+}
+
 /// Reimplements egg's `to_dot` functionality.
 /// This is necessary because we do not want to show the Width nodes in the graph, because
 /// otherwise it becomes very confusing.
-pub fn write_to_dot(out: &mut impl Write, egraph: &EGraph) -> std::io::Result<()> {
+fn write_to_dot(out: &mut impl Write, egraph: &EGraph) -> std::io::Result<()> {
     writeln!(out, "digraph egraph {{")?;
 
     // set compound=true to enable edges to clusters
@@ -46,8 +52,15 @@ pub fn write_to_dot(out: &mut impl Write, egraph: &EGraph) -> std::io::Result<()
         if !widths.contains_key(&class.id) {
             writeln!(out, "  subgraph cluster_{} {{", class.id)?;
             writeln!(out, "    style=dotted")?;
+            writeln!(out, "    label=\"{}\"", class.id)?;
             for (i, node) in class.iter().enumerate() {
-                writeln!(out, "    {}.{}[label = \"{}\"]", class.id, i, node)?;
+                let label = if is_bin_op(node) {
+                    let width = widths[&node.children()[0]];
+                    format!("{node} ({width})")
+                } else {
+                    format!("{node}")
+                };
+                writeln!(out, "    {}.{}[label = \"{}\"]", class.id, i, label)?;
             }
             writeln!(out, "  }}")?;
         }

@@ -212,7 +212,11 @@ impl Samples {
     }
 
     pub fn num_unequivalent(&self) -> usize {
-        self.is_equivalent.len() - self.num_equivalent()
+        self.num_total() - self.num_equivalent()
+    }
+
+    pub fn num_total(&self) -> usize {
+        self.is_equivalent.len()
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (Assignment, bool)> + '_ {

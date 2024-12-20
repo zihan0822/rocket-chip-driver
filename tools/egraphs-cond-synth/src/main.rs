@@ -268,9 +268,16 @@ fn check_conditions(
             _ => {} // ignore
         }
     }
+    let num_total = samples.num_total() as f64;
     println!("The current implementation of the condition has:");
-    println!("False positives (BAD): {false_positive: >10}");
-    println!("False negatives (OK):  {false_negative: >10}");
+    println!(
+        "False positives (BAD): {false_positive: >10} ({:.1}%)",
+        (false_positive * 100) as f64 / num_total
+    );
+    println!(
+        "False negatives (OK):  {false_negative: >10} ({:.1}%)",
+        (false_negative * 100) as f64 / num_total
+    );
     if !false_pos_examples.is_empty() {
         println!("Some example assignments that are incorrectly classified as OK by our current condition:");
         show_assignments(rule, info, &false_pos_examples, 10, CheckSatResponse::Sat);

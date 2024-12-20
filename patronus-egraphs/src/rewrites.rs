@@ -39,6 +39,8 @@ pub fn create_rewrites() -> Vec<ArithRewrite> {
     vec![
         // a + b => b + a
         arith_rewrite!("commute-add"; "(+ ?wo ?wa ?sa ?a ?wb ?sb ?b)" => "(+ ?wo ?wb ?sb ?b ?wa ?sa ?a)"),
+        // a * b => b * a
+        arith_rewrite!("commute-mul"; "(* ?wo ?wa ?sa ?a ?wb ?sb ?b)" => "(* ?wo ?wb ?sb ?b ?wa ?sa ?a)"),
         // (a << b) << x => a << (b + c)
         arith_rewrite!("merge-left-shift";
             // we require that b, c and (b + c) are all unsigned
@@ -70,9 +72,32 @@ pub fn create_rewrites() -> Vec<ArithRewrite> {
             "(<< ?wo ?wab unsign (* ?wab ?wa unsign ?a ?wb unsign ?b) ?wc unsign ?c)" =>
             // we set the width of (a << c) to the result width to satisfy wac >= wo
             "(* ?wo ?wo unsign (<< ?wo ?wa unsign ?a ?wc unsign ?c) ?wb unsign ?b)";
-            // wab >= wo && all_signs_the_same
-            if["?wab", "?wo"], |w| w[0] >= w[1]),
+            // we want to determine that there is no overflow
+            // lhs: wab >= wa + wb && wo >= wab + max_shift(wc)
+            // rhs: wac >= wa + max_shift(c) && wo >= wac + wb
+            if["?wab", "?wa", "?wb", "?wo", "?wc"], |w| mul_no_ov(w[0], w[1], w[2]) && lsh_no_ov(w[3], w[0], w[4])),
     ]
+}
+
+/// Determines if there is no overflow possible for this addition.
+fn add_no_ov(wo: WidthInt, wa: WidthInt, wb: WidthInt) -> bool {
+    wo >= max(wa, wb) + 1
+}
+
+/// Determines if there is no overflow possible for this multiplication.
+fn mul_no_ov(wo: WidthInt, wa: WidthInt, wb: WidthInt) -> bool {
+    wo >= wa + wb
+}
+
+/// Determines if there is no overflow possible for this left shift.
+fn lsh_no_ov(wo: WidthInt, wa: WidthInt, wb: WidthInt) -> bool {
+    if wb >= WidthInt::BITS {
+        // avoid overflow
+        false
+    } else {
+        let max_shift: WidthInt = (1 << wb) - 1;
+        wo >= wa + max_shift
+    }
 }
 
 pub struct ArithRewrite {
@@ -272,7 +297,7 @@ pub fn create_egg_rewrites() -> Vec<Rewrite<Arith, ()>> {
 mod tests {
     use super::*;
     use crate::arithmetic::verification_fig_1;
-    use crate::to_arith;
+    use crate::{to_arith, to_dot, to_pdf};
     use patronus::expr::{Context, SerializableIrNode};
     #[test]
     fn test_data_path_verification_fig_1_rewrites() {
@@ -289,12 +314,13 @@ mod tests {
         let runner = egg::Runner::default()
             .with_expr(&spec_e)
             .with_expr(&impl_e)
+            .with_iter_limit(10)
             .run(&egg_rewrites);
 
         runner.print_report();
 
-        let spec_class = runner.roots[0];
-        let impl_class = runner.roots[1];
+        let spec_class = runner.egraph.find(runner.roots[0]);
+        let impl_class = runner.egraph.find(runner.roots[1]);
         println!("{spec_class} {impl_class}");
 
         let left_shift_mult = create_rewrites()
@@ -307,8 +333,25 @@ mod tests {
             println!("{m:?}");
         }
 
-        // to_pdf("graph.pdf", &runner.egraph).unwrap();
-        // runner.egraph.dot().to_pdf("full_graph.pdf").unwrap();
+        to_pdf("graph.pdf", &runner.egraph).unwrap();
+        to_dot("graph.dot", &runner.egraph).unwrap();
+        runner.egraph.dot().to_pdf("full_graph.pdf").unwrap();
+        runner.egraph.dot().to_dot("full_graph.dot").unwrap();
+
+        // investigating eclass 26 and 13 which should ideally be the same
+        println!("{}", inspect_e_class(&runner.egraph, 26));
+        println!("{}", inspect_e_class(&runner.egraph, 13));
+        println!("{}", inspect_e_class(&runner.egraph, 25));
+        println!("{}", inspect_e_class(&runner.egraph, 12));
+    }
+
+    fn inspect_e_class(egraph: &EGraph, id: usize) -> String {
+        let nodes = egraph[id.into()]
+            .nodes
+            .iter()
+            .map(|n| format!("{n} {:?}", n.children()))
+            .collect::<Vec<_>>();
+        format!("Class {id}: {}", nodes.join(", "))
     }
 
     #[test]
@@ -317,22 +360,23 @@ mod tests {
         let a = ctx.bv_symbol("A", 16);
         let b = ctx.bv_symbol("B", 16);
         let in_smt_expr = ctx.add(a, b);
+        let in_smt_expr_2 = ctx.add(b, a);
         assert_eq!(in_smt_expr.serialize_to_str(&ctx), "add(A, B)");
 
         // run egraph operations
         let egg_expr_in = to_arith(&ctx, in_smt_expr);
+        let egg_expr_in_2 = to_arith(&ctx, in_smt_expr_2);
         let egg_rewrites = create_egg_rewrites();
         let runner = egg::Runner::default()
             .with_expr(&egg_expr_in)
+            .with_expr(&egg_expr_in_2)
             .run(&egg_rewrites);
 
-        // check how many different nodes are representing the root node now
-        let root = runner.roots[0];
-        let root_nodes = &runner.egraph[root].nodes;
+        let final_eclass_1 = runner.egraph.find(runner.roots[0]);
+        let final_eclass_2 = runner.egraph.find(runner.roots[1]);
         assert_eq!(
-            root_nodes.len(),
-            2,
-            "there should be two nodes if the rule has been applied"
+            final_eclass_1, final_eclass_2,
+            "inputs should be equivalent with commute-add"
         );
     }
 }
