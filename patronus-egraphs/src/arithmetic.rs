@@ -381,7 +381,7 @@ fn get_child_widths(root: usize, expressions: &[Arith], out: &mut Vec<WidthInt>)
     } else {
         match expr {
             // calculated width
-            Arith::WidthMaxPlus1(_) => {
+            Arith::WidthMaxPlus1(_) | Arith::WidthLeftShift(_) => {
                 // widths are always propagated as 32-bit values
                 out.extend_from_slice(&[32, 32]);
             }
