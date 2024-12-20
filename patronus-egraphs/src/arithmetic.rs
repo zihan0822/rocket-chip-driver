@@ -703,52 +703,48 @@ fn write_to_dot(out: &mut impl Write, egraph: &EGraph) -> std::io::Result<()> {
     for class in egraph.classes() {
         if !widths.contains_key(&class.id) {
             for (i_in_class, node) in class.iter().enumerate() {
-                let mut arg_i = 0;
-                node.for_each(|child| {
-                    if !widths.contains_key(&child) {
-                        // write the edge to the child, but clip it to the eclass with lhead
-                        let (anchor, label) = dot_edge(arg_i, node.len());
-                        let child_leader = egraph.find(child);
-
-                        if child_leader == class.id {
-                            writeln!(
-                                out,
-                                // {}.0 to pick an arbitrary node in the cluster
-                                "  {}.{}{} -> {}.{}:n [lhead = cluster_{}, {}]",
-                                class.id, i_in_class, anchor, class.id, i_in_class, class.id, label
-                            )
-                            .unwrap();
-                        } else {
-                            writeln!(
-                                out,
-                                // {}.0 to pick an arbitrary node in the cluster
-                                "  {}.{}{} -> {}.0 [lhead = cluster_{}, {}]",
-                                class.id, i_in_class, anchor, child, child_leader, label
-                            )
-                            .unwrap();
-                        }
+                let nodes_and_labels = if is_bin_op(node) {
+                    // w, w_a, s_a, a, w_b, s_b, b
+                    let cc = node.children();
+                    let w_a = widths[&cc[1]];
+                    let s_a = widths[&cc[2]];
+                    let a = cc[3];
+                    let w_b = widths[&cc[4]];
+                    let s_b = widths[&cc[5]];
+                    let b = cc[6];
+                    vec![
+                        (a, format!("{w_a}{}", if s_a == 0 { "" } else { "s" })),
+                        (b, format!("{w_b}{}", if s_b == 0 { "" } else { "s" })),
+                    ]
+                } else {
+                    assert_eq!(node.len(), 0);
+                    vec![]
+                };
+                for (child, label) in nodes_and_labels.into_iter() {
+                    // write the edge to the child, but clip it to the eclass with lhead
+                    let anchor = "";
+                    let child_leader = egraph.find(child);
+                    if child_leader == class.id {
+                        writeln!(
+                            out,
+                            // {}.0 to pick an arbitrary node in the cluster
+                            "  {}.{}{} -> {}.{}:n [lhead = cluster_{}, label=\"{}\"]",
+                            class.id, i_in_class, anchor, class.id, i_in_class, class.id, label
+                        )?;
+                    } else {
+                        writeln!(
+                            out,
+                            // {}.0 to pick an arbitrary node in the cluster
+                            "  {}.{}{} -> {}.0 [lhead = cluster_{}, label=\"{}\"]",
+                            class.id, i_in_class, anchor, child, child_leader, label
+                        )?;
                     }
-                    arg_i += 1;
-                });
+                }
             }
         }
     }
 
     write!(out, "}}")
-}
-
-fn dot_edge(i: usize, len: usize) -> (String, String) {
-    assert!(i < len);
-    let s = |s: &str| s.to_string();
-    match (len, i) {
-        (1, 0) => (s(""), s("")),
-        (2, 0) => (s(":sw"), s("")),
-        (2, 1) => (s(":se"), s("")),
-        (3, 0) => (s(":sw"), s("")),
-        (3, 1) => (s(":s"), s("")),
-        (3, 2) => (s(":se"), s("")),
-        (_, _) => (s(""), format!("label={}", i)),
-    }
 }
 
 #[cfg(test)]
@@ -816,6 +812,7 @@ mod tests {
         println!("{spec_class} {impl_class}");
 
         // to_pdf("graph.pdf", &runner.egraph).unwrap();
+        // runner.egraph.dot().to_pdf("full_graph.pdf").unwrap();
     }
 
     #[test]
