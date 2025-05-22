@@ -1,0 +1,8 @@
+---
+source: patronus/tests/btor2_test.rs
+expression: sys.serialize_to_str(&ctx)
+---
+inverter_d0
+input a : bv<32>
+output s : bv<32> = not(a)
+
