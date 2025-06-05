@@ -8,14 +8,11 @@ use cranelift::module::Module;
 use cranelift::prelude::*;
 use smallvec::SmallVec;
 
-const INPUT_OFFSET: usize = 0;
-const OUTPUT_OFFSET: usize = 1;
-
 pub(super) struct JITCompiler {
     module: JITModule,
 }
 
-type CompiledEvalFnInternal = extern "C" fn(*const i64, *mut i64);
+type CompiledEvalFnInternal = extern "C" fn(*const i64) -> i64;
 pub(super) struct CompiledEvalFn {
     function: CompiledEvalFnInternal,
 }
@@ -23,8 +20,8 @@ pub(super) struct CompiledEvalFn {
 impl CompiledEvalFn {
     /// # Safety
     /// caller should guarantee the memory allocated for compiled code has not been reclaimed
-    pub(super) unsafe fn call(&self, current_states: &[i64], next_states: &mut [i64]) {
-        (self.function)(current_states.as_ptr(), next_states.as_mut_ptr());
+    pub(super) unsafe fn call(&self, current_states: &[i64]) -> i64 {
+        (self.function)(current_states.as_ptr())
     }
 }
 
@@ -37,14 +34,12 @@ impl JITCompiler {
         &mut self,
         expr_ctx: &expr::Context,
         root_expr: ExprRef,
-        input_state_buffer: StateBufferView,
-        output_state_buffer: StateBufferView,
+        input_state_buffer: &impl StateBufferView<i64>,
     ) -> JITResult<CompiledEvalFn> {
         // signature: fn(input, output, prev_state, next_state)
         let mut cranelift_ctx = self.module.make_context();
-        cranelift_ctx.func.signature.params = std::iter::repeat(ir::AbiParam::new(types::I64))
-            .take(2)
-            .collect();
+        cranelift_ctx.func.signature.params = vec![ir::AbiParam::new(types::I64)];
+        cranelift_ctx.func.signature.returns = vec![ir::AbiParam::new(types::I64)];
         cranelift_ctx.func.signature.call_conv = isa::CallConv::SystemV;
 
         let mut fn_builder_ctx = FunctionBuilderContext::new();
@@ -60,7 +55,6 @@ impl JITCompiler {
             expr_ctx,
             root_expr,
             input_state_buffer,
-            output_state_buffer,
             int: types::I64,
         };
 
@@ -94,29 +88,19 @@ struct CodeGenContext<'expr, 'ctx, 'engine> {
     block_id: Block,
     expr_ctx: &'expr expr::Context,
     root_expr: ExprRef,
-    input_state_buffer: StateBufferView<'engine>,
-    output_state_buffer: StateBufferView<'engine>,
+    input_state_buffer: &'engine dyn StateBufferView<i64>,
     int: cranelift::prelude::Type,
 }
 
 impl CodeGenContext<'_, '_, '_> {
     fn codegen(mut self) {
         let ret = self.mock_interpret();
-        let output_states_buf = self.fn_builder.block_params(self.block_id)[OUTPUT_OFFSET];
-        let output_offset = self.output_state_buffer.get_state_offset(self.root_expr) as u32;
-        self.fn_builder.ins().store(
-            // memory allocated by Rust, therefore trusted
-            ir::MemFlags::trusted(),
-            ret,
-            output_states_buf,
-            (output_offset * self.int.bytes()) as i32,
-        );
-        self.fn_builder.ins().return_(&[]);
+        self.fn_builder.ins().return_(&[ret]);
         self.fn_builder.finalize();
     }
 
     fn mock_interpret(&mut self) -> Value {
-        let mut value_stack: SmallVec<[ir::entities::Value; 4]> = SmallVec::new();
+        let mut value_stack: SmallVec<[Value; 4]> = SmallVec::new();
         let todo = self.bootstrap();
         for node in todo.into_iter().rev() {
             let num_children = self.expr_ctx[node].num_children();
@@ -143,7 +127,7 @@ impl CodeGenContext<'_, '_, '_> {
 }
 
 impl CodeGenContext<'_, '_, '_> {
-    fn expr_codegen(&mut self, expr: ExprRef, args: &[ir::entities::Value]) -> ir::entities::Value {
+    fn expr_codegen(&mut self, expr: ExprRef, args: &[Value]) -> Value {
         match &self.expr_ctx[expr] {
             Expr::BVSymbol { width, .. } => {
                 assert!(
@@ -151,7 +135,7 @@ impl CodeGenContext<'_, '_, '_> {
                     "bv with width greater than 64 is yet to implement"
                 );
                 let param_offset = self.input_state_buffer.get_state_offset(expr) as u32;
-                let input_states_buf = self.fn_builder.block_params(self.block_id)[INPUT_OFFSET];
+                let input_states_buf = self.fn_builder.block_params(self.block_id)[0];
                 self.fn_builder.ins().load(
                     self.int,
                     // buffer is allocated by Rust, therefore trusted
