@@ -22,7 +22,11 @@ regex.workspace = true
 baa.workspace = true
 rustc-hash.workspace = true
 thiserror.workspace = true
+cranelift = { version = "0.120.0", features = ["module", "jit"] }
 
 [dev-dependencies]
 insta = { version = "1.x", features = ["yaml"] }
+
+[profile.dev]
+debug = true
 
