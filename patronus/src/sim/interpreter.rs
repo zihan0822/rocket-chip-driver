@@ -102,7 +102,7 @@ impl<'a> Simulator for Interpreter<'a> {
         self.step_count += 1;
     }
 
-    fn set<'b>(&mut self, expr: ExprRef, value: impl Into<BitVecValueRef<'b>>) {
+    fn set<'b>(&mut self, expr: ExprRef, value: BitVecValueRef<'b>) {
         self.data.update_bv(expr, value);
     }
 

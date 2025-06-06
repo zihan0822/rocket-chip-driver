@@ -208,11 +208,7 @@ impl Simulator for JITEngine<'_> {
         }
     }
 
-    fn get_element<'b>(
-        &self,
-        _expr: ExprRef,
-        _index: impl Into<BitVecValueRef<'b>>,
-    ) -> Option<BitVecValue> {
+    fn get_element<'b>(&self, _expr: ExprRef, _index: BitVecValueRef<'b>) -> Option<BitVecValue> {
         todo!()
     }
 

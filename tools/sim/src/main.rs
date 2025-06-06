@@ -37,6 +37,8 @@ struct Args {
     testbench: Option<String>,
     #[arg(value_name = "BTOR2", index = 1)]
     filename: String,
+    #[arg(long, help = "use JIT based interpreter")]
+    jit: bool,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
@@ -57,10 +59,12 @@ fn main() {
 
     // start execution
     let start_load = std::time::Instant::now();
-    let mut sim = if args.trace_instructions {
-        Interpreter::new_with_trace(&ctx, &sys)
+    let mut sim: Box<dyn Simulator<SnapshotId = u32>> = if args.jit {
+        Box::new(JITEngine::new(&ctx, &sys))
+    } else if args.trace_instructions {
+        Box::new(Interpreter::new_with_trace(&ctx, &sys))
     } else {
-        Interpreter::new(&ctx, &sys)
+        Box::new(Interpreter::new(&ctx, &sys))
     };
 
     if args.show_programs {
@@ -115,7 +119,7 @@ fn main() {
     for (step_id, line) in tb.lines().flatten().enumerate() {
         do_step(
             step_id,
-            &mut sim,
+            &mut *sim,
             &line,
             &inputs,
             &outputs,
@@ -156,7 +160,7 @@ fn read_header(
 /// Reads one line in the CSV, applies inputs, checks outputs and finally steps the system.
 fn do_step(
     step_id: usize,
-    sim: &mut impl Simulator,
+    sim: &mut dyn Simulator<SnapshotId = u32>,
     line: &str,
     inputs: &[(usize, ExprRef, String, WidthInt)],
     outputs: &[(usize, ExprRef, String, WidthInt)],
@@ -172,7 +176,7 @@ fn do_step(
                 if trimmed.to_ascii_lowercase() != "x" {
                     let value = u64::from_str_radix(trimmed, 10).unwrap();
                     let width = input.3;
-                    sim.set(input.1, &BitVecValue::from_u64(value, width));
+                    sim.set(input.1, (&BitVecValue::from_u64(value, width)).into());
                 }
 
                 // get next input

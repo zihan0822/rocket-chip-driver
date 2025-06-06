@@ -24,7 +24,7 @@ pub trait Simulator {
     fn step(&mut self);
 
     /// Change the value or an expression in the simulator.
-    fn set<'a>(&mut self, expr: ExprRef, value: impl Into<BitVecValueRef<'a>>);
+    fn set<'a>(&mut self, expr: ExprRef, value: BitVecValueRef<'a>);
 
     /// Inspect the value of any expression in the circuit
     fn get(&self, expr: ExprRef) -> Value;
