@@ -118,11 +118,16 @@ impl JITBackend {
 impl<'expr> JITEngine<'expr> {
     pub fn new(ctx: &'expr expr::Context, sys: &'expr TransitionSystem) -> JITEngine<'expr> {
         let mut states_to_offset: FxHashMap<ExprRef, usize> = FxHashMap::default();
-        for state in sys.states.iter().flat_map(|state| {
-            std::iter::once(state.symbol)
-                .chain(state.init)
-                .chain(state.next)
-        }) {
+        for state in sys
+            .states
+            .iter()
+            .flat_map(|state| {
+                std::iter::once(state.symbol)
+                    .chain(state.init)
+                    .chain(state.next)
+            })
+            .chain(sys.inputs.iter().copied())
+        {
             let offset = states_to_offset.len();
             states_to_offset.entry(state).or_insert(offset);
         }
