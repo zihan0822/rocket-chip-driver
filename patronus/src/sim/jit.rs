@@ -195,8 +195,15 @@ impl Simulator for JITEngine<'_> {
         self.step_count += 1;
     }
 
-    fn set<'b>(&mut self, _expr: ExprRef, _value: impl Into<BitVecValueRef<'b>>) {
-        todo!()
+    fn set<'b>(&mut self, expr: ExprRef, value: BitVecValueRef<'b>) {
+        assert!(matches!(self.ctx[expr], Expr::BVSymbol { .. }));
+        *self.current_bv_state_buffer_mut().get_state_mut(expr) =
+            value.to_i64().unwrap_or_else(|| {
+                panic!(
+                    "unsupported bv value for jit based interpreter: {:?}",
+                    value
+                )
+            });
     }
 
     fn get(&self, expr: ExprRef) -> Option<BitVecValue> {
