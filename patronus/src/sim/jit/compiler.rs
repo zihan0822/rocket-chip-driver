@@ -126,8 +126,42 @@ impl CodeGenContext<'_, '_, '_> {
     }
 }
 
+trait ExprRefExt {
+    /// Returns the width of bitvector if the expr might cause overflow
+    fn might_overflow(&self, ctx: &expr::Context) -> Option<WidthInt>;
+}
+
+impl ExprRefExt for ExprRef {
+    fn might_overflow(&self, ctx: &expr::Context) -> Option<WidthInt> {
+        match ctx[*self] {
+            Expr::BVAdd(.., width) | Expr::BVMul(.., width) | Expr::BVSub(.., width) => Some(width),
+            _ => None,
+        }
+    }
+}
+
 impl CodeGenContext<'_, '_, '_> {
     fn expr_codegen(&mut self, expr: ExprRef, args: &[Value]) -> Value {
+        let mut ret = self.expr_codegen_internal(expr, args);
+        if let Some(width) = expr.might_overflow(self.expr_ctx) {
+            ret = self.overflow_guard_codegen(ret, width);
+        }
+        ret
+    }
+
+    fn overflow_guard_codegen(&mut self, to_guard: Value, width: WidthInt) -> Value {
+        assert!(width <= 64, "bv width greater than 64 is yet to implement");
+        // case of 64 is handled by cranelift
+        if width < 64 {
+            self.fn_builder
+                .ins()
+                .band_imm(to_guard, ((u64::MAX) >> (64 - width)) as i64)
+        } else {
+            to_guard
+        }
+    }
+
+    fn expr_codegen_internal(&mut self, expr: ExprRef, args: &[Value]) -> Value {
         match &self.expr_ctx[expr] {
             Expr::BVSymbol { width, .. } => {
                 assert!(
