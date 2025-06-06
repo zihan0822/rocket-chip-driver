@@ -60,10 +60,6 @@ impl JITCompiler {
 
         codegen_ctx.codegen();
 
-        let mut buffer = String::new();
-        codegen::write::write_function(&mut buffer, &cranelift_ctx.func).unwrap();
-        eprintln!("{}", buffer);
-
         let function_id = self
             .module
             .declare_anonymous_function(&cranelift_ctx.func.signature)?;
@@ -116,11 +112,11 @@ impl CodeGenContext<'_, '_, '_> {
     fn bootstrap(&mut self) -> Vec<ExprRef> {
         let mut todo = vec![];
         let mut nodes_to_expand = vec![self.root_expr];
-        while !nodes_to_expand.is_empty() {
-            for node in std::mem::take(&mut nodes_to_expand) {
-                todo.push(node);
-                self.expr_ctx[node].for_each_child(|c| nodes_to_expand.push(*c));
-            }
+        while let Some(next_to_expand) = nodes_to_expand.pop() {
+            todo.push(next_to_expand);
+            let mut children = vec![];
+            self.expr_ctx[next_to_expand].collect_children(&mut children);
+            nodes_to_expand.extend(children.into_iter())
         }
         todo
     }
@@ -133,9 +129,21 @@ trait ExprRefExt {
 
 impl ExprRefExt for ExprRef {
     fn might_overflow(&self, ctx: &expr::Context) -> Option<WidthInt> {
-        match ctx[*self] {
-            Expr::BVAdd(.., width) | Expr::BVMul(.., width) | Expr::BVSub(.., width) => Some(width),
-            _ => None,
+        if matches!(
+            ctx[*self],
+            Expr::BVAdd(..)
+                | Expr::BVMul(..)
+                | Expr::BVSub(..)
+                | Expr::BVShiftLeft(..)
+                | Expr::BVSignExt { .. }
+                | Expr::BVNot(..)
+                | Expr::BVNegate(..)
+                | Expr::BVLiteral(..)
+                | Expr::BVSymbol { .. }
+        ) {
+            self.get_type(ctx).get_bit_vector_width()
+        } else {
+            None
         }
     }
 }
@@ -161,33 +169,53 @@ impl CodeGenContext<'_, '_, '_> {
         }
     }
 
+    fn bv_sign_extend(&mut self, value: Value, width: WidthInt) -> Value {
+        let shifted = self.fn_builder.ins().ishl_imm(value, (64 - width) as i64);
+        self.fn_builder.ins().sshr_imm(shifted, (64 - width) as i64)
+    }
+
     fn expr_codegen_internal(&mut self, expr: ExprRef, args: &[Value]) -> Value {
+        if !matches!(expr.get_type(&self.expr_ctx), expr::Type::BV(width) if width <= 64) {
+            panic!(
+                "only support bv with width less than or equal to 64, but got: `{:?}`",
+                self.expr_ctx[expr]
+            );
+        }
         match &self.expr_ctx[expr] {
-            Expr::BVSymbol { width, .. } => {
-                assert!(
-                    *width <= 64,
-                    "bv with width greater than 64 is yet to implement"
-                );
+            Expr::BVSymbol { .. } => {
                 let param_offset = self.input_state_buffer.get_state_offset(expr) as u32;
-                let input_states_buf = self.fn_builder.block_params(self.block_id)[0];
+                let input_buffer_address = self.fn_builder.block_params(self.block_id)[0];
                 self.fn_builder.ins().load(
                     self.int,
                     // buffer is allocated by Rust, therefore trusted
                     ir::MemFlags::trusted(),
-                    input_states_buf,
+                    input_buffer_address,
                     (param_offset * self.int.bytes()) as i32,
                 )
             }
             Expr::BVLiteral(value) => {
-                let value = value
-                    .get(self.expr_ctx)
-                    .to_i64()
-                    .unwrap_or_else(|| panic!("bv with width greater than 64 is yet to implement"));
+                let value = value.get(self.expr_ctx).to_i64().unwrap();
                 self.fn_builder.ins().iconst(self.int, value)
             }
             // unary
             Expr::BVNot(..) => self.fn_builder.ins().bnot(args[0]),
-            Expr::BVNegate(..) => self.fn_builder.ins().ineg(args[0]),
+            Expr::BVNegate(..) => {
+                let flipped = self.fn_builder.ins().bnot(args[0]);
+                self.fn_builder.ins().iadd_imm(flipped, 1)
+            }
+            // no-op with current impl
+            Expr::BVZeroExt { .. } => args[0],
+            Expr::BVSignExt { by, width, .. } => {
+                assert!(width > by);
+                self.bv_sign_extend(args[0], width - by)
+            }
+            Expr::BVSlice { hi, lo, .. } => {
+                assert!(hi >= lo);
+                let shifted = self.fn_builder.ins().ushr_imm(args[0], *lo as i64);
+                self.fn_builder
+                    .ins()
+                    .band_imm(shifted, (u64::MAX >> (64 - (*hi - *lo + 1))) as i64)
+            }
             // binary
             Expr::BVAdd(..) => self.fn_builder.ins().iadd(args[0], args[1]),
             Expr::BVSub(..) => self.fn_builder.ins().isub(args[0], args[1]),
@@ -195,31 +223,58 @@ impl CodeGenContext<'_, '_, '_> {
             Expr::BVAnd(..) => self.fn_builder.ins().band(args[0], args[1]),
             Expr::BVOr(..) => self.fn_builder.ins().bor(args[0], args[1]),
             Expr::BVXor(..) => self.fn_builder.ins().bxor(args[0], args[1]),
-            Expr::BVEqual(..) => self.fn_builder.ins().icmp(IntCC::Equal, args[0], args[1]),
-            Expr::BVGreater(..) => {
-                self.fn_builder
-                    .ins()
-                    .icmp(IntCC::UnsignedGreaterThan, args[0], args[1])
+            Expr::BVEqual(..) => {
+                let cmp = self.fn_builder.ins().icmp(IntCC::Equal, args[0], args[1]);
+                self.fn_builder.ins().uextend(self.int, cmp)
             }
-            Expr::BVGreaterSigned(..) => {
-                self.fn_builder
+            Expr::BVGreater(..) => {
+                let cmp = self
+                    .fn_builder
                     .ins()
-                    .icmp(IntCC::SignedGreaterThan, args[0], args[1])
+                    .icmp(IntCC::UnsignedGreaterThan, args[0], args[1]);
+                self.fn_builder.ins().uextend(self.int, cmp)
+            }
+            Expr::BVGreaterSigned(.., width) => {
+                let (arg0, arg1) = (
+                    self.bv_sign_extend(args[0], *width),
+                    self.bv_sign_extend(args[1], *width),
+                );
+                let cmp = self
+                    .fn_builder
+                    .ins()
+                    .icmp(IntCC::SignedGreaterThan, arg0, arg1);
+                self.fn_builder.ins().uextend(self.int, cmp)
             }
             Expr::BVGreaterEqual(..) => {
-                self.fn_builder
-                    .ins()
-                    .icmp(IntCC::UnsignedGreaterThanOrEqual, args[0], args[1])
+                let cmp =
+                    self.fn_builder
+                        .ins()
+                        .icmp(IntCC::UnsignedGreaterThanOrEqual, args[0], args[1]);
+                self.fn_builder.ins().uextend(self.int, cmp)
             }
-            Expr::BVGreaterEqualSigned(..) => {
-                self.fn_builder
+            Expr::BVGreaterEqualSigned(.., width) => {
+                let (arg0, arg1) = (
+                    self.bv_sign_extend(args[0], *width),
+                    self.bv_sign_extend(args[1], *width),
+                );
+                let cmp = self
+                    .fn_builder
                     .ins()
-                    .icmp(IntCC::SignedGreaterThanOrEqual, args[0], args[1])
+                    .icmp(IntCC::SignedGreaterThanOrEqual, arg0, arg1);
+                self.fn_builder.ins().uextend(self.int, cmp)
             }
             Expr::BVShiftLeft(..) => self.fn_builder.ins().ishl(args[0], args[1]),
             Expr::BVShiftRight(..) => self.fn_builder.ins().ushr(args[0], args[1]),
             Expr::BVArithmeticShiftRight(..) => self.fn_builder.ins().sshr(args[0], args[1]),
-            _ => todo!("{:?}", expr),
+            Expr::BVIte { .. } => self.fn_builder.ins().select(args[0], args[1], args[2]),
+            Expr::BVConcat(_, lo, ..) => {
+                let expr::Type::BV(lo_width) = lo.get_type(self.expr_ctx) else {
+                    unreachable!()
+                };
+                let hi = self.fn_builder.ins().ishl_imm(args[0], lo_width as i64);
+                self.fn_builder.ins().bor(hi, args[1])
+            }
+            _ => todo!("{:?}", self.expr_ctx[expr]),
         }
     }
 }
