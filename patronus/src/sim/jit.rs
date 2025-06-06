@@ -7,8 +7,8 @@ use baa::*;
 use compiler::{CompiledEvalFn, JITCompiler};
 use cranelift::jit::{JITBuilder, JITModule};
 use cranelift::module::ModuleError;
+use rustc_hash::FxHashMap;
 use std::cell::RefCell;
-use std::collections::HashMap;
 
 type JITResult<T> = Result<T, JITError>;
 
@@ -37,7 +37,7 @@ trait StateBufferViewMut<T>: StateBufferView<T> {
 
 struct BVStateBuffer<'engine, B> {
     buffer: B,
-    states_to_offset: &'engine HashMap<ExprRef, usize>,
+    states_to_offset: &'engine FxHashMap<ExprRef, usize>,
 }
 
 impl<B> StateBufferView<i64> for BVStateBuffer<'_, B>
@@ -79,13 +79,13 @@ pub struct JITEngine<'expr> {
     sys: &'expr TransitionSystem,
     /// interior mutability for lazy compilation triggered by `Simulator::get`
     backend: RefCell<JITBackend>,
-    states_to_offset: HashMap<ExprRef, usize>,
+    states_to_offset: FxHashMap<ExprRef, usize>,
     step_count: u64,
 }
 
 struct JITBackend {
     compiler: JITCompiler,
-    compiled_code: HashMap<ExprRef, CompiledEvalFn>,
+    compiled_code: FxHashMap<ExprRef, CompiledEvalFn>,
 }
 
 impl JITBackend {
@@ -95,7 +95,7 @@ impl JITBackend {
         let module = JITModule::new(builder);
         Self {
             compiler: JITCompiler::new(module),
-            compiled_code: HashMap::default(),
+            compiled_code: FxHashMap::default(),
         }
     }
     fn eval_expr(
@@ -117,7 +117,7 @@ impl JITBackend {
 
 impl<'expr> JITEngine<'expr> {
     pub fn new(ctx: &'expr expr::Context, sys: &'expr TransitionSystem) -> JITEngine<'expr> {
-        let mut states_to_offset: HashMap<ExprRef, usize> = HashMap::default();
+        let mut states_to_offset: FxHashMap<ExprRef, usize> = FxHashMap::default();
         for state in sys.states.iter().flat_map(|state| {
             std::iter::once(state.symbol)
                 .chain(state.init)
