@@ -121,11 +121,7 @@ impl<'expr> JITEngine<'expr> {
         for state in sys
             .states
             .iter()
-            .flat_map(|state| {
-                std::iter::once(state.symbol)
-                    .chain(state.init)
-                    .chain(state.next)
-            })
+            .map(|state| state.symbol)
             .chain(sys.inputs.iter().copied())
         {
             let offset = states_to_offset.len();
