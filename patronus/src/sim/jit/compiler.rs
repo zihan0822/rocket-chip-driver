@@ -114,9 +114,7 @@ impl CodeGenContext<'_, '_, '_> {
         let mut nodes_to_expand = vec![self.root_expr];
         while let Some(next_to_expand) = nodes_to_expand.pop() {
             todo.push(next_to_expand);
-            let mut children = vec![];
-            self.expr_ctx[next_to_expand].collect_children(&mut children);
-            nodes_to_expand.extend(children.into_iter())
+            self.expr_ctx[next_to_expand].for_each_child(|&child| nodes_to_expand.push(child));
         }
         todo
     }
