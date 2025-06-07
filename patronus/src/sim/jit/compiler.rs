@@ -6,6 +6,7 @@ use cranelift::codegen::ir::{self, condcodes::IntCC};
 use cranelift::jit::{JITBuilder, JITModule};
 use cranelift::module::Module;
 use cranelift::prelude::*;
+use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 
 pub(super) struct JITCompiler {
@@ -111,26 +112,30 @@ impl CodeGenContext<'_, '_, '_> {
 
     fn mock_interpret(&mut self) -> Value {
         let mut value_stack: SmallVec<[Value; 4]> = SmallVec::new();
-        let todo = self.bootstrap();
-        for node in todo.into_iter().rev() {
-            let num_children = self.expr_ctx[node].num_children();
-            let ret = self.expr_codegen(node, &value_stack[value_stack.len() - num_children..]);
-            value_stack.truncate(value_stack.len() - num_children);
-            value_stack.push(ret);
+        let mut cached: FxHashMap<ExprRef, Value> = FxHashMap::default();
+        let mut todo: Vec<(ExprRef, bool)> = vec![(self.root_expr, false)];
+
+        while let Some((e, args_available)) = todo.pop() {
+            if let Some(&ret) = cached.get(&e) {
+                value_stack.push(ret);
+                continue;
+            }
+            let expr = &self.expr_ctx[e];
+            if args_available {
+                let num_children = expr.num_children();
+                let ret = self.expr_codegen(e, &value_stack[value_stack.len() - num_children..]);
+                cached.insert(e, ret);
+                value_stack.truncate(value_stack.len() - num_children);
+                value_stack.push(ret);
+            } else {
+                todo.push((e, true));
+                let mut children = vec![];
+                expr.collect_children(&mut children);
+                todo.extend(children.into_iter().map(|child| (child, false)).rev());
+            }
         }
         debug_assert_eq!(value_stack.len(), 1);
         value_stack[0]
-    }
-
-    /// Returns an expression todo list sorted in topo-order
-    fn bootstrap(&mut self) -> Vec<ExprRef> {
-        let mut todo = vec![];
-        let mut nodes_to_expand = vec![self.root_expr];
-        while let Some(next_to_expand) = nodes_to_expand.pop() {
-            todo.push(next_to_expand);
-            self.expr_ctx[next_to_expand].for_each_child(|&child| nodes_to_expand.push(child));
-        }
-        todo
     }
 }
 
