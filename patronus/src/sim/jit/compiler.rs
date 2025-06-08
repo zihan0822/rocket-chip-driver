@@ -341,6 +341,14 @@ impl CodeGenContext<'_, '_, '_> {
                     0,
                 )
             }
+            Expr::ArrayConstant { index_width, .. } => {
+                let index_width = self.fn_builder.ins().iconst(self.int, *index_width as i64);
+                let call = self
+                    .fn_builder
+                    .ins()
+                    .call(self.runtime_lib.alloc_const_array, &[index_width, args[0]]);
+                self.fn_builder.inst_results(call)[0]
+            }
             _ => todo!("{:?}", self.expr_ctx[expr]),
         }
     }
