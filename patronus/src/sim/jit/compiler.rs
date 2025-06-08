@@ -199,7 +199,6 @@ impl CodeGenContext<'_, '_, '_> {
         )
     }
 
-    #[allow(dead_code)]
     fn delloc_array(&mut self, array_to_dealloc: Value, index_width: WidthInt) {
         let index_width = self.fn_builder.ins().iconst(self.int, index_width as i64);
         self.fn_builder.ins().call(
@@ -326,20 +325,27 @@ impl CodeGenContext<'_, '_, '_> {
                 );
                 base
             }
-            Expr::BVArrayRead { .. } => {
+            Expr::BVArrayRead { array, .. } => {
                 let (base, index) = (args[0], args[1]);
                 let offset = self
                     .fn_builder
                     .ins()
                     .imul_imm(index, self.int.bytes() as i64);
                 let address = self.fn_builder.ins().iadd(base, offset);
-                self.fn_builder.ins().load(
+                let ret = self.fn_builder.ins().load(
                     self.int,
                     // upheld by the unsafeness of CompiledEvalFn::call
                     ir::MemFlags::trusted(),
                     address,
                     0,
-                )
+                );
+                let expr::Type::Array(expr::ArrayType { index_width, .. }) =
+                    array.get_type(self.expr_ctx)
+                else {
+                    unreachable!()
+                };
+                self.delloc_array(base, index_width);
+                ret
             }
             Expr::ArrayConstant { index_width, .. } => {
                 let index_width = self.fn_builder.ins().iconst(self.int, *index_width as i64);
