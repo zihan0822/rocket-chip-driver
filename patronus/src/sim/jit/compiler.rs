@@ -1,9 +1,9 @@
-use super::{JITResult, StateBufferView};
+use super::{runtime, JITResult, StateBufferView};
 use crate::expr::{self, *};
 
 use baa::BitVecOps;
 use cranelift::codegen::ir::{self, condcodes::IntCC};
-use cranelift::jit::JITModule;
+use cranelift::jit::{JITBuilder, JITModule};
 use cranelift::module::Module;
 use cranelift::prelude::*;
 use smallvec::SmallVec;
@@ -26,7 +26,11 @@ impl CompiledEvalFn {
 }
 
 impl JITCompiler {
-    pub(super) fn new(module: JITModule) -> Self {
+    pub(super) fn new() -> Self {
+        let mut builder = JITBuilder::new(cranelift::module::default_libcall_names())
+            .unwrap_or_else(|_| panic!("fail to launch jit instance"));
+        runtime::load_runtime_lib(&mut builder);
+        let module = JITModule::new(builder);
         Self { module }
     }
 
@@ -36,14 +40,16 @@ impl JITCompiler {
         root_expr: ExprRef,
         input_state_buffer: &impl StateBufferView<i64>,
     ) -> JITResult<CompiledEvalFn> {
-        // signature: fn(input, output, prev_state, next_state)
         let mut cranelift_ctx = self.module.make_context();
         cranelift_ctx.func.signature.params = vec![ir::AbiParam::new(types::I64)];
         cranelift_ctx.func.signature.returns = vec![ir::AbiParam::new(types::I64)];
         cranelift_ctx.func.signature.call_conv = isa::CallConv::SystemV;
 
+        let runtime_lib =
+            runtime::import_runtime_lib_to_func_scope(&mut self.module, &mut cranelift_ctx.func);
         let mut fn_builder_ctx = FunctionBuilderContext::new();
         let mut fn_builder = FunctionBuilder::new(&mut cranelift_ctx.func, &mut fn_builder_ctx);
+
         let entry_block = fn_builder.create_block();
         fn_builder.append_block_params_for_function_params(entry_block);
         fn_builder.switch_to_block(entry_block);
@@ -51,6 +57,7 @@ impl JITCompiler {
 
         let codegen_ctx = CodeGenContext {
             fn_builder,
+            runtime_lib,
             block_id: entry_block,
             expr_ctx,
             root_expr,
@@ -81,6 +88,7 @@ impl JITCompiler {
 
 struct CodeGenContext<'expr, 'ctx, 'engine> {
     fn_builder: FunctionBuilder<'ctx>,
+    runtime_lib: runtime::RuntimeLib,
     block_id: Block,
     expr_ctx: &'expr expr::Context,
     root_expr: ExprRef,
@@ -172,24 +180,46 @@ impl CodeGenContext<'_, '_, '_> {
         self.fn_builder.ins().sshr_imm(shifted, (64 - width) as i64)
     }
 
+    /// the meaning of the input state is polymorphic over bv/array
+    fn load_input_state(&mut self, expr: ExprRef) -> Value {
+        let param_offset = self.input_state_buffer.get_state_offset(expr) as u32;
+        let input_buffer_address = self.fn_builder.block_params(self.block_id)[0];
+        self.fn_builder.ins().load(
+            self.int,
+            // buffer is allocated by Rust, therefore trusted
+            ir::MemFlags::trusted(),
+            input_buffer_address,
+            (param_offset * self.int.bytes()) as i32,
+        )
+    }
+
+    #[allow(dead_code)]
+    fn delloc_array(&mut self, array_to_dealloc: Value, index_width: WidthInt) {
+        let index_width = self.fn_builder.ins().iconst(self.int, index_width as i64);
+        self.fn_builder.ins().call(
+            self.runtime_lib.dealloc_array,
+            &[array_to_dealloc, index_width],
+        );
+    }
+
     fn expr_codegen_internal(&mut self, expr: ExprRef, args: &[Value]) -> Value {
-        if !matches!(expr.get_type(&self.expr_ctx), expr::Type::BV(width) if width <= 64) {
-            panic!(
-                "only support bv with width less than or equal to 64, but got: `{:?}`",
-                self.expr_ctx[expr]
-            );
+        match expr.get_type(self.expr_ctx) {
+            expr::Type::BV(width) => assert!(width <= 64),
+            expr::Type::Array(expr::ArrayType {
+                index_width,
+                data_width,
+            }) => assert!(index_width <= 12 && data_width <= 64),
         }
         match &self.expr_ctx[expr] {
-            Expr::BVSymbol { .. } => {
-                let param_offset = self.input_state_buffer.get_state_offset(expr) as u32;
-                let input_buffer_address = self.fn_builder.block_params(self.block_id)[0];
-                self.fn_builder.ins().load(
-                    self.int,
-                    // buffer is allocated by Rust, therefore trusted
-                    ir::MemFlags::trusted(),
-                    input_buffer_address,
-                    (param_offset * self.int.bytes()) as i32,
-                )
+            Expr::BVSymbol { .. } => self.load_input_state(expr),
+            Expr::ArraySymbol { index_width, .. } => {
+                let src = self.load_input_state(expr);
+                let index_width = self.fn_builder.ins().iconst(self.int, *index_width as i64);
+                let call = self
+                    .fn_builder
+                    .ins()
+                    .call(self.runtime_lib.clone_array, &[src, index_width]);
+                self.fn_builder.inst_results(call)[0]
             }
             Expr::BVLiteral(value) => {
                 let value = value.get(self.expr_ctx).to_i64().unwrap();
@@ -264,13 +294,46 @@ impl CodeGenContext<'_, '_, '_> {
             Expr::BVShiftLeft(..) => self.fn_builder.ins().ishl(args[0], args[1]),
             Expr::BVShiftRight(..) => self.fn_builder.ins().ushr(args[0], args[1]),
             Expr::BVArithmeticShiftRight(..) => self.fn_builder.ins().sshr(args[0], args[1]),
-            Expr::BVIte { .. } => self.fn_builder.ins().select(args[0], args[1], args[2]),
+            Expr::BVIte { .. } | Expr::ArrayIte { .. } => {
+                self.fn_builder.ins().select(args[0], args[1], args[2])
+            }
             Expr::BVConcat(_, lo, ..) => {
                 let expr::Type::BV(lo_width) = lo.get_type(self.expr_ctx) else {
                     unreachable!()
                 };
                 let hi = self.fn_builder.ins().ishl_imm(args[0], lo_width as i64);
                 self.fn_builder.ins().bor(hi, args[1])
+            }
+            Expr::ArrayStore { .. } => {
+                let (base, index, data) = (args[0], args[1], args[2]);
+                let offset = self
+                    .fn_builder
+                    .ins()
+                    .imul_imm(index, self.int.bytes() as i64);
+                let address = self.fn_builder.ins().iadd(base, offset);
+                self.fn_builder.ins().store(
+                    // upheld by the unsafeness of CompiledEvalFn::call
+                    ir::MemFlags::trusted(),
+                    data,
+                    address,
+                    0,
+                );
+                base
+            }
+            Expr::BVArrayRead { .. } => {
+                let (base, index) = (args[0], args[1]);
+                let offset = self
+                    .fn_builder
+                    .ins()
+                    .imul_imm(index, self.int.bytes() as i64);
+                let address = self.fn_builder.ins().iadd(base, offset);
+                self.fn_builder.ins().load(
+                    self.int,
+                    // upheld by the unsafeness of CompiledEvalFn::call
+                    ir::MemFlags::trusted(),
+                    address,
+                    0,
+                )
             }
             _ => todo!("{:?}", self.expr_ctx[expr]),
         }

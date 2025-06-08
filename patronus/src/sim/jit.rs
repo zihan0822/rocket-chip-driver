@@ -1,11 +1,11 @@
 mod compiler;
+mod runtime;
 
 use super::Simulator;
 use crate::expr::{self, *};
 use crate::system::*;
 use baa::*;
 use compiler::{CompiledEvalFn, JITCompiler};
-use cranelift::jit::{JITBuilder, JITModule};
 use cranelift::module::ModuleError;
 use rustc_hash::FxHashMap;
 use std::cell::RefCell;
@@ -35,12 +35,12 @@ trait StateBufferViewMut<T>: StateBufferView<T> {
     fn as_mut_slice(&mut self) -> &mut [T];
 }
 
-struct BVStateBuffer<'engine, B> {
+struct StateBuffer<'engine, B> {
     buffer: B,
     states_to_offset: &'engine FxHashMap<ExprRef, usize>,
 }
 
-impl<B> StateBufferView<i64> for BVStateBuffer<'_, B>
+impl<B> StateBufferView<i64> for StateBuffer<'_, B>
 where
     B: std::borrow::Borrow<[i64]>,
 {
@@ -57,7 +57,7 @@ where
     }
 }
 
-impl<B> StateBufferViewMut<i64> for BVStateBuffer<'_, B>
+impl<B> StateBufferViewMut<i64> for StateBuffer<'_, B>
 where
     B: std::borrow::BorrowMut<[i64]>,
 {
@@ -70,11 +70,11 @@ where
     }
 }
 
-const BV_CURRENT_STATE_INDEX: usize = 0;
-const BV_NEXT_STATE_INDEX: usize = 1;
+const CURRENT_STATE_INDEX: usize = 0;
+const NEXT_STATE_INDEX: usize = 1;
 
 pub struct JITEngine<'expr> {
-    buffers: [Vec<i64>; 2],
+    buffers: [Box<[i64]>; 2],
     ctx: &'expr expr::Context,
     sys: &'expr TransitionSystem,
     /// interior mutability for lazy compilation triggered by `Simulator::get`
@@ -90,14 +90,12 @@ struct JITBackend {
 
 impl JITBackend {
     fn new() -> Self {
-        let builder = JITBuilder::new(cranelift::module::default_libcall_names())
-            .unwrap_or_else(|_| panic!("fail to launch jit instance"));
-        let module = JITModule::new(builder);
         Self {
-            compiler: JITCompiler::new(module),
+            compiler: JITCompiler::new(),
             compiled_code: FxHashMap::default(),
         }
     }
+
     fn eval_expr(
         &mut self,
         expr: ExprRef,
@@ -127,9 +125,39 @@ impl<'expr> JITEngine<'expr> {
             let offset = states_to_offset.len();
             states_to_offset.entry(state).or_insert(offset);
         }
+
+        let mut buffers: [Box<[i64]>; 2] =
+            std::array::from_fn(|_| vec![0_i64; states_to_offset.len()].into_boxed_slice());
+        for (&state, &offset) in &states_to_offset {
+            if let expr::Type::Array(expr::ArrayType {
+                index_width,
+                data_width,
+            }) = state.get_type(ctx)
+            {
+                assert!(
+                    data_width <= 64,
+                    "only support bv with width less than equal to 64, but got `{}`",
+                    data_width
+                );
+                assert!(
+                    index_width <= 12,
+                    "currently no sparse array support, size of the dense array should be less than or equal to 2^12, but got `{}`", 
+                    index_width
+                );
+
+                // allocate array buffer for both current and next state
+                // this maintains the invariance that array states always points a valid boxed slice
+                for state_buffer in &mut buffers {
+                    let array = vec![0_i64; 1 << index_width].into_boxed_slice();
+                    state_buffer[offset] = array.as_ptr() as i64;
+                    std::mem::forget(array);
+                }
+            }
+        }
+
         Self {
             backend: RefCell::new(JITBackend::new()),
-            buffers: std::array::from_fn(|_| vec![0; states_to_offset.len()]),
+            buffers,
             ctx,
             sys,
             states_to_offset,
@@ -137,23 +165,25 @@ impl<'expr> JITEngine<'expr> {
         }
     }
 
-    fn current_bv_state_buffer(&self) -> BVStateBuffer<&[i64]> {
-        BVStateBuffer {
-            buffer: self.buffers[BV_CURRENT_STATE_INDEX].as_slice(),
+    fn current_state_buffer<'engine>(&'engine self) -> impl StateBufferView<i64> + 'engine {
+        StateBuffer {
+            buffer: &*self.buffers[CURRENT_STATE_INDEX],
             states_to_offset: &self.states_to_offset,
         }
     }
 
-    fn current_bv_state_buffer_mut(&mut self) -> BVStateBuffer<&mut [i64]> {
-        BVStateBuffer {
-            buffer: self.buffers[BV_CURRENT_STATE_INDEX].as_mut_slice(),
+    fn current_state_buffer_mut<'engine>(
+        &'engine mut self,
+    ) -> impl StateBufferViewMut<i64> + 'engine {
+        StateBuffer {
+            buffer: &mut *self.buffers[CURRENT_STATE_INDEX],
             states_to_offset: &self.states_to_offset,
         }
     }
 
-    fn next_bv_state_buffer_mut(&mut self) -> BVStateBuffer<&mut [i64]> {
-        BVStateBuffer {
-            buffer: self.buffers[BV_NEXT_STATE_INDEX].as_mut_slice(),
+    fn next_state_buffer_mut<'engine>(&'engine mut self) -> impl StateBufferViewMut<i64> + 'engine {
+        StateBuffer {
+            buffer: &mut *self.buffers[NEXT_STATE_INDEX],
             states_to_offset: &self.states_to_offset,
         }
     }
@@ -161,44 +191,76 @@ impl<'expr> JITEngine<'expr> {
     fn eval_expr(&self, expr: ExprRef) -> i64 {
         self.backend
             .borrow_mut()
-            .eval_expr(expr, &self.ctx, &self.current_bv_state_buffer())
+            .eval_expr(expr, self.ctx, &self.current_state_buffer())
     }
 
     fn update_state_buffer(&mut self) {
-        self.buffers
-            .swap(BV_CURRENT_STATE_INDEX, BV_NEXT_STATE_INDEX)
+        self.buffers.swap(CURRENT_STATE_INDEX, NEXT_STATE_INDEX);
+    }
+}
+
+impl std::ops::Drop for JITEngine<'_> {
+    fn drop(&mut self) {
+        for (&state, &offset) in &self.states_to_offset {
+            if let expr::Type::Array(expr::ArrayType { index_width, .. }) = state.get_type(self.ctx)
+            {
+                for state_buffer in &mut self.buffers {
+                    // SAFETY: the invariance we maintained for array states in the buffer guarantees that
+                    // they all point to a valid boxed slice
+                    unsafe {
+                        runtime::__dealloc_array(state_buffer[offset] as *mut i64, index_width);
+                    }
+                }
+            }
+        }
     }
 }
 
 impl Simulator for JITEngine<'_> {
     type SnapshotId = u32;
     fn init(&mut self) {
-        self.current_bv_state_buffer_mut().as_mut_slice().fill(0);
+        for (state, offset) in self.states_to_offset.clone() {
+            if let expr::Type::BV(..) = state.get_type(self.ctx) {
+                self.current_state_buffer_mut().as_mut_slice()[offset] = 0;
+            }
+        }
+
         for state in &self.sys.states {
             if let Some(init) = state.init {
                 let ret = self.eval_expr(init);
-                *self
-                    .current_bv_state_buffer_mut()
-                    .get_state_mut(state.symbol) = ret;
+                *self.current_state_buffer_mut().get_state_mut(state.symbol) = ret;
             }
         }
     }
 
     fn update(&mut self) {}
     fn step(&mut self) {
-        self.sys.states.iter().for_each(|s| {
-            if let Some(next) = s.next {
-                let ret = self.eval_expr(next);
-                *self.next_bv_state_buffer_mut().get_state_mut(s.symbol) = ret;
+        for state in &self.sys.states {
+            let Some(next) = state.next else { continue };
+            let ret = self.eval_expr(next);
+            match next.get_type(self.ctx) {
+                expr::Type::BV(..) => {
+                    *self.next_state_buffer_mut().get_state_mut(state.symbol) = ret
+                }
+                expr::Type::Array(expr::ArrayType { index_width, .. }) => {
+                    let old_array_state = std::mem::replace(
+                        self.next_state_buffer_mut().get_state_mut(state.symbol),
+                        ret,
+                    );
+                    // SAFETY: the invariance we maintained for array states in the buffer guarantees that
+                    // `old_array_state ` always points a valid boxed slice
+                    unsafe { runtime::__dealloc_array(old_array_state as *mut i64, index_width) }
+                }
             }
-        });
+        }
+
         self.update_state_buffer();
         self.step_count += 1;
     }
 
     fn set<'b>(&mut self, expr: ExprRef, value: BitVecValueRef<'b>) {
         assert!(matches!(self.ctx[expr], Expr::BVSymbol { .. }));
-        *self.current_bv_state_buffer_mut().get_state_mut(expr) =
+        *self.current_state_buffer_mut().get_state_mut(expr) =
             value.to_i64().unwrap_or_else(|| {
                 panic!(
                     "unsupported bv value for jit based interpreter: {:?}",
