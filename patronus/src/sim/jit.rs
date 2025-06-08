@@ -83,19 +83,13 @@ pub struct JITEngine<'expr> {
     step_count: u64,
 }
 
+#[derive(Default)]
 struct JITBackend {
     compiler: JITCompiler,
     compiled_code: FxHashMap<ExprRef, CompiledEvalFn>,
 }
 
 impl JITBackend {
-    fn new() -> Self {
-        Self {
-            compiler: JITCompiler::new(),
-            compiled_code: FxHashMap::default(),
-        }
-    }
-
     fn eval_expr(
         &mut self,
         expr: ExprRef,
@@ -156,7 +150,7 @@ impl<'expr> JITEngine<'expr> {
         }
 
         Self {
-            backend: RefCell::new(JITBackend::new()),
+            backend: RefCell::default(),
             buffers,
             ctx,
             sys,

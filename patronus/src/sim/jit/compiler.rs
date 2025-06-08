@@ -25,6 +25,12 @@ impl CompiledEvalFn {
     }
 }
 
+impl std::default::Default for JITCompiler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl JITCompiler {
     pub(super) fn new() -> Self {
         let mut builder = JITBuilder::new(cranelift::module::default_libcall_names())
