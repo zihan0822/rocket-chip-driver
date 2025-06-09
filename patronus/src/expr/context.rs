@@ -16,17 +16,19 @@
 
 use crate::expr::nodes::*;
 use crate::expr::TypeCheck;
-use baa::{BitVecValue, BitVecValueIndex, BitVecValueRef, IndexToRef};
+use baa::{
+    ArrayOps, BitVecValue, BitVecValueIndex, BitVecValueRef, IndexToRef, SparseArrayValue, Value,
+};
 use rustc_hash::FxBuildHasher;
 use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::fmt::{Debug, Formatter};
-use std::num::{NonZeroU16, NonZeroU32};
+use std::num::NonZeroU32;
 use std::ops::Index;
 
 /// Uniquely identifies a [`String`] stored in a [`Context`].
 #[derive(PartialEq, Eq, Clone, Copy, Hash, PartialOrd, Ord)]
-pub struct StringRef(NonZeroU16);
+pub struct StringRef(NonZeroU32);
 
 impl Debug for StringRef {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -36,7 +38,7 @@ impl Debug for StringRef {
 
 impl StringRef {
     fn from_index(index: usize) -> Self {
-        Self(NonZeroU16::new((index + 1) as u16).unwrap())
+        Self(NonZeroU32::new((index + 1) as u32).unwrap())
     }
 
     fn index(&self) -> usize {
@@ -170,6 +172,23 @@ impl Context {
     pub fn symbol(&mut self, name: StringRef, tpe: Type) -> ExprRef {
         assert_ne!(tpe, Type::BV(0), "0-bit bitvectors are not allowed");
         self.add_expr(Expr::symbol(name, tpe))
+    }
+    pub fn lit(&mut self, value: impl Borrow<Value>) -> ExprRef {
+        match value.borrow() {
+            Value::BitVec(value) => self.bv_lit(value),
+            Value::Array(value) => {
+                let sparse: SparseArrayValue = value.into();
+                let default = self.bv_lit(&sparse.default());
+                let base = self.array_const(default, sparse.index_width());
+                sparse
+                    .non_default_entries()
+                    .fold(base, |array, (index, data)| {
+                        let index = self.bv_lit(&index);
+                        let data = self.bv_lit(&data);
+                        self.array_store(array, index, data)
+                    })
+            }
+        }
     }
     pub fn bv_lit<'a>(&mut self, value: impl Into<BitVecValueRef<'a>>) -> ExprRef {
         let index = self.values.get_index(value);
@@ -549,7 +568,7 @@ mod tests {
 
     #[test]
     fn ir_type_size() {
-        assert_eq!(std::mem::size_of::<StringRef>(), 2);
+        assert_eq!(std::mem::size_of::<StringRef>(), 4);
         assert_eq!(std::mem::size_of::<ExprRef>(), 4);
     }
 

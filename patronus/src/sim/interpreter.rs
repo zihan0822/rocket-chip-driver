@@ -3,7 +3,7 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
-use super::Simulator;
+use super::{InitKind, InitValueGenerator, Simulator};
 use crate::expr::*;
 use crate::system::*;
 use baa::*;
@@ -40,18 +40,19 @@ impl<'a> Interpreter<'a> {
     }
 }
 
-fn set_signal_to_zero(ctx: &Context, state: &mut SymbolValueStore, symbol: ExprRef) {
+fn init_signal(
+    ctx: &Context,
+    state: &mut SymbolValueStore,
+    symbol: ExprRef,
+    gen: &mut InitValueGenerator,
+) {
     let tpe = ctx[symbol].get_type(ctx);
-    match tpe {
-        Type::BV(bits) => {
-            state.define_bv(symbol, &BitVecValue::zero(bits));
-        }
-        Type::Array(ArrayType {
-            index_width,
-            data_width,
-        }) => {
-            let value = ArrayValue::new_sparse(index_width, &BitVecValue::zero(data_width));
+    match gen.gen(tpe) {
+        Value::Array(value) => {
             state.define_array(symbol, value);
+        }
+        Value::BitVec(value) => {
+            state.define_bv(symbol, &value);
         }
     }
 }
@@ -59,15 +60,17 @@ fn set_signal_to_zero(ctx: &Context, state: &mut SymbolValueStore, symbol: ExprR
 impl<'a> Simulator for Interpreter<'a> {
     type SnapshotId = u32;
 
-    fn init(&mut self) {
+    fn init(&mut self, kind: InitKind) {
+        let mut gen = InitValueGenerator::from_kind(kind);
+
         self.data.clear();
 
         // allocate space for inputs, and states
         for state in self.sys.states.iter() {
-            set_signal_to_zero(self.ctx, &mut self.data, state.symbol);
+            init_signal(self.ctx, &mut self.data, state.symbol, &mut gen);
         }
         for &symbol in self.sys.inputs.iter() {
-            set_signal_to_zero(self.ctx, &mut self.data, symbol);
+            init_signal(self.ctx, &mut self.data, symbol, &mut gen);
         }
 
         // evaluate init expressions
@@ -107,19 +110,8 @@ impl<'a> Simulator for Interpreter<'a> {
         self.data.update_bv(expr, value);
     }
 
-    fn get(&self, expr: ExprRef) -> Option<BitVecValue> {
-        if !self.ctx[expr].is_bv_type() {
-            return None;
-        }
-        Some(eval_bv_expr(self.ctx, &self.data, expr))
-    }
-
-    fn get_element<'b>(
-        &self,
-        _expr: ExprRef,
-        _index: impl Into<BitVecValueRef<'b>>,
-    ) -> Option<BitVecValue> {
-        todo!()
+    fn get(&self, expr: ExprRef) -> Value {
+        eval_expr(self.ctx, &self.data, expr)
     }
 
     fn step_count(&self) -> u64 {

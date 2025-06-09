@@ -72,18 +72,27 @@ pub enum CheckSatResponse {
     Unknown,
 }
 
-/// Represents a kind of SMT solver and allows that solver to be started.
-pub trait Solver {
-    /// Launch a new instance of this solver.
-    fn start<R: Write + Send>(&self, replay_file: Option<R>) -> Result<impl SolverContext>;
+/// Represents the meta data of an SMT Solver
+pub trait SolverMetaData {
     // properties
     fn name(&self) -> &str;
     fn supports_check_assuming(&self) -> bool;
     fn supports_uf(&self) -> bool;
+    /// Indicates whether the solver supports the non-standard `(as const)` command.
+    fn supports_const_array(&self) -> bool;
+}
+
+/// Allows an SMT solver to start a Context.
+pub trait Solver<R: Write + Send>: SolverMetaData {
+    type Context: SolverContext;
+    /// Launch a new instance of this solver.
+    fn start(&self, replay_file: Option<R>) -> Result<Self::Context>;
 }
 
 /// Interface to a running SMT Solver with everything executing as blocking I/O.
-pub trait SolverContext {
+pub trait SolverContext: SolverMetaData {
+    // type Replay : Write + Send;
+    fn restart(&mut self) -> Result<()>;
     fn set_logic(&mut self, option: Logic) -> Result<()>;
     fn assert(&mut self, ctx: &Context, e: ExprRef) -> Result<()>;
     fn declare_const(&mut self, ctx: &Context, symbol: ExprRef) -> Result<()>;
@@ -106,10 +115,30 @@ pub struct SmtLibSolver {
     options: &'static [&'static str],
     supports_uf: bool,
     supports_check_assuming: bool,
+    supports_const_array: bool,
 }
 
-impl Solver for SmtLibSolver {
-    fn start<R: Write + Send>(&self, replay_file: Option<R>) -> Result<impl SolverContext> {
+impl SolverMetaData for SmtLibSolver {
+    fn name(&self) -> &str {
+        self.name
+    }
+
+    fn supports_check_assuming(&self) -> bool {
+        self.supports_check_assuming
+    }
+
+    fn supports_uf(&self) -> bool {
+        self.supports_uf
+    }
+
+    fn supports_const_array(&self) -> bool {
+        self.supports_const_array
+    }
+}
+
+impl<R: Write + Send> Solver<R> for SmtLibSolver {
+    type Context = SmtLibSolverCtx<R>;
+    fn start(&self, replay_file: Option<R>) -> Result<Self::Context> {
         let mut proc = Command::new(self.name)
             .args(self.args)
             .stdin(Stdio::piped())
@@ -129,6 +158,11 @@ impl Solver for SmtLibSolver {
             response: String::new(),
             replay_file,
             has_error: false,
+            solver_args: self.args.iter().map(|a| a.to_string()).collect(),
+            solver_options: self.options.iter().map(|a| a.to_string()).collect(),
+            supports_uf: self.supports_uf,
+            supports_check_assuming: self.supports_check_assuming,
+            supports_const_array: self.supports_const_array,
         };
         for option in self.options.iter() {
             solver.write_cmd(
@@ -137,18 +171,6 @@ impl Solver for SmtLibSolver {
             )?
         }
         Ok(solver)
-    }
-
-    fn name(&self) -> &str {
-        self.name
-    }
-
-    fn supports_check_assuming(&self) -> bool {
-        self.supports_check_assuming
-    }
-
-    fn supports_uf(&self) -> bool {
-        self.supports_uf
     }
 }
 
@@ -165,6 +187,13 @@ pub struct SmtLibSolverCtx<R: Write + Send> {
     /// keeps track of whether there was an error from the solver which might make regular shutdown
     /// impossible
     has_error: bool,
+    // metadata to be able to restart solver
+    solver_args: Vec<String>,
+    solver_options: Vec<String>,
+    // solver capabilities
+    supports_uf: bool,
+    supports_check_assuming: bool,
+    supports_const_array: bool,
 }
 
 impl<R: Write + Send> SmtLibSolverCtx<R> {
@@ -180,8 +209,12 @@ impl<R: Write + Send> SmtLibSolverCtx<R> {
         match self.stdin.flush() {
             Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => {
                 // make sure we drop the replay file
-                self.replay_file.take();
-                Err(Error::SolverDead(self.name.clone()))
+                let _ = self.replay_file.take();
+                // check to see if we can find an error message
+                match self.read_response() {
+                    Err(e @ Error::FromSolver(_, _)) => Err(e),
+                    _ => Err(Error::SolverDead(self.name.clone())),
+                }
             }
             Err(other) => Err(other.into()),
             Ok(_) => Ok(()),
@@ -190,7 +223,6 @@ impl<R: Write + Send> SmtLibSolverCtx<R> {
 
     /// after this function executes, the result will be available in `self.result`.
     fn read_response(&mut self) -> Result<()> {
-        self.stdin.flush()?; // make sure that the commands reached the solver
         self.response.clear();
         // our basic assumptions are:
         // 1. the solver will terminate its answer with '\n'
@@ -228,6 +260,7 @@ impl<R: Write + Send> SmtLibSolverCtx<R> {
     }
 
     fn read_sat_response(&mut self) -> Result<CheckSatResponse> {
+        self.stdin.flush()?; // make sure that the commands reached the solver
         self.read_response()?;
         let response = self.response.trim();
         match response {
@@ -251,23 +284,62 @@ fn count_parens(s: &str) -> i64 {
 
 impl<R: Write + Send> Drop for SmtLibSolverCtx<R> {
     fn drop(&mut self) {
-        // try to close the child process as not to leak resources
-        if self.write_cmd(None, &SmtCommand::Exit).is_err() {
-            if self.has_error {
-                return;
-            } else {
-                panic!("failed to send exit command");
-            }
-        }
-        let _status = self
+        shut_down_solver(self);
+    }
+}
+
+/// internal method to try to cleanly shut down the solver process
+fn shut_down_solver<R: Write + Send>(solver: &mut SmtLibSolverCtx<R>) {
+    // try to close the child process as not to leak resources
+    if solver.write_cmd(None, &SmtCommand::Exit).is_ok() {
+        let _status = solver
             .proc
             .wait()
             .expect("failed to wait for SMT solver to exit");
-        // we don't care whether the solver crashed or returned success, as long as it is cleaned up
+    }
+    // we don't care whether the solver crashed or returned success, as long as it is cleaned up
+}
+
+impl<R: Write + Send> SolverMetaData for SmtLibSolverCtx<R> {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn supports_uf(&self) -> bool {
+        self.supports_uf
+    }
+    fn supports_check_assuming(&self) -> bool {
+        self.supports_check_assuming
+    }
+
+    fn supports_const_array(&self) -> bool {
+        self.supports_const_array
     }
 }
 
 impl<R: Write + Send> SolverContext for SmtLibSolverCtx<R> {
+    fn restart(&mut self) -> Result<()> {
+        shut_down_solver(self);
+
+        let mut proc = Command::new(&self.name)
+            .args(&self.solver_args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()?;
+        let stdin = BufWriter::new(proc.stdin.take().unwrap());
+        let stdout = BufReader::new(proc.stdout.take().unwrap());
+        let stderr = proc.stderr.take().unwrap();
+        self.proc = proc;
+        self.stdin = stdin;
+        self.stdout = stdout;
+        self.stderr = stderr;
+        for option in self.solver_options.clone() {
+            self.write_cmd(None, &SmtCommand::SetOption(option, "true".to_string()))?;
+        }
+        Ok(())
+    }
+
     fn set_logic(&mut self, logic: Logic) -> Result<()> {
         self.write_cmd(None, &SmtCommand::SetLogic(logic))
     }
@@ -317,6 +389,7 @@ impl<R: Write + Send> SolverContext for SmtLibSolverCtx<R> {
 
     fn get_value(&mut self, ctx: &mut Context, e: ExprRef) -> Result<ExprRef> {
         self.write_cmd(Some(ctx), &SmtCommand::GetValue(e))?;
+        self.stdin.flush()?; // make sure that the commands reached the solver
         self.read_response()?;
         let response = self.response.trim();
         let expr = parse_get_value_response(ctx, response.as_bytes())?;
@@ -330,6 +403,7 @@ pub const BITWUZLA: SmtLibSolver = SmtLibSolver {
     options: &["incremental", "produce-models"],
     supports_uf: false,
     supports_check_assuming: true,
+    supports_const_array: true,
 };
 
 pub const YICES2: SmtLibSolver = SmtLibSolver {
@@ -338,6 +412,8 @@ pub const YICES2: SmtLibSolver = SmtLibSolver {
     options: &[],
     supports_uf: false, // actually true, but ignoring for now
     supports_check_assuming: false,
+    // see https://github.com/SRI-CSL/yices2/issues/110
+    supports_const_array: false,
 };
 
 #[cfg(test)]
@@ -372,5 +448,26 @@ mod tests {
         assert_eq!(res.unwrap(), CheckSatResponse::Sat);
         let value_of_a = solver.get_value(&mut ctx, a).unwrap();
         assert_eq!(value_of_a, ctx.bit_vec_val(3, 3));
+    }
+
+    #[test]
+    fn test_bitwuzla_restart() {
+        let mut ctx = Context::default();
+        let a = ctx.bv_symbol("a", 3);
+        let replay = Some(std::fs::File::create("replay.smt").unwrap());
+        let mut solver = BITWUZLA.start(replay).unwrap();
+        let three = ctx.bit_vec_val(3, 3);
+        let four = ctx.bit_vec_val(3, 3);
+        solver.define_const(&ctx, a, three).unwrap();
+        let _res = solver.check_sat().unwrap();
+        let value_of_a = solver.get_value(&mut ctx, a).unwrap();
+        assert_eq!(value_of_a, three);
+
+        // restarting bitwuzla allows us to redefine `a`
+        solver.restart().unwrap();
+        solver.define_const(&ctx, a, four).unwrap();
+        let _res = solver.check_sat().unwrap();
+        let value_of_a = solver.get_value(&mut ctx, a).unwrap();
+        assert_eq!(value_of_a, four);
     }
 }
