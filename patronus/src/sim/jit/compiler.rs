@@ -6,8 +6,7 @@ use cranelift::codegen::ir::{self, condcodes::IntCC};
 use cranelift::jit::{JITBuilder, JITModule};
 use cranelift::module::Module;
 use cranelift::prelude::*;
-use rustc_hash::FxHashMap;
-use smallvec::SmallVec;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 pub(super) struct JITCompiler {
     module: JITModule,
@@ -69,6 +68,7 @@ impl JITCompiler {
             expr_ctx,
             root_expr,
             input_state_buffer,
+            heap_allocated: FxHashSet::default(),
             int: types::I64,
         };
 
@@ -100,7 +100,13 @@ struct CodeGenContext<'expr, 'ctx, 'engine> {
     expr_ctx: &'expr expr::Context,
     root_expr: ExprRef,
     input_state_buffer: &'engine dyn StateBufferView<i64>,
+    heap_allocated: FxHashSet<(Value, expr::Type)>,
     int: cranelift::prelude::Type,
+}
+
+#[derive(Debug)]
+struct ExprNode {
+    num_references: i64,
 }
 
 impl CodeGenContext<'_, '_, '_> {
@@ -111,8 +117,10 @@ impl CodeGenContext<'_, '_, '_> {
     }
 
     fn mock_interpret(&mut self) -> Value {
-        let mut value_stack: SmallVec<[Value; 4]> = SmallVec::new();
+        let mut value_stack: Vec<Value> = Vec::new();
         let mut cached: FxHashMap<ExprRef, Value> = FxHashMap::default();
+
+        let expr_nodes: FxHashMap<ExprRef, ExprNode> = self.expr_graph_topo();
         let mut todo: Vec<(ExprRef, bool)> = vec![(self.root_expr, false)];
 
         while let Some((e, args_available)) = todo.pop() {
@@ -123,9 +131,21 @@ impl CodeGenContext<'_, '_, '_> {
             let expr = &self.expr_ctx[e];
             if args_available {
                 let num_children = expr.num_children();
+                if let Expr::ArrayStore { array, .. } = expr {
+                    if expr_nodes[array].num_references > 1 {
+                        let cow = self.clone_array(
+                            cached[array],
+                            array.get_array_type(self.expr_ctx).unwrap().index_width,
+                        );
+                        let stack_size = value_stack.len();
+                        // first argument of `ArrayStore` operation is the src array
+                        value_stack[stack_size - num_children..][0] = cow;
+                    }
+                }
+
                 let ret = self.expr_codegen(e, &value_stack[value_stack.len() - num_children..]);
-                cached.insert(e, ret);
                 value_stack.truncate(value_stack.len() - num_children);
+                cached.insert(e, ret);
                 value_stack.push(ret);
             } else {
                 todo.push((e, true));
@@ -134,8 +154,52 @@ impl CodeGenContext<'_, '_, '_> {
                 todo.extend(children.into_iter().map(|child| (child, false)).rev());
             }
         }
+
         debug_assert_eq!(value_stack.len(), 1);
-        value_stack[0]
+        // exclude potential allocation for the return value, which will be reclaimed in jit engine
+        let heap_resources = self.heap_allocated.iter().copied().collect::<Vec<_>>();
+        let ret = if let expr::Type::Array(ArrayType { index_width, .. }) =
+            self.expr_ctx[self.root_expr].get_type(self.expr_ctx)
+        {
+            self.clone_array(value_stack[0], index_width)
+        } else {
+            value_stack[0]
+        };
+        self.reclaim_heap_resources(heap_resources);
+        ret
+    }
+
+    /// Compute important expr graph statistics for better codegen
+    ///
+    /// Currently returns the number of upperstream references for each sub-expr.
+    /// This allows us to determine whether we could steal heap allocated resources from sub-expr 
+    fn expr_graph_topo(&self) -> FxHashMap<ExprRef, ExprNode> {
+        let mut expr_references: FxHashMap<ExprRef, ExprNode> = FxHashMap::default();
+        let mut todo = vec![self.root_expr];
+        while let Some(next) = todo.pop() {
+            let visited = expr_references
+                .entry(next)
+                .and_modify(|node| node.num_references += 1)
+                .or_insert(ExprNode { num_references: 1 })
+                .num_references
+                > 1;
+            if !visited {
+                self.expr_ctx[next].for_each_child(|&c| todo.push(c));
+            }
+        }
+        expr_references
+    }
+
+    fn register_heap_allocation(&mut self, value: Value, tpe: expr::Type) {
+        self.heap_allocated.insert((value, tpe));
+    }
+
+    fn reclaim_heap_resources(&mut self, items: impl IntoIterator<Item = (Value, expr::Type)>) {
+        for (value, tpe) in items {
+            if let expr::Type::Array(ArrayType { index_width, .. }) = tpe {
+                self.dealloc_array(value, index_width);
+            }
+        }
     }
 }
 
@@ -204,12 +268,46 @@ impl CodeGenContext<'_, '_, '_> {
         )
     }
 
-    fn delloc_array(&mut self, array_to_dealloc: Value, index_width: WidthInt) {
+    fn dealloc_array(&mut self, array_to_dealloc: Value, index_width: WidthInt) {
         let index_width = self.fn_builder.ins().iconst(self.int, index_width as i64);
         self.fn_builder.ins().call(
             self.runtime_lib.dealloc_array,
             &[array_to_dealloc, index_width],
         );
+    }
+
+    fn clone_array(&mut self, from: Value, index_width: WidthInt) -> Value {
+        let index_width_value = self.fn_builder.ins().iconst(self.int, index_width as i64);
+        let call = self
+            .fn_builder
+            .ins()
+            .call(self.runtime_lib.clone_array, &[from, index_width_value]);
+        let ret = self.fn_builder.inst_results(call)[0];
+        self.register_heap_allocation(
+            ret,
+            expr::Type::Array(ArrayType {
+                index_width,
+                data_width: 64,
+            }),
+        );
+        ret
+    }
+
+    fn alloc_const_array(&mut self, index_width: WidthInt, default_data: Value) -> Value {
+        let index_width_value = self.fn_builder.ins().iconst(self.int, index_width as i64);
+        let call = self.fn_builder.ins().call(
+            self.runtime_lib.alloc_const_array,
+            &[index_width_value, default_data],
+        );
+        let ret = self.fn_builder.inst_results(call)[0];
+        self.register_heap_allocation(
+            ret,
+            expr::Type::Array(ArrayType {
+                index_width,
+                data_width: 64,
+            }),
+        );
+        ret
     }
 
     fn expr_codegen_internal(&mut self, expr: ExprRef, args: &[Value]) -> Value {
@@ -224,12 +322,7 @@ impl CodeGenContext<'_, '_, '_> {
             Expr::BVSymbol { .. } => self.load_input_state(expr),
             Expr::ArraySymbol { index_width, .. } => {
                 let src = self.load_input_state(expr);
-                let index_width = self.fn_builder.ins().iconst(self.int, *index_width as i64);
-                let call = self
-                    .fn_builder
-                    .ins()
-                    .call(self.runtime_lib.clone_array, &[src, index_width]);
-                self.fn_builder.inst_results(call)[0]
+                self.clone_array(src, *index_width)
             }
             Expr::BVLiteral(value) => {
                 let value = value.get(self.expr_ctx).to_i64().unwrap();
@@ -330,35 +423,23 @@ impl CodeGenContext<'_, '_, '_> {
                 );
                 base
             }
-            Expr::BVArrayRead { array, .. } => {
+            Expr::BVArrayRead { .. } => {
                 let (base, index) = (args[0], args[1]);
                 let offset = self
                     .fn_builder
                     .ins()
                     .imul_imm(index, self.int.bytes() as i64);
                 let address = self.fn_builder.ins().iadd(base, offset);
-                let ret = self.fn_builder.ins().load(
+                self.fn_builder.ins().load(
                     self.int,
                     // upheld by the unsafeness of CompiledEvalFn::call
                     ir::MemFlags::trusted(),
                     address,
                     0,
-                );
-                let expr::Type::Array(expr::ArrayType { index_width, .. }) =
-                    array.get_type(self.expr_ctx)
-                else {
-                    unreachable!()
-                };
-                self.delloc_array(base, index_width);
-                ret
+                )
             }
             Expr::ArrayConstant { index_width, .. } => {
-                let index_width = self.fn_builder.ins().iconst(self.int, *index_width as i64);
-                let call = self
-                    .fn_builder
-                    .ins()
-                    .call(self.runtime_lib.alloc_const_array, &[index_width, args[0]]);
-                self.fn_builder.inst_results(call)[0]
+                self.alloc_const_array(*index_width, args[0])
             }
             _ => todo!("{:?}", self.expr_ctx[expr]),
         }
