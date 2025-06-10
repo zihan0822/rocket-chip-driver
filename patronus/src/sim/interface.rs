@@ -20,9 +20,6 @@ pub trait Simulator {
     /// Initializes all states and inputs to zero.
     fn init(&mut self, kind: InitKind);
 
-    /// Recalculate signals.
-    fn update(&mut self);
-
     /// Advance the state.
     fn step(&mut self);
 

@@ -82,10 +82,6 @@ impl<'a> Simulator for Interpreter<'a> {
         }
     }
 
-    fn update(&mut self) {
-        // in this implementation, we calculate expressions on the fly, so there is nothing to update
-    }
-
     fn step(&mut self) {
         // calculate all next states
         let next_states = self

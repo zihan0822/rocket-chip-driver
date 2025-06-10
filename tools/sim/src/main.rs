@@ -185,9 +185,6 @@ fn do_step(
         }
     }
 
-    // calculate the output values
-    sim.update();
-
     // print values if the option is enabled
     if !signal_to_print.is_empty() {
         println!();

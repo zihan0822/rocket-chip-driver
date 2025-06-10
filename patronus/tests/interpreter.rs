@@ -31,12 +31,10 @@ fn interpret_count_2() {
 
     // init
     sim.init(InitKind::Zero);
-    sim.update();
     assert_eq!(sim.get(counter_state).try_into_u64().unwrap(), 0);
 
     // increment counter by one
     sim.step();
-    sim.update();
     assert_eq!(sim.get(counter_state).try_into_u64().unwrap(), 1);
 
     // save state
@@ -44,9 +42,7 @@ fn interpret_count_2() {
 
     // increment counter to three
     sim.step();
-    sim.update();
     sim.step();
-    sim.update();
     assert_eq!(sim.get(counter_state).try_into_u64().unwrap(), 3);
 
     // save state again
@@ -54,21 +50,17 @@ fn interpret_count_2() {
 
     // restore state
     sim.restore_snapshot(at_one);
-    sim.update();
     assert_eq!(sim.get(counter_state).try_into_u64().unwrap(), 1);
     sim.step();
-    sim.update();
     assert_eq!(sim.get(counter_state).try_into_u64().unwrap(), 2);
 
     // restore again
     sim.restore_snapshot(at_three);
-    sim.update();
     assert_eq!(sim.get(counter_state).try_into_u64().unwrap(), 3);
 
     // make bad condition fail
     while sim.get(bad).try_into_u64().unwrap() == 0 {
         sim.step();
-        sim.update();
     }
 
     // the failure is reached when the state is 7
@@ -84,19 +76,16 @@ fn interpret_delay() {
 
     // init
     sim.init(InitKind::Zero);
-    sim.update();
     assert_eq!(sim.get(reg0).try_into_u64().unwrap(), 0, "reg0@0");
     assert_eq!(sim.get(reg1).try_into_u64().unwrap(), 0, "reg1@0");
 
     // step 1
     sim.step();
-    sim.update();
     assert_eq!(sim.get(reg0).try_into_u64().unwrap(), 1, "reg0@1");
     assert_eq!(sim.get(reg1).try_into_u64().unwrap(), 0, "reg1@1");
 
     // step 2
     sim.step();
-    sim.update();
     assert_eq!(sim.get(reg0).try_into_u64().unwrap(), 1, "reg0@2");
     assert_eq!(sim.get(reg1).try_into_u64().unwrap(), 1, "reg1@2");
 }
@@ -110,19 +99,16 @@ fn interpret_swap() {
 
     // init
     sim.init(InitKind::Zero);
-    sim.update();
     assert_eq!(sim.get(a).try_into_u64().unwrap(), 0, "a@0");
     assert_eq!(sim.get(b).try_into_u64().unwrap(), 1, "b@0");
 
     // step 1
     sim.step();
-    sim.update();
     assert_eq!(sim.get(a).try_into_u64().unwrap(), 1, "a@1");
     assert_eq!(sim.get(b).try_into_u64().unwrap(), 0, "b@1");
 
     // step 2
     sim.step();
-    sim.update();
     assert_eq!(sim.get(a).try_into_u64().unwrap(), 0, "a@2");
     assert_eq!(sim.get(b).try_into_u64().unwrap(), 1, "b@2");
 }
