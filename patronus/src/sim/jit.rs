@@ -265,8 +265,8 @@ impl Simulator for JITEngine<'_> {
 
     fn get(&self, expr: ExprRef) -> Option<BitVecValue> {
         if let expr::Type::BV(width) = expr.get_type(self.ctx) {
-            let value = self.eval_expr(expr);
-            Some(BitVecValue::from_i64(value, width))
+            let value = self.eval_expr(expr) as u64;
+            Some(BitVecValue::from_u64(value, width))
         } else {
             None
         }
