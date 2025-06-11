@@ -264,12 +264,15 @@ impl Simulator for JITEngine<'_> {
     }
 
     fn get(&self, expr: ExprRef) -> Option<BitVecValue> {
-        if let expr::Type::BV(width) = expr.get_type(self.ctx) {
-            let value = self.eval_expr(expr) as u64;
-            Some(BitVecValue::from_u64(value, width))
+        let expr::Type::BV(width) = expr.get_type(self.ctx) else {
+            return None;
+        };
+        let value = if let Some(&offset) = self.states_to_offset.get(&expr) {
+            self.current_state_buffer().as_slice()[offset]
         } else {
-            None
-        }
+            self.eval_expr(expr)
+        };
+        Some(BitVecValue::from_u64(value as u64, width))
     }
 
     fn get_element<'b>(&self, _expr: ExprRef, _index: BitVecValueRef<'b>) -> Option<BitVecValue> {
