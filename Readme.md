@@ -16,3 +16,9 @@ Some things we will hopefully get to one day.
   - better debugging, add option to print expressions with trace
   - waveform generation
   - quickly update only parts of the circuit
+
+
+#### API Changes
+
+- `patronus::btor2::parse_file` should take in a `Context` instead of producing one
+- `Context` should use `RefCell` to allow expressions to be built with a immutable reference

@@ -1,4 +1,4 @@
-// Copyright 2024 Cornell University
+// Copyright 2024-2025 Cornell University
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
@@ -11,7 +11,7 @@ use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[command(name = "simplify")]
-#[command(author = "Kevin Laeufer <laeufer@berkeley.edu>")]
+#[command(author = "Kevin Laeufer <laeufer@cornell.edu>")]
 #[command(version)]
 #[command(about = "Parses a SMT file, simplifies it and writes the simplified version to an output file.", long_about = None)]
 struct Args {
