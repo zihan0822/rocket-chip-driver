@@ -135,7 +135,7 @@ impl CodeGenContext<'_, '_, '_> {
                     if expr_nodes[array].num_references > 1 {
                         let cow = self.clone_array(
                             cached[array],
-                            array.get_array_type(self.expr_ctx).unwrap().index_width,
+                            array.get_array_type(self.expr_ctx).unwrap(),
                         );
                         let stack_size = value_stack.len();
                         // first argument of `ArrayStore` operation is the src array
@@ -158,13 +158,12 @@ impl CodeGenContext<'_, '_, '_> {
         debug_assert_eq!(value_stack.len(), 1);
         // exclude potential allocation for the return value, which will be reclaimed in jit engine
         let heap_resources = self.heap_allocated.iter().copied().collect::<Vec<_>>();
-        let ret = if let expr::Type::Array(ArrayType { index_width, .. }) =
-            self.expr_ctx[self.root_expr].get_type(self.expr_ctx)
-        {
-            self.clone_array(value_stack[0], index_width)
-        } else {
-            value_stack[0]
-        };
+        let ret =
+            if let expr::Type::Array(tpe) = self.expr_ctx[self.root_expr].get_type(self.expr_ctx) {
+                self.clone_array(value_stack[0], tpe)
+            } else {
+                value_stack[0]
+            };
         self.reclaim_heap_resources(heap_resources);
         ret
     }
@@ -172,7 +171,7 @@ impl CodeGenContext<'_, '_, '_> {
     /// Compute important expr graph statistics for better codegen
     ///
     /// Currently returns the number of upperstream references for each sub-expr.
-    /// This allows us to determine whether we could steal heap allocated resources from sub-expr 
+    /// This allows us to determine whether we could steal heap allocated resources from sub-expr
     fn expr_graph_topo(&self) -> FxHashMap<ExprRef, ExprNode> {
         let mut expr_references: FxHashMap<ExprRef, ExprNode> = FxHashMap::default();
         let mut todo = vec![self.root_expr];
@@ -196,8 +195,8 @@ impl CodeGenContext<'_, '_, '_> {
 
     fn reclaim_heap_resources(&mut self, items: impl IntoIterator<Item = (Value, expr::Type)>) {
         for (value, tpe) in items {
-            if let expr::Type::Array(ArrayType { index_width, .. }) = tpe {
-                self.dealloc_array(value, index_width);
+            if let expr::Type::Array(tpe) = tpe {
+                self.dealloc_array(value, tpe);
             }
         }
     }
@@ -268,45 +267,42 @@ impl CodeGenContext<'_, '_, '_> {
         )
     }
 
-    fn dealloc_array(&mut self, array_to_dealloc: Value, index_width: WidthInt) {
-        let index_width = self.fn_builder.ins().iconst(self.int, index_width as i64);
+    fn dealloc_array(&mut self, array_to_dealloc: Value, tpe: ArrayType) {
+        let index_width = self
+            .fn_builder
+            .ins()
+            .iconst(self.int, tpe.index_width as i64);
         self.fn_builder.ins().call(
             self.runtime_lib.dealloc_array,
             &[array_to_dealloc, index_width],
         );
     }
 
-    fn clone_array(&mut self, from: Value, index_width: WidthInt) -> Value {
-        let index_width_value = self.fn_builder.ins().iconst(self.int, index_width as i64);
+    fn clone_array(&mut self, from: Value, tpe: ArrayType) -> Value {
+        let index_width = self
+            .fn_builder
+            .ins()
+            .iconst(self.int, tpe.index_width as i64);
         let call = self
             .fn_builder
             .ins()
-            .call(self.runtime_lib.clone_array, &[from, index_width_value]);
+            .call(self.runtime_lib.clone_array, &[from, index_width]);
         let ret = self.fn_builder.inst_results(call)[0];
-        self.register_heap_allocation(
-            ret,
-            expr::Type::Array(ArrayType {
-                index_width,
-                data_width: 64,
-            }),
-        );
+        self.register_heap_allocation(ret, expr::Type::Array(tpe));
         ret
     }
 
-    fn alloc_const_array(&mut self, index_width: WidthInt, default_data: Value) -> Value {
-        let index_width_value = self.fn_builder.ins().iconst(self.int, index_width as i64);
+    fn alloc_const_array(&mut self, default_data: Value, tpe: ArrayType) -> Value {
+        let index_width = self
+            .fn_builder
+            .ins()
+            .iconst(self.int, tpe.index_width as i64);
         let call = self.fn_builder.ins().call(
             self.runtime_lib.alloc_const_array,
-            &[index_width_value, default_data],
+            &[index_width, default_data],
         );
         let ret = self.fn_builder.inst_results(call)[0];
-        self.register_heap_allocation(
-            ret,
-            expr::Type::Array(ArrayType {
-                index_width,
-                data_width: 64,
-            }),
-        );
+        self.register_heap_allocation(ret, expr::Type::Array(tpe));
         ret
     }
 
@@ -320,9 +316,9 @@ impl CodeGenContext<'_, '_, '_> {
         }
         match &self.expr_ctx[expr] {
             Expr::BVSymbol { .. } => self.load_input_state(expr),
-            Expr::ArraySymbol { index_width, .. } => {
+            Expr::ArraySymbol { .. } => {
                 let src = self.load_input_state(expr);
-                self.clone_array(src, *index_width)
+                self.clone_array(src, expr.get_array_type(self.expr_ctx).unwrap())
             }
             Expr::BVLiteral(value) => {
                 let value = value.get(self.expr_ctx).to_i64().unwrap();
@@ -438,8 +434,8 @@ impl CodeGenContext<'_, '_, '_> {
                     0,
                 )
             }
-            Expr::ArrayConstant { index_width, .. } => {
-                self.alloc_const_array(*index_width, args[0])
+            Expr::ArrayConstant { .. } => {
+                self.alloc_const_array(args[0], expr.get_array_type(self.expr_ctx).unwrap())
             }
             _ => todo!("{:?}", self.expr_ctx[expr]),
         }
