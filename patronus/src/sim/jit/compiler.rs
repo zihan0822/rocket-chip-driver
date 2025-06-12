@@ -1,7 +1,7 @@
 use super::{runtime, JITResult, StateBufferView};
 use crate::expr::{self, *};
 
-use baa::BitVecOps;
+use baa::{BitVecOps, BitVecValueRef};
 use cranelift::codegen::ir::{self, condcodes::IntCC};
 use cranelift::jit::{JITBuilder, JITModule};
 use cranelift::module::Module;
@@ -202,58 +202,7 @@ impl CodeGenContext<'_, '_, '_> {
     }
 }
 
-trait ExprRefExt {
-    /// Returns the width of bitvector if the expr might cause overflow
-    fn might_overflow(&self, ctx: &expr::Context) -> Option<WidthInt>;
-}
-
-impl ExprRefExt for ExprRef {
-    fn might_overflow(&self, ctx: &expr::Context) -> Option<WidthInt> {
-        if matches!(
-            ctx[*self],
-            Expr::BVAdd(..)
-                | Expr::BVMul(..)
-                | Expr::BVSub(..)
-                | Expr::BVShiftLeft(..)
-                | Expr::BVSignExt { .. }
-                | Expr::BVNot(..)
-                | Expr::BVNegate(..)
-                | Expr::BVLiteral(..)
-                | Expr::BVSymbol { .. }
-        ) {
-            self.get_type(ctx).get_bit_vector_width()
-        } else {
-            None
-        }
-    }
-}
-
 impl CodeGenContext<'_, '_, '_> {
-    fn expr_codegen(&mut self, expr: ExprRef, args: &[Value]) -> Value {
-        let mut ret = self.expr_codegen_internal(expr, args);
-        if let Some(width) = expr.might_overflow(self.expr_ctx) {
-            ret = self.overflow_guard_codegen(ret, width);
-        }
-        ret
-    }
-
-    fn overflow_guard_codegen(&mut self, to_guard: Value, width: WidthInt) -> Value {
-        assert!(width <= 64, "bv width greater than 64 is yet to implement");
-        // case of 64 is handled by cranelift
-        if width < 64 {
-            self.fn_builder
-                .ins()
-                .band_imm(to_guard, ((u64::MAX) >> (64 - width)) as i64)
-        } else {
-            to_guard
-        }
-    }
-
-    fn bv_sign_extend(&mut self, value: Value, width: WidthInt) -> Value {
-        let shifted = self.fn_builder.ins().ishl_imm(value, (64 - width) as i64);
-        self.fn_builder.ins().sshr_imm(shifted, (64 - width) as i64)
-    }
-
     /// the meaning of the input state is polymorphic over bv/array
     fn load_input_state(&mut self, expr: ExprRef) -> Value {
         let param_offset = self.input_state_buffer.get_state_offset(expr) as u32;
@@ -306,7 +255,7 @@ impl CodeGenContext<'_, '_, '_> {
         ret
     }
 
-    fn expr_codegen_internal(&mut self, expr: ExprRef, args: &[Value]) -> Value {
+    fn expr_codegen(&mut self, expr: ExprRef, args: &[Value]) -> Value {
         match expr.get_type(self.expr_ctx) {
             expr::Type::BV(width) => assert!(width <= 64),
             expr::Type::Array(expr::ArrayType {
@@ -315,93 +264,12 @@ impl CodeGenContext<'_, '_, '_> {
             }) => assert!(index_width <= 12 && data_width <= 64),
         }
         match &self.expr_ctx[expr] {
-            Expr::BVSymbol { .. } => self.load_input_state(expr),
             Expr::ArraySymbol { .. } => {
                 let src = self.load_input_state(expr);
                 self.clone_array(src, expr.get_array_type(self.expr_ctx).unwrap())
             }
-            Expr::BVLiteral(value) => {
-                let value = value.get(self.expr_ctx).to_i64().unwrap();
-                self.fn_builder.ins().iconst(self.int, value)
-            }
-            // unary
-            Expr::BVNot(..) => self.fn_builder.ins().bnot(args[0]),
-            Expr::BVNegate(..) => {
-                let flipped = self.fn_builder.ins().bnot(args[0]);
-                self.fn_builder.ins().iadd_imm(flipped, 1)
-            }
-            // no-op with current impl
-            Expr::BVZeroExt { .. } => args[0],
-            Expr::BVSignExt { by, width, .. } => {
-                assert!(width > by);
-                self.bv_sign_extend(args[0], width - by)
-            }
-            Expr::BVSlice { hi, lo, .. } => {
-                assert!(hi >= lo);
-                let shifted = self.fn_builder.ins().ushr_imm(args[0], *lo as i64);
-                self.fn_builder
-                    .ins()
-                    .band_imm(shifted, (u64::MAX >> (64 - (*hi - *lo + 1))) as i64)
-            }
-            // binary
-            Expr::BVAdd(..) => self.fn_builder.ins().iadd(args[0], args[1]),
-            Expr::BVSub(..) => self.fn_builder.ins().isub(args[0], args[1]),
-            Expr::BVMul(..) => self.fn_builder.ins().imul(args[0], args[1]),
-            Expr::BVAnd(..) => self.fn_builder.ins().band(args[0], args[1]),
-            Expr::BVOr(..) => self.fn_builder.ins().bor(args[0], args[1]),
-            Expr::BVXor(..) => self.fn_builder.ins().bxor(args[0], args[1]),
-            Expr::BVEqual(..) => {
-                let cmp = self.fn_builder.ins().icmp(IntCC::Equal, args[0], args[1]);
-                self.fn_builder.ins().uextend(self.int, cmp)
-            }
-            Expr::BVGreater(..) => {
-                let cmp = self
-                    .fn_builder
-                    .ins()
-                    .icmp(IntCC::UnsignedGreaterThan, args[0], args[1]);
-                self.fn_builder.ins().uextend(self.int, cmp)
-            }
-            Expr::BVGreaterSigned(.., width) => {
-                let (arg0, arg1) = (
-                    self.bv_sign_extend(args[0], *width),
-                    self.bv_sign_extend(args[1], *width),
-                );
-                let cmp = self
-                    .fn_builder
-                    .ins()
-                    .icmp(IntCC::SignedGreaterThan, arg0, arg1);
-                self.fn_builder.ins().uextend(self.int, cmp)
-            }
-            Expr::BVGreaterEqual(..) => {
-                let cmp =
-                    self.fn_builder
-                        .ins()
-                        .icmp(IntCC::UnsignedGreaterThanOrEqual, args[0], args[1]);
-                self.fn_builder.ins().uextend(self.int, cmp)
-            }
-            Expr::BVGreaterEqualSigned(.., width) => {
-                let (arg0, arg1) = (
-                    self.bv_sign_extend(args[0], *width),
-                    self.bv_sign_extend(args[1], *width),
-                );
-                let cmp = self
-                    .fn_builder
-                    .ins()
-                    .icmp(IntCC::SignedGreaterThanOrEqual, arg0, arg1);
-                self.fn_builder.ins().uextend(self.int, cmp)
-            }
-            Expr::BVShiftLeft(..) => self.fn_builder.ins().ishl(args[0], args[1]),
-            Expr::BVShiftRight(..) => self.fn_builder.ins().ushr(args[0], args[1]),
-            Expr::BVArithmeticShiftRight(..) => self.fn_builder.ins().sshr(args[0], args[1]),
             Expr::BVIte { .. } | Expr::ArrayIte { .. } => {
                 self.fn_builder.ins().select(args[0], args[1], args[2])
-            }
-            Expr::BVConcat(_, lo, ..) => {
-                let expr::Type::BV(lo_width) = lo.get_type(self.expr_ctx) else {
-                    unreachable!()
-                };
-                let hi = self.fn_builder.ins().ishl_imm(args[0], lo_width as i64);
-                self.fn_builder.ins().bor(hi, args[1])
             }
             Expr::ArrayStore { .. } => {
                 let (base, index, data) = (args[0], args[1], args[2]);
@@ -437,7 +305,197 @@ impl CodeGenContext<'_, '_, '_> {
             Expr::ArrayConstant { .. } => {
                 self.alloc_const_array(args[0], expr.get_array_type(self.expr_ctx).unwrap())
             }
+            _ => self.dispatch_bv_operation_codegen(expr, args),
+        }
+    }
+
+    fn dispatch_bv_operation_codegen(&mut self, expr: ExprRef, args: &[Value]) -> Value {
+        let width = expr.get_bv_type(self.expr_ctx).unwrap();
+        let vtable: Box<dyn BVCodeGenVTable> = match width {
+            0..=64 => Box::new(BVWord(width)),
+            _ => todo!(),
+        };
+        match self.expr_ctx[expr].clone() {
+            Expr::BVSymbol { .. } => vtable.symbol(expr, self),
+            Expr::BVLiteral(value) => vtable.literal(value.get(self.expr_ctx), self),
+            // unary
+            Expr::BVNot(..) => vtable.not(args[0], self),
+            Expr::BVNegate(..) => vtable.negate(args[0], self),
+            // no-op with current impl
+            Expr::BVZeroExt { .. } => vtable.zero_ext(args[0], self),
+            Expr::BVSignExt { by, .. } => vtable.sign_ext(args[0], by, self),
+            Expr::BVSlice { hi, lo, .. } => vtable.slice(args[0], hi, lo, self),
+            // binary
+            Expr::BVAdd(..) => vtable.add(args[0], args[1], self),
+            Expr::BVSub(..) => vtable.sub(args[0], args[1], self),
+            Expr::BVMul(..) => vtable.mul(args[0], args[1], self),
+            Expr::BVAnd(..) => vtable.and(args[0], args[1], self),
+            Expr::BVOr(..) => vtable.or(args[0], args[1], self),
+            Expr::BVXor(..) => vtable.xor(args[0], args[1], self),
+            Expr::BVEqual(..) => vtable.equal(args[0], args[1], self),
+            Expr::BVGreater(..) => vtable.gt(args[0], args[1], self),
+            Expr::BVGreaterEqual(..) => vtable.ge(args[0], args[1], self),
+            Expr::BVGreaterSigned(..) => vtable.gt_signed(args[0], args[1], self),
+            Expr::BVGreaterEqualSigned(..) => vtable.ge_signed(args[0], args[1], self),
+            Expr::BVShiftLeft(..) => vtable.shift_left(args[0], args[1], self),
+            Expr::BVShiftRight(..) => vtable.shift_right(args[0], args[1], self),
+            Expr::BVArithmeticShiftRight(..) => {
+                vtable.arithmetic_shift_right(args[0], args[1], self)
+            }
+            Expr::BVConcat(_, lo, ..) => vtable.concat(
+                args[0],
+                args[1],
+                lo.get_bv_type(self.expr_ctx).unwrap(),
+                self,
+            ),
             _ => todo!("{:?}", self.expr_ctx[expr]),
         }
+    }
+}
+
+struct BVWord(WidthInt);
+#[allow(dead_code)]
+struct BVIndirect(WidthInt);
+
+trait BVCodeGenVTable {
+    fn symbol(&self, expr: ExprRef, ctx: &mut CodeGenContext) -> Value;
+    fn literal(&self, value: BitVecValueRef, ctx: &mut CodeGenContext) -> Value;
+    fn add(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value;
+    fn sub(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value;
+    fn mul(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value;
+    fn and(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value;
+    fn or(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value;
+    fn xor(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value;
+    fn not(&self, arg: Value, ctx: &mut CodeGenContext) -> Value;
+    fn negate(&self, arg: Value, ctx: &mut CodeGenContext) -> Value;
+    fn zero_ext(&self, arg: Value, ctx: &mut CodeGenContext) -> Value;
+    fn sign_ext(&self, arg: Value, by: WidthInt, ctx: &mut CodeGenContext) -> Value;
+
+    fn shift_right(&self, arg0: Value, arg1: Value, ctx: &mut CodeGenContext) -> Value;
+    fn arithmetic_shift_right(&self, arg0: Value, arg1: Value, ctx: &mut CodeGenContext) -> Value;
+    fn shift_left(&self, arg0: Value, arg1: Value, ctx: &mut CodeGenContext) -> Value;
+
+    fn equal(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value;
+    fn gt(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value;
+    fn ge(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value;
+    fn gt_signed(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value;
+    fn ge_signed(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value;
+
+    fn concat(&self, hi: Value, lo: Value, lo_width: WidthInt, ctx: &mut CodeGenContext) -> Value;
+    fn slice(&self, value: Value, hi: WidthInt, lo: WidthInt, ctx: &mut CodeGenContext) -> Value;
+}
+
+impl BVWord {
+    fn sign_extend_to_word(
+        &self,
+        value: Value,
+        width: WidthInt,
+        ctx: &mut CodeGenContext,
+    ) -> Value {
+        let shifted = ctx.fn_builder.ins().ishl_imm(value, (64 - width) as i64);
+        ctx.fn_builder.ins().sshr_imm(shifted, (64 - width) as i64)
+    }
+
+    fn overflow_guard(&self, value: Value, ctx: &mut CodeGenContext) -> Value {
+        self.mask(value, self.0, ctx)
+    }
+
+    fn mask(&self, value: Value, width: WidthInt, ctx: &mut CodeGenContext) -> Value {
+        if width < 64 {
+            ctx.fn_builder
+                .ins()
+                .band_imm(value, ((u64::MAX) >> (64 - width)) as i64)
+        } else {
+            value
+        }
+    }
+
+    fn cmp(&self, lhs: Value, rhs: Value, condcode: IntCC, ctx: &mut CodeGenContext) -> Value {
+        let cmp = ctx.fn_builder.ins().icmp(condcode, lhs, rhs);
+        ctx.fn_builder.ins().uextend(ctx.int, cmp)
+    }
+}
+
+impl BVCodeGenVTable for BVWord {
+    fn symbol(&self, arg: ExprRef, ctx: &mut CodeGenContext) -> Value {
+        self.overflow_guard(ctx.load_input_state(arg), ctx)
+    }
+
+    fn literal(&self, value: BitVecValueRef, ctx: &mut CodeGenContext) -> Value {
+        self.overflow_guard(
+            ctx.fn_builder
+                .ins()
+                .iconst(ctx.int, value.to_i64().unwrap()),
+            ctx,
+        )
+    }
+
+    fn add(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value {
+        self.overflow_guard(ctx.fn_builder.ins().iadd(lhs, rhs), ctx)
+    }
+    fn sub(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value {
+        self.overflow_guard(ctx.fn_builder.ins().isub(lhs, rhs), ctx)
+    }
+    fn mul(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value {
+        self.overflow_guard(ctx.fn_builder.ins().imul(lhs, rhs), ctx)
+    }
+
+    fn and(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value {
+        ctx.fn_builder.ins().band(lhs, rhs)
+    }
+    fn or(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value {
+        ctx.fn_builder.ins().bor(lhs, rhs)
+    }
+    fn xor(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value {
+        ctx.fn_builder.ins().bxor(lhs, rhs)
+    }
+
+    fn not(&self, arg: Value, ctx: &mut CodeGenContext) -> Value {
+        self.overflow_guard(ctx.fn_builder.ins().bnot(arg), ctx)
+    }
+    fn negate(&self, arg: Value, ctx: &mut CodeGenContext) -> Value {
+        let flipped = ctx.fn_builder.ins().bnot(arg);
+        self.overflow_guard(ctx.fn_builder.ins().iadd_imm(flipped, 1), ctx)
+    }
+    fn zero_ext(&self, arg: Value, _ctx: &mut CodeGenContext) -> Value {
+        arg
+    }
+    fn sign_ext(&self, arg: Value, by: WidthInt, ctx: &mut CodeGenContext) -> Value {
+        self.overflow_guard(self.sign_extend_to_word(arg, self.0 - by, ctx), ctx)
+    }
+
+    fn shift_right(&self, arg0: Value, arg1: Value, ctx: &mut CodeGenContext) -> Value {
+        ctx.fn_builder.ins().ushr(arg0, arg1)
+    }
+    fn arithmetic_shift_right(&self, arg0: Value, arg1: Value, ctx: &mut CodeGenContext) -> Value {
+        ctx.fn_builder.ins().sshr(arg0, arg1)
+    }
+    fn shift_left(&self, arg0: Value, arg1: Value, ctx: &mut CodeGenContext) -> Value {
+        self.overflow_guard(ctx.fn_builder.ins().ishl(arg0, arg1), ctx)
+    }
+
+    fn equal(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value {
+        self.cmp(lhs, rhs, IntCC::Equal, ctx)
+    }
+    fn gt(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value {
+        self.cmp(lhs, rhs, IntCC::UnsignedGreaterThan, ctx)
+    }
+    fn ge(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value {
+        self.cmp(lhs, rhs, IntCC::UnsignedGreaterThanOrEqual, ctx)
+    }
+    fn gt_signed(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value {
+        self.cmp(lhs, rhs, IntCC::SignedGreaterThan, ctx)
+    }
+    fn ge_signed(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value {
+        self.cmp(lhs, rhs, IntCC::SignedGreaterThanOrEqual, ctx)
+    }
+
+    fn concat(&self, hi: Value, lo: Value, lo_width: WidthInt, ctx: &mut CodeGenContext) -> Value {
+        let hi = ctx.fn_builder.ins().ishl_imm(hi, lo_width as i64);
+        ctx.fn_builder.ins().bor(hi, lo)
+    }
+    fn slice(&self, value: Value, hi: WidthInt, lo: WidthInt, ctx: &mut CodeGenContext) -> Value {
+        let shifted = ctx.fn_builder.ins().ushr_imm(value, lo as i64);
+        self.mask(shifted, hi - lo + 1, ctx)
     }
 }
