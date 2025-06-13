@@ -2,7 +2,7 @@ mod bv_codegen;
 mod compiler;
 mod runtime;
 
-use super::Simulator;
+use super::*;
 use crate::expr::{self, *};
 use crate::system::*;
 use baa::*;
@@ -233,7 +233,7 @@ impl std::ops::Drop for JITEngine<'_> {
 
 impl Simulator for JITEngine<'_> {
     type SnapshotId = u32;
-    fn init(&mut self) {
+    fn init(&mut self, _kind: InitKind) {
         for (state, offset) in self.states_to_offset.clone() {
             if matches!(state.get_type(self.ctx), expr::Type::BV(width) if width < 64) {
                 self.current_state_buffer_mut().as_mut_slice()[offset] = 0;
@@ -250,7 +250,6 @@ impl Simulator for JITEngine<'_> {
         }
     }
 
-    fn update(&mut self) {}
     fn step(&mut self) {
         for state in &self.sys.states {
             let Some(next) = state.next else { continue };
@@ -296,10 +295,7 @@ impl Simulator for JITEngine<'_> {
             });
     }
 
-    fn get(&self, expr: ExprRef) -> Option<BitVecValue> {
-        let expr::Type::BV(width) = expr.get_type(self.ctx) else {
-            return None;
-        };
+    fn get(&self, expr: ExprRef) -> baa::Value {
         let mut is_cached_symbol = false;
         let value = if let Some(&offset) = self.states_to_offset.get(&expr) {
             is_cached_symbol = true;
@@ -307,23 +303,32 @@ impl Simulator for JITEngine<'_> {
         } else {
             self.eval_expr(expr)
         };
-        let value = match width {
-            0..=64 => BitVecValue::from_u64(value as u64, width),
-            _ =>
-            // SAFETY: jit compiler guarantees that value is a pointer to wide bv allocated on heap
-            unsafe {
-                if is_cached_symbol {
-                    (*(value as *mut BitVecValue)).clone()
-                } else {
-                    *Box::from_raw(value as *mut BitVecValue)
+        match expr.get_type(self.ctx) {
+            expr::Type::Array(expr::ArrayType { index_width, .. }) => {
+                // SAFETY: jit compiler guarantees that value points to a boxed slice with len 1 << index_width
+                unsafe {
+                    let words =
+                        std::slice::from_raw_parts(value as *const baa::Word, 1 << index_width);
+                    let ret = baa::Value::Array(words.into());
+                    if !is_cached_symbol {
+                        runtime::__dealloc_array(value as *mut i64, index_width);
+                    }
+                    ret
                 }
+            }
+            expr::Type::BV(width) => match width {
+                0..=64 => baa::Value::BitVec(BitVecValue::from_u64(value as u64, width)),
+                _ =>
+                // SAFETY: jit compiler guarantees that value is a pointer to wide bv allocated on heap
+                unsafe {
+                    if is_cached_symbol {
+                        baa::Value::BitVec((*(value as *mut BitVecValue)).clone())
+                    } else {
+                        baa::Value::BitVec(*Box::from_raw(value as *mut BitVecValue))
+                    }
+                },
             },
-        };
-        Some(value)
-    }
-
-    fn get_element<'b>(&self, _expr: ExprRef, _index: BitVecValueRef<'b>) -> Option<BitVecValue> {
-        todo!()
+        }
     }
 
     fn step_count(&self) -> u64 {
