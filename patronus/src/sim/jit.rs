@@ -1,3 +1,4 @@
+mod bv_codegen;
 mod compiler;
 mod runtime;
 
@@ -123,28 +124,36 @@ impl<'expr> JITEngine<'expr> {
         let mut buffers: [Box<[i64]>; 2] =
             std::array::from_fn(|_| vec![0_i64; states_to_offset.len()].into_boxed_slice());
         for (&state, &offset) in &states_to_offset {
-            if let expr::Type::Array(expr::ArrayType {
-                index_width,
-                data_width,
-            }) = state.get_type(ctx)
-            {
-                assert!(
-                    data_width <= 64,
-                    "only support bv with width less than equal to 64, but got `{}`",
-                    data_width
-                );
-                assert!(
+            match state.get_type(ctx) {
+                expr::Type::Array(expr::ArrayType {
+                    index_width,
+                    data_width,
+                }) => {
+                    assert!(
+                        data_width <= 64,
+                        "only support bv with width less than equal to 64, but got `{}`",
+                        data_width
+                    );
+                    assert!(
                     index_width <= 12,
                     "currently no sparse array support, size of the dense array should be less than or equal to 2^12, but got `{}`", 
                     index_width
                 );
 
-                // allocate array buffer for both current and next state
-                // this maintains the invariance that array states always points a valid boxed slice
-                for state_buffer in &mut buffers {
-                    let array = vec![0_i64; 1 << index_width].into_boxed_slice();
-                    state_buffer[offset] = array.as_ptr() as i64;
-                    std::mem::forget(array);
+                    // allocate array buffer for both current and next state
+                    // this maintains the invariance that array states always points a valid boxed slice
+                    for state_buffer in &mut buffers {
+                        state_buffer[offset] =
+                            vec![0_i64; 1 << index_width].leak() as *mut [i64] as *mut i64 as i64;
+                    }
+                }
+                expr::Type::BV(width) => {
+                    if width > 64 {
+                        for state_buffer in &mut buffers {
+                            let bv = Box::new(BitVecValue::zero(width));
+                            state_buffer[offset] = Box::leak(bv) as *mut _ as i64;
+                        }
+                    }
                 }
             }
         }
@@ -196,13 +205,25 @@ impl<'expr> JITEngine<'expr> {
 impl std::ops::Drop for JITEngine<'_> {
     fn drop(&mut self) {
         for (&state, &offset) in &self.states_to_offset {
-            if let expr::Type::Array(expr::ArrayType { index_width, .. }) = state.get_type(self.ctx)
-            {
-                for state_buffer in &mut self.buffers {
-                    // SAFETY: the invariance we maintained for array states in the buffer guarantees that
-                    // they all point to a valid boxed slice
-                    unsafe {
-                        runtime::__dealloc_array(state_buffer[offset] as *mut i64, index_width);
+            match state.get_type(self.ctx) {
+                expr::Type::Array(expr::ArrayType { index_width, .. }) => {
+                    for state_buffer in &mut self.buffers {
+                        // SAFETY: the invariance we maintained for array states in the buffer guarantees that
+                        // they all point to a valid boxed slice
+                        unsafe {
+                            runtime::__dealloc_array(state_buffer[offset] as *mut i64, index_width);
+                        }
+                    }
+                }
+                expr::Type::BV(width) => {
+                    if width > 64 {
+                        for state_buffer in &mut self.buffers {
+                            unsafe {
+                                // SAFETY: the invariance we maintained for wide bv states in the buffer guarantees that
+                                // they always point a valid BitVecValue on heap
+                                runtime::__dealloc_bv(state_buffer[offset] as *mut BitVecValue);
+                            }
+                        }
                     }
                 }
             }
@@ -214,14 +235,16 @@ impl Simulator for JITEngine<'_> {
     type SnapshotId = u32;
     fn init(&mut self) {
         for (state, offset) in self.states_to_offset.clone() {
-            if let expr::Type::BV(..) = state.get_type(self.ctx) {
+            if matches!(state.get_type(self.ctx), expr::Type::BV(width) if width < 64) {
                 self.current_state_buffer_mut().as_mut_slice()[offset] = 0;
             }
         }
+        // XXX: zero out wide bv and array
 
         for state in &self.sys.states {
             if let Some(init) = state.init {
                 let ret = self.eval_expr(init);
+                // XXX: reclaim memory
                 *self.current_state_buffer_mut().get_state_mut(state.symbol) = ret;
             }
         }
@@ -233,8 +256,18 @@ impl Simulator for JITEngine<'_> {
             let Some(next) = state.next else { continue };
             let ret = self.eval_expr(next);
             match next.get_type(self.ctx) {
-                expr::Type::BV(..) => {
-                    *self.next_state_buffer_mut().get_state_mut(state.symbol) = ret
+                expr::Type::BV(width) => {
+                    let old_bv = std::mem::replace(
+                        self.next_state_buffer_mut().get_state_mut(state.symbol),
+                        ret,
+                    );
+                    if width > 64 {
+                        // SAFETY: the invariance we maintained for wide bv states in the buffer guarantees that
+                        // `old_bv` always points a valid BitVecValue on heap
+                        unsafe {
+                            runtime::__dealloc_bv(old_bv as *mut BitVecValue);
+                        }
+                    }
                 }
                 expr::Type::Array(expr::ArrayType { index_width, .. }) => {
                     let old_array_state = std::mem::replace(
@@ -247,13 +280,13 @@ impl Simulator for JITEngine<'_> {
                 }
             }
         }
-
         self.update_state_buffer();
         self.step_count += 1;
     }
 
     fn set<'b>(&mut self, expr: ExprRef, value: BitVecValueRef<'b>) {
         assert!(matches!(self.ctx[expr], Expr::BVSymbol { .. }));
+        assert!(value.width() <= 64);
         *self.current_state_buffer_mut().get_state_mut(expr) =
             value.to_i64().unwrap_or_else(|| {
                 panic!(
@@ -267,12 +300,26 @@ impl Simulator for JITEngine<'_> {
         let expr::Type::BV(width) = expr.get_type(self.ctx) else {
             return None;
         };
+        let mut is_cached_symbol = false;
         let value = if let Some(&offset) = self.states_to_offset.get(&expr) {
+            is_cached_symbol = true;
             self.current_state_buffer().as_slice()[offset]
         } else {
             self.eval_expr(expr)
         };
-        Some(BitVecValue::from_u64(value as u64, width))
+        let value = match width {
+            0..=64 => BitVecValue::from_u64(value as u64, width),
+            _ =>
+            // SAFETY: jit compiler guarantees that value is a pointer to wide bv allocated on heap
+            unsafe {
+                if is_cached_symbol {
+                    (*(value as *mut BitVecValue)).clone()
+                } else {
+                    *Box::from_raw(value as *mut BitVecValue)
+                }
+            },
+        };
+        Some(value)
     }
 
     fn get_element<'b>(&self, _expr: ExprRef, _index: BitVecValueRef<'b>) -> Option<BitVecValue> {

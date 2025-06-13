@@ -23,6 +23,7 @@ baa.workspace = true
 rustc-hash.workspace = true
 thiserror.workspace = true
 cranelift = { version = "0.120.0", features = ["module", "jit"] }
+inventory = "0.3.20"
 
 [dev-dependencies]
 insta = { version = "1.x", features = ["yaml"] }
