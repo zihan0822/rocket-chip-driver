@@ -286,13 +286,13 @@ impl Simulator for JITEngine<'_> {
     fn set<'b>(&mut self, expr: ExprRef, value: BitVecValueRef<'b>) {
         assert!(matches!(self.ctx[expr], Expr::BVSymbol { .. }));
         assert!(value.width() <= 64);
-        *self.current_state_buffer_mut().get_state_mut(expr) =
-            value.to_i64().unwrap_or_else(|| {
-                panic!(
-                    "unsupported bv value for jit based interpreter: {:?}",
-                    value
-                )
-            });
+        let value = value.to_u64().unwrap_or_else(|| {
+            panic!(
+                "unsupported bv value for jit based interpreter: {:?}",
+                value
+            )
+        });
+        *self.current_state_buffer_mut().get_state_mut(expr) = value as i64;
     }
 
     fn get(&self, expr: ExprRef) -> baa::Value {

@@ -44,16 +44,13 @@ impl BVWord {
 
 impl BVCodeGenVTable for BVWord {
     fn symbol(&self, arg: ExprRef, ctx: &mut CodeGenContext) -> Value {
-        self.overflow_guard(ctx.load_input_state(arg), ctx)
+        ctx.load_input_state(arg)
     }
 
     fn literal(&self, value: BitVecValueRef, ctx: &mut CodeGenContext) -> Value {
-        self.overflow_guard(
-            ctx.fn_builder
-                .ins()
-                .iconst(ctx.int, value.to_i64().unwrap()),
-            ctx,
-        )
+        ctx.fn_builder
+            .ins()
+            .iconst(ctx.int, value.to_u64().unwrap() as i64)
     }
 
     fn add(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value {
