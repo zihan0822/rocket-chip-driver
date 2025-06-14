@@ -30,6 +30,7 @@ trait StateBufferView<T> {
     fn get_state_ref(&self, expr: ExprRef) -> &T;
     fn as_slice(&self) -> &[T];
 }
+#[allow(dead_code)]
 trait StateBufferViewMut<T>: StateBufferView<T> {
     fn get_state_mut(&mut self, expr: ExprRef) -> &mut T;
     fn as_mut_slice(&mut self) -> &mut [T];
@@ -249,13 +250,51 @@ where
 
 impl Simulator for JITEngine<'_> {
     type SnapshotId = u32;
-    fn init(&mut self, _kind: InitKind) {
-        for (state, offset) in self.states_to_offset.clone() {
-            if matches!(state.get_type(self.ctx), expr::Type::BV(width) if width < 64) {
-                self.current_state_buffer_mut().as_mut_slice()[offset] = 0;
+    fn init(&mut self, kind: InitKind) {
+        let mut generator = InitValueGenerator::from_kind(kind);
+
+        for state in self.states_to_offset.clone().into_keys() {
+            let tpe = state.get_type(self.ctx);
+            let init_value = generator.gen(tpe);
+            match init_value {
+                baa::Value::BitVec(bv) => {
+                    let bv = if bv.width() < 64 {
+                        bv.to_u64().unwrap() as i64
+                    } else {
+                        // SAFETY: &bv is a valid pointer to `BitVecValue`
+                        unsafe { runtime::__clone_bv(&bv as *const BitVecValue) as i64 }
+                    };
+                    self.current_state_buffer_mut()
+                        .try_replace_with_heap_reclaim(state, bv)
+                }
+                baa::Value::Array(array) => {
+                    let expr::Type::Array(expr::ArrayType {
+                        index_width,
+                        data_width,
+                        ..
+                    }) = tpe
+                    else {
+                        unreachable!()
+                    };
+                    assert!(
+                        index_width <= 12 && data_width <= 64,
+                        "currently only support dense array with thin bv"
+                    );
+                    debug_assert_eq!(1 << index_width, array.num_elements());
+                    let buffer: Vec<_> = (0..array.num_elements())
+                        .map(|idx| {
+                            array
+                                .select(&BitVecValue::from_u64(idx as u64, 64))
+                                .to_u64()
+                                .unwrap() as i64
+                        })
+                        .collect();
+                    let ptr = buffer.leak() as *mut [i64] as *mut i64 as i64;
+                    self.current_state_buffer_mut()
+                        .try_replace_with_heap_reclaim(state, ptr)
+                }
             }
         }
-        // XXX: zero out wide bv and array
 
         for state in &self.sys.states {
             if let Some(init) = state.init {
