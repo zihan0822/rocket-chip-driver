@@ -109,7 +109,7 @@ pub(super) struct CodeGenContext<'expr, 'ctx, 'engine> {
     block_id: Block,
     root_expr: ExprRef,
     input_state_buffer: &'engine dyn StateBufferView<i64>,
-    heap_allocated: FxHashSet<(Value, expr::Type)>,
+    heap_allocated: FxHashSet<TaggedValue>,
     /// See JITCompiler bv_data field
     #[allow(clippy::vec_box)]
     pub(super) bv_data: &'ctx mut Vec<Box<BitVecValue>>,
@@ -129,8 +129,8 @@ impl CodeGenContext<'_, '_, '_> {
     }
 
     fn mock_interpret(&mut self) -> Value {
-        let mut value_stack: Vec<Value> = Vec::new();
-        let mut cached: FxHashMap<ExprRef, Value> = FxHashMap::default();
+        let mut value_stack: Vec<TaggedValue> = Vec::new();
+        let mut cached: FxHashMap<ExprRef, TaggedValue> = FxHashMap::default();
 
         let expr_nodes: FxHashMap<ExprRef, ExprNode> = self.expr_graph_topo();
         let mut todo: Vec<(ExprRef, bool)> = vec![(self.root_expr, false)];
@@ -145,10 +145,7 @@ impl CodeGenContext<'_, '_, '_> {
                 let num_children = expr.num_children();
                 if let Expr::ArrayStore { array, .. } = expr {
                     if expr_nodes[array].num_references > 1 {
-                        let cow = self.clone_array(
-                            cached[array],
-                            array.get_array_type(self.expr_ctx).unwrap(),
-                        );
+                        let cow = self.clone_array(cached[array]);
                         let stack_size = value_stack.len();
                         // first argument of `ArrayStore` operation is the src array
                         value_stack[stack_size - num_children..][0] = cow;
@@ -171,12 +168,12 @@ impl CodeGenContext<'_, '_, '_> {
         // exclude potential allocation for the return value, which will be reclaimed in jit engine
         let heap_resources = self.heap_allocated.iter().copied().collect::<Vec<_>>();
         let ret = match self.root_expr.get_type(self.expr_ctx) {
-            expr::Type::Array(tpe) => self.clone_array(value_stack[0], tpe),
-            expr::Type::BV(width) if width > 64 => self.clone_bv(value_stack[0], width),
+            expr::Type::Array(..) => self.clone_array(value_stack[0]),
+            expr::Type::BV(width) if width > 64 => self.clone_bv(value_stack[0]),
             _ => value_stack[0],
         };
         self.reclaim_heap_resources(heap_resources);
-        ret
+        *ret
     }
 
     /// Compute important expr graph statistics for better codegen
@@ -200,14 +197,14 @@ impl CodeGenContext<'_, '_, '_> {
         expr_references
     }
 
-    pub(super) fn register_heap_allocation(&mut self, value: Value, tpe: expr::Type) {
-        self.heap_allocated.insert((value, tpe));
+    pub(super) fn register_heap_allocation(&mut self, value: TaggedValue) {
+        self.heap_allocated.insert(value);
     }
 
-    fn reclaim_heap_resources(&mut self, items: impl IntoIterator<Item = (Value, expr::Type)>) {
-        for (value, tpe) in items {
-            match tpe {
-                expr::Type::Array(tpe) => self.dealloc_array(value, tpe),
+    fn reclaim_heap_resources(&mut self, items: impl IntoIterator<Item = TaggedValue>) {
+        for value in items {
+            match value.data_type {
+                expr::Type::Array(..) => self.dealloc_array(value),
                 expr::Type::BV(width) => {
                     if width > 64 {
                         self.dealloc_bv(value)
@@ -218,32 +215,61 @@ impl CodeGenContext<'_, '_, '_> {
     }
 }
 
+#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+pub(super) struct TaggedValue {
+    pub(super) value: Value,
+    pub(super) data_type: expr::Type,
+}
+
+impl std::ops::Deref for TaggedValue {
+    type Target = Value;
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+
+impl TaggedValue {
+    pub(super) fn requires_bv_delegation(&self) -> bool {
+        matches!(self.data_type, expr::Type::BV(width) if width > 64)
+    }
+}
+
 impl CodeGenContext<'_, '_, '_> {
     /// the meaning of the input state is polymorphic over bv/array
-    pub(super) fn load_input_state(&mut self, expr: ExprRef) -> Value {
+    pub(super) fn load_input_state(&mut self, expr: ExprRef) -> TaggedValue {
         let param_offset = self.input_state_buffer.get_state_offset(expr) as u32;
         let input_buffer_address = self.fn_builder.block_params(self.block_id)[0];
-        self.fn_builder.ins().load(
+        let value = self.fn_builder.ins().load(
             self.int,
             // buffer is allocated by Rust, therefore trusted
             ir::MemFlags::trusted(),
             input_buffer_address,
             (param_offset * self.int.bytes()) as i32,
-        )
+        );
+        TaggedValue {
+            value,
+            data_type: expr.get_type(self.expr_ctx),
+        }
     }
 
-    fn dealloc_array(&mut self, array_to_dealloc: Value, tpe: ArrayType) {
+    fn dealloc_array(&mut self, array_to_dealloc: TaggedValue) {
+        let expr::Type::Array(tpe) = array_to_dealloc.data_type else {
+            unreachable!()
+        };
         let index_width = self
             .fn_builder
             .ins()
             .iconst(self.int, tpe.index_width as i64);
         self.fn_builder.ins().call(
             self.runtime_lib.dealloc_array,
-            &[array_to_dealloc, index_width],
+            &[*array_to_dealloc, index_width],
         );
     }
 
-    fn clone_array(&mut self, from: Value, tpe: ArrayType) -> Value {
+    fn clone_array(&mut self, from: TaggedValue) -> TaggedValue {
+        let expr::Type::Array(tpe) = from.data_type else {
+            unreachable!()
+        };
         let index_width = self
             .fn_builder
             .ins()
@@ -251,44 +277,53 @@ impl CodeGenContext<'_, '_, '_> {
         let call = self
             .fn_builder
             .ins()
-            .call(self.runtime_lib.clone_array, &[from, index_width]);
-        let ret = self.fn_builder.inst_results(call)[0];
-        self.register_heap_allocation(ret, expr::Type::Array(tpe));
+            .call(self.runtime_lib.clone_array, &[*from, index_width]);
+        let ret = TaggedValue {
+            value: self.fn_builder.inst_results(call)[0],
+            data_type: from.data_type,
+        };
+        self.register_heap_allocation(ret);
         ret
     }
 
-    fn alloc_const_array(&mut self, default_data: Value, tpe: ArrayType) -> Value {
+    fn alloc_const_array(&mut self, default_data: TaggedValue, tpe: ArrayType) -> TaggedValue {
         let index_width = self
             .fn_builder
             .ins()
             .iconst(self.int, tpe.index_width as i64);
         let call = self.fn_builder.ins().call(
             self.runtime_lib.alloc_const_array,
-            &[index_width, default_data],
+            &[index_width, *default_data],
         );
-        let ret = self.fn_builder.inst_results(call)[0];
-        self.register_heap_allocation(ret, expr::Type::Array(tpe));
+        let ret = TaggedValue {
+            value: self.fn_builder.inst_results(call)[0],
+            data_type: expr::Type::Array(tpe),
+        };
+        self.register_heap_allocation(ret);
         ret
     }
 
-    fn dealloc_bv(&mut self, bv_to_dealloc: Value) {
+    fn dealloc_bv(&mut self, bv_to_dealloc: TaggedValue) {
         self.fn_builder
             .ins()
-            .call(self.runtime_lib.dealloc_bv, &[bv_to_dealloc]);
+            .call(self.runtime_lib.dealloc_bv, &[*bv_to_dealloc]);
     }
 
-    pub(super) fn clone_bv(&mut self, src: Value, width: WidthInt) -> Value {
-        assert!(width >= 64);
+    pub(super) fn clone_bv(&mut self, src: TaggedValue) -> TaggedValue {
+        assert!(src.requires_bv_delegation());
         let call = self
             .fn_builder
             .ins()
-            .call(self.runtime_lib.clone_bv, &[src]);
-        let ret = self.fn_builder.inst_results(call)[0];
-        self.register_heap_allocation(ret, expr::Type::BV(width));
+            .call(self.runtime_lib.clone_bv, &[*src]);
+        let ret = TaggedValue {
+            value: self.fn_builder.inst_results(call)[0],
+            data_type: src.data_type,
+        };
+        self.register_heap_allocation(ret);
         ret
     }
 
-    fn expr_codegen(&mut self, expr: ExprRef, args: &[Value]) -> Value {
+    fn expr_codegen(&mut self, expr: ExprRef, args: &[TaggedValue]) -> TaggedValue {
         if let expr::Type::Array(expr::ArrayType {
             index_width,
             data_width,
@@ -296,16 +331,16 @@ impl CodeGenContext<'_, '_, '_> {
         {
             assert!(index_width <= 12 && data_width <= 64);
         }
-        match &self.expr_ctx[expr] {
+        let value = match &self.expr_ctx[expr] {
             Expr::ArraySymbol { .. } => {
                 let src = self.load_input_state(expr);
-                self.clone_array(src, expr.get_array_type(self.expr_ctx).unwrap())
+                return self.clone_array(src);
             }
             Expr::BVIte { .. } | Expr::ArrayIte { .. } => {
-                self.fn_builder.ins().select(args[0], args[1], args[2])
+                self.fn_builder.ins().select(*args[0], *args[1], *args[2])
             }
             Expr::ArrayStore { .. } => {
-                let (base, index, data) = (args[0], args[1], args[2]);
+                let (base, index, data) = (*args[0], *args[1], *args[2]);
                 let offset = self
                     .fn_builder
                     .ins()
@@ -321,7 +356,7 @@ impl CodeGenContext<'_, '_, '_> {
                 base
             }
             Expr::BVArrayRead { .. } => {
-                let (base, index) = (args[0], args[1]);
+                let (base, index) = (*args[0], *args[1]);
                 let offset = self
                     .fn_builder
                     .ins()
@@ -336,13 +371,18 @@ impl CodeGenContext<'_, '_, '_> {
                 )
             }
             Expr::ArrayConstant { .. } => {
-                self.alloc_const_array(args[0], expr.get_array_type(self.expr_ctx).unwrap())
+                return self
+                    .alloc_const_array(args[0], expr.get_array_type(self.expr_ctx).unwrap());
             }
             _ => self.dispatch_bv_operation_codegen(expr, args),
+        };
+        TaggedValue {
+            value,
+            data_type: expr.get_type(self.expr_ctx),
         }
     }
 
-    fn dispatch_bv_operation_codegen(&mut self, expr: ExprRef, args: &[Value]) -> Value {
+    fn dispatch_bv_operation_codegen(&mut self, expr: ExprRef, args: &[TaggedValue]) -> Value {
         let width = expr.get_bv_type(self.expr_ctx).unwrap();
         let vtable: Box<dyn BVCodeGenVTable> = match width {
             0..=64 => Box::new(super::bv_codegen::BVWord(width)),
@@ -357,9 +397,7 @@ impl CodeGenContext<'_, '_, '_> {
             // no-op with current impl
             Expr::BVZeroExt { by, .. } => vtable.zero_extend(args[0], by, self),
             Expr::BVSignExt { by, .. } => vtable.sign_extend(args[0], by, self),
-            Expr::BVSlice { hi, lo, e } => {
-                vtable.slice(args[0], e.get_bv_type(self.expr_ctx).unwrap(), hi, lo, self)
-            }
+            Expr::BVSlice { hi, lo, .. } => vtable.slice(args[0], hi, lo, self),
             // binary
             Expr::BVAdd(..) => vtable.add(args[0], args[1], self),
             Expr::BVSub(..) => vtable.sub(args[0], args[1], self),
@@ -367,48 +405,17 @@ impl CodeGenContext<'_, '_, '_> {
             Expr::BVAnd(..) => vtable.and(args[0], args[1], self),
             Expr::BVOr(..) => vtable.or(args[0], args[1], self),
             Expr::BVXor(..) => vtable.xor(args[0], args[1], self),
-            Expr::BVEqual(arg, ..) => vtable.equal(
-                args[0],
-                args[1],
-                arg.get_bv_type(self.expr_ctx).unwrap(),
-                self,
-            ),
-            Expr::BVGreater(arg, ..) => vtable.gt(
-                args[0],
-                args[1],
-                arg.get_bv_type(self.expr_ctx).unwrap(),
-                self,
-            ),
-            Expr::BVGreaterEqual(arg, ..) => vtable.ge(
-                args[0],
-                args[1],
-                arg.get_bv_type(self.expr_ctx).unwrap(),
-                self,
-            ),
-            Expr::BVGreaterSigned(arg, ..) => vtable.gt_signed(
-                args[0],
-                args[1],
-                arg.get_bv_type(self.expr_ctx).unwrap(),
-                self,
-            ),
-            Expr::BVGreaterEqualSigned(arg, ..) => vtable.ge_signed(
-                args[0],
-                args[1],
-                arg.get_bv_type(self.expr_ctx).unwrap(),
-                self,
-            ),
+            Expr::BVEqual(..) => vtable.equal(args[0], args[1], self),
+            Expr::BVGreater(..) => vtable.gt(args[0], args[1], self),
+            Expr::BVGreaterEqual(..) => vtable.ge(args[0], args[1], self),
+            Expr::BVGreaterSigned(..) => vtable.gt_signed(args[0], args[1], self),
+            Expr::BVGreaterEqualSigned(..) => vtable.ge_signed(args[0], args[1], self),
             Expr::BVShiftLeft(..) => vtable.shift_left(args[0], args[1], self),
             Expr::BVShiftRight(..) => vtable.shift_right(args[0], args[1], self),
             Expr::BVArithmeticShiftRight(..) => {
                 vtable.arithmetic_shift_right(args[0], args[1], self)
             }
-            Expr::BVConcat(hi, lo, ..) => vtable.concat(
-                args[0],
-                args[1],
-                hi.get_bv_type(self.expr_ctx).unwrap(),
-                lo.get_bv_type(self.expr_ctx).unwrap(),
-                self,
-            ),
+            Expr::BVConcat(..) => vtable.concat(args[0], args[1], self),
             _ => todo!("{:?}", self.expr_ctx[expr]),
         }
     }
@@ -417,41 +424,36 @@ impl CodeGenContext<'_, '_, '_> {
 pub(super) trait BVCodeGenVTable {
     fn symbol(&self, expr: ExprRef, ctx: &mut CodeGenContext) -> Value;
     fn literal(&self, value: BitVecValueRef, ctx: &mut CodeGenContext) -> Value;
-    fn add(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value;
-    fn sub(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value;
-    fn mul(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value;
-    fn and(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value;
-    fn or(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value;
-    fn xor(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value;
-    fn not(&self, arg: Value, ctx: &mut CodeGenContext) -> Value;
-    fn negate(&self, arg: Value, ctx: &mut CodeGenContext) -> Value;
-    fn zero_extend(&self, arg: Value, by: WidthInt, ctx: &mut CodeGenContext) -> Value;
-    fn sign_extend(&self, arg: Value, by: WidthInt, ctx: &mut CodeGenContext) -> Value;
+    fn add(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+    fn sub(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+    fn mul(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+    fn and(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+    fn or(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+    fn xor(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+    fn not(&self, arg: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+    fn negate(&self, arg: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+    fn zero_extend(&self, arg: TaggedValue, by: WidthInt, ctx: &mut CodeGenContext) -> Value;
+    fn sign_extend(&self, arg: TaggedValue, by: WidthInt, ctx: &mut CodeGenContext) -> Value;
 
-    fn shift_right(&self, arg0: Value, arg1: Value, ctx: &mut CodeGenContext) -> Value;
-    fn arithmetic_shift_right(&self, arg0: Value, arg1: Value, ctx: &mut CodeGenContext) -> Value;
-    fn shift_left(&self, arg0: Value, arg1: Value, ctx: &mut CodeGenContext) -> Value;
-
-    fn equal(&self, lhs: Value, rhs: Value, width: WidthInt, ctx: &mut CodeGenContext) -> Value;
-    fn gt(&self, lhs: Value, rhs: Value, width: WidthInt, ctx: &mut CodeGenContext) -> Value;
-    fn ge(&self, lhs: Value, rhs: Value, width: WidthInt, ctx: &mut CodeGenContext) -> Value;
-    fn gt_signed(&self, lhs: Value, rhs: Value, width: WidthInt, ctx: &mut CodeGenContext)
-        -> Value;
-    fn ge_signed(&self, lhs: Value, rhs: Value, width: WidthInt, ctx: &mut CodeGenContext)
-        -> Value;
-
-    fn concat(
+    fn shift_right(&self, arg0: TaggedValue, arg1: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+    fn arithmetic_shift_right(
         &self,
-        hi: Value,
-        lo: Value,
-        hi_width: WidthInt,
-        lo_width: WidthInt,
+        arg0: TaggedValue,
+        arg1: TaggedValue,
         ctx: &mut CodeGenContext,
     ) -> Value;
+    fn shift_left(&self, arg0: TaggedValue, arg1: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+
+    fn equal(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+    fn gt(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+    fn ge(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+    fn gt_signed(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+    fn ge_signed(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+
+    fn concat(&self, hi: TaggedValue, lo: TaggedValue, ctx: &mut CodeGenContext) -> Value;
     fn slice(
         &self,
-        value: Value,
-        original_width: WidthInt,
+        value: TaggedValue,
         hi: WidthInt,
         lo: WidthInt,
         ctx: &mut CodeGenContext,
