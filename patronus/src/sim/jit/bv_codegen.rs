@@ -1,6 +1,3 @@
-#![allow(dead_code)]
-#![allow(unused_variables)]
-
 use crate::expr::{self, *};
 use baa::{BitVecOps, BitVecValue, BitVecValueRef};
 use cranelift::codegen::ir::FuncRef;
@@ -88,6 +85,7 @@ impl BVCodeGenVTable for BVWord {
     }
 
     fn shift_right(&self, arg0: TaggedValue, arg1: TaggedValue, ctx: &mut CodeGenContext) -> Value {
+        assert!(!arg1.requires_bv_delegation());
         ctx.fn_builder.ins().ushr(*arg0, *arg1)
     }
     fn arithmetic_shift_right(
@@ -96,9 +94,11 @@ impl BVCodeGenVTable for BVWord {
         arg1: TaggedValue,
         ctx: &mut CodeGenContext,
     ) -> Value {
+        assert!(!arg1.requires_bv_delegation());
         ctx.fn_builder.ins().sshr(*arg0, *arg1)
     }
     fn shift_left(&self, arg0: TaggedValue, arg1: TaggedValue, ctx: &mut CodeGenContext) -> Value {
+        assert!(!arg1.requires_bv_delegation());
         self.overflow_guard(ctx.fn_builder.ins().ishl(*arg0, *arg1), ctx)
     }
 
@@ -260,19 +260,49 @@ impl BVCodeGenVTable for BVIndirect {
     }
 
     fn shift_right(&self, arg0: TaggedValue, arg1: TaggedValue, ctx: &mut CodeGenContext) -> Value {
-        todo!()
+        let expr::Type::BV(width) = arg1.data_type else {
+            unreachable!()
+        };
+        let width = ctx.fn_builder.ins().iconst(ctx.int, width as i64);
+        invoke_bv_extern_function(
+            ctx.runtime_lib.bv_ops["shift_right"],
+            &[*arg0, *arg1, width],
+            ctx,
+            self.0,
+        )
     }
+
     fn arithmetic_shift_right(
         &self,
         arg0: TaggedValue,
         arg1: TaggedValue,
         ctx: &mut CodeGenContext,
     ) -> Value {
-        todo!()
+        let expr::Type::BV(width) = arg1.data_type else {
+            unreachable!()
+        };
+        let width = ctx.fn_builder.ins().iconst(ctx.int, width as i64);
+        invoke_bv_extern_function(
+            ctx.runtime_lib.bv_ops["arithmetic_shift_right"],
+            &[*arg0, *arg1, width],
+            ctx,
+            self.0,
+        )
     }
+
     fn shift_left(&self, arg0: TaggedValue, arg1: TaggedValue, ctx: &mut CodeGenContext) -> Value {
-        todo!()
+        let expr::Type::BV(width) = arg1.data_type else {
+            unreachable!()
+        };
+        let width = ctx.fn_builder.ins().iconst(ctx.int, width as i64);
+        invoke_bv_extern_function(
+            ctx.runtime_lib.bv_ops["shift_left"],
+            &[*arg0, *arg1, width],
+            ctx,
+            self.0,
+        )
     }
+
     fn equal(&self, _lhs: TaggedValue, _rhs: TaggedValue, _ctx: &mut CodeGenContext) -> Value {
         unreachable!()
     }
