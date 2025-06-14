@@ -25,7 +25,6 @@ impl From<ModuleError> for JITError {
     }
 }
 
-#[allow(dead_code)]
 trait StateBufferView<T> {
     fn get_state_offset(&self, expr: ExprRef) -> usize;
     fn get_state_ref(&self, expr: ExprRef) -> &T;
@@ -39,6 +38,7 @@ trait StateBufferViewMut<T>: StateBufferView<T> {
 struct StateBuffer<'engine, B> {
     buffer: B,
     states_to_offset: &'engine FxHashMap<ExprRef, usize>,
+    ctx: &'engine expr::Context,
 }
 
 impl<B> StateBufferView<i64> for StateBuffer<'_, B>
@@ -168,26 +168,27 @@ impl<'expr> JITEngine<'expr> {
         }
     }
 
-    fn current_state_buffer<'engine>(&'engine self) -> impl StateBufferView<i64> + 'engine {
+    fn current_state_buffer(&self) -> StateBuffer<'_, &[i64]> {
         StateBuffer {
             buffer: &*self.buffers[CURRENT_STATE_INDEX],
             states_to_offset: &self.states_to_offset,
+            ctx: self.ctx,
         }
     }
 
-    fn current_state_buffer_mut<'engine>(
-        &'engine mut self,
-    ) -> impl StateBufferViewMut<i64> + 'engine {
+    fn current_state_buffer_mut(&mut self) -> StateBuffer<'_, &mut [i64]> {
         StateBuffer {
             buffer: &mut *self.buffers[CURRENT_STATE_INDEX],
             states_to_offset: &self.states_to_offset,
+            ctx: self.ctx,
         }
     }
 
-    fn next_state_buffer_mut<'engine>(&'engine mut self) -> impl StateBufferViewMut<i64> + 'engine {
+    fn next_state_buffer_mut(&mut self) -> StateBuffer<'_, &mut [i64]> {
         StateBuffer {
             buffer: &mut *self.buffers[NEXT_STATE_INDEX],
             states_to_offset: &self.states_to_offset,
+            ctx: self.ctx,
         }
     }
 
@@ -197,35 +198,50 @@ impl<'expr> JITEngine<'expr> {
             .eval_expr(expr, self.ctx, &self.current_state_buffer())
     }
 
-    fn update_state_buffer(&mut self) {
+    fn swap_state_buffer(&mut self) {
         self.buffers.swap(CURRENT_STATE_INDEX, NEXT_STATE_INDEX);
     }
 }
 
 impl std::ops::Drop for JITEngine<'_> {
     fn drop(&mut self) {
-        for (&state, &offset) in &self.states_to_offset {
-            match state.get_type(self.ctx) {
-                expr::Type::Array(expr::ArrayType { index_width, .. }) => {
-                    for state_buffer in &mut self.buffers {
-                        // SAFETY: the invariance we maintained for array states in the buffer guarantees that
-                        // they all point to a valid boxed slice
-                        unsafe {
-                            runtime::__dealloc_array(state_buffer[offset] as *mut i64, index_width);
-                        }
-                    }
+        for state in self.states_to_offset.clone().into_keys() {
+            // SAFETY: invoked in drop, those states will no longer be accessed
+            unsafe {
+                self.current_state_buffer_mut()
+                    .reclaim_heap_allocated_expr(state);
+                self.next_state_buffer_mut()
+                    .reclaim_heap_allocated_expr(state);
+            }
+        }
+    }
+}
+
+impl<B> StateBuffer<'_, B>
+where
+    B: std::borrow::BorrowMut<[i64]>,
+    Self: StateBufferViewMut<i64>,
+{
+    fn try_replace_with_heap_reclaim(&mut self, expr: ExprRef, value: i64) {
+        // SAFETY: old value is consumed here and not bookkept anywhere else, therefore can no longer be accessed
+        unsafe {
+            self.reclaim_heap_allocated_expr(expr);
+        }
+        *self.get_state_mut(expr) = value
+    }
+
+    /// # Safety
+    /// the caller should guaranteed that the reclaimed expr is no longer accessed
+    unsafe fn reclaim_heap_allocated_expr(&self, expr: ExprRef) {
+        let value = *self.get_state_ref(expr);
+        match expr.get_type(self.ctx) {
+            expr::Type::BV(width) => {
+                if width > 64 {
+                    runtime::__dealloc_bv(value as *mut BitVecValue);
                 }
-                expr::Type::BV(width) => {
-                    if width > 64 {
-                        for state_buffer in &mut self.buffers {
-                            unsafe {
-                                // SAFETY: the invariance we maintained for wide bv states in the buffer guarantees that
-                                // they always point a valid BitVecValue on heap
-                                runtime::__dealloc_bv(state_buffer[offset] as *mut BitVecValue);
-                            }
-                        }
-                    }
-                }
+            }
+            expr::Type::Array(expr::ArrayType { index_width, .. }) => {
+                runtime::__dealloc_array(value as *mut i64, index_width)
             }
         }
     }
@@ -244,8 +260,8 @@ impl Simulator for JITEngine<'_> {
         for state in &self.sys.states {
             if let Some(init) = state.init {
                 let ret = self.eval_expr(init);
-                // XXX: reclaim memory
-                *self.current_state_buffer_mut().get_state_mut(state.symbol) = ret;
+                self.current_state_buffer_mut()
+                    .try_replace_with_heap_reclaim(state.symbol, ret);
             }
         }
     }
@@ -254,32 +270,10 @@ impl Simulator for JITEngine<'_> {
         for state in &self.sys.states {
             let Some(next) = state.next else { continue };
             let ret = self.eval_expr(next);
-            match next.get_type(self.ctx) {
-                expr::Type::BV(width) => {
-                    let old_bv = std::mem::replace(
-                        self.next_state_buffer_mut().get_state_mut(state.symbol),
-                        ret,
-                    );
-                    if width > 64 {
-                        // SAFETY: the invariance we maintained for wide bv states in the buffer guarantees that
-                        // `old_bv` always points a valid BitVecValue on heap
-                        unsafe {
-                            runtime::__dealloc_bv(old_bv as *mut BitVecValue);
-                        }
-                    }
-                }
-                expr::Type::Array(expr::ArrayType { index_width, .. }) => {
-                    let old_array_state = std::mem::replace(
-                        self.next_state_buffer_mut().get_state_mut(state.symbol),
-                        ret,
-                    );
-                    // SAFETY: the invariance we maintained for array states in the buffer guarantees that
-                    // `old_array_state ` always points a valid boxed slice
-                    unsafe { runtime::__dealloc_array(old_array_state as *mut i64, index_width) }
-                }
-            }
+            self.next_state_buffer_mut()
+                .try_replace_with_heap_reclaim(state.symbol, ret);
         }
-        self.update_state_buffer();
+        self.swap_state_buffer();
         self.step_count += 1;
     }
 
