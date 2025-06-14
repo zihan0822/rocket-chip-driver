@@ -367,11 +367,36 @@ impl CodeGenContext<'_, '_, '_> {
             Expr::BVAnd(..) => vtable.and(args[0], args[1], self),
             Expr::BVOr(..) => vtable.or(args[0], args[1], self),
             Expr::BVXor(..) => vtable.xor(args[0], args[1], self),
-            Expr::BVEqual(..) => vtable.equal(args[0], args[1], self),
-            Expr::BVGreater(..) => vtable.gt(args[0], args[1], self),
-            Expr::BVGreaterEqual(..) => vtable.ge(args[0], args[1], self),
-            Expr::BVGreaterSigned(..) => vtable.gt_signed(args[0], args[1], self),
-            Expr::BVGreaterEqualSigned(..) => vtable.ge_signed(args[0], args[1], self),
+            Expr::BVEqual(arg, ..) => vtable.equal(
+                args[0],
+                args[1],
+                arg.get_bv_type(self.expr_ctx).unwrap(),
+                self,
+            ),
+            Expr::BVGreater(arg, ..) => vtable.gt(
+                args[0],
+                args[1],
+                arg.get_bv_type(self.expr_ctx).unwrap(),
+                self,
+            ),
+            Expr::BVGreaterEqual(arg, ..) => vtable.ge(
+                args[0],
+                args[1],
+                arg.get_bv_type(self.expr_ctx).unwrap(),
+                self,
+            ),
+            Expr::BVGreaterSigned(arg, ..) => vtable.gt_signed(
+                args[0],
+                args[1],
+                arg.get_bv_type(self.expr_ctx).unwrap(),
+                self,
+            ),
+            Expr::BVGreaterEqualSigned(arg, ..) => vtable.ge_signed(
+                args[0],
+                args[1],
+                arg.get_bv_type(self.expr_ctx).unwrap(),
+                self,
+            ),
             Expr::BVShiftLeft(..) => vtable.shift_left(args[0], args[1], self),
             Expr::BVShiftRight(..) => vtable.shift_right(args[0], args[1], self),
             Expr::BVArithmeticShiftRight(..) => {
@@ -407,11 +432,13 @@ pub(super) trait BVCodeGenVTable {
     fn arithmetic_shift_right(&self, arg0: Value, arg1: Value, ctx: &mut CodeGenContext) -> Value;
     fn shift_left(&self, arg0: Value, arg1: Value, ctx: &mut CodeGenContext) -> Value;
 
-    fn equal(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value;
-    fn gt(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value;
-    fn ge(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value;
-    fn gt_signed(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value;
-    fn ge_signed(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value;
+    fn equal(&self, lhs: Value, rhs: Value, width: WidthInt, ctx: &mut CodeGenContext) -> Value;
+    fn gt(&self, lhs: Value, rhs: Value, width: WidthInt, ctx: &mut CodeGenContext) -> Value;
+    fn ge(&self, lhs: Value, rhs: Value, width: WidthInt, ctx: &mut CodeGenContext) -> Value;
+    fn gt_signed(&self, lhs: Value, rhs: Value, width: WidthInt, ctx: &mut CodeGenContext)
+        -> Value;
+    fn ge_signed(&self, lhs: Value, rhs: Value, width: WidthInt, ctx: &mut CodeGenContext)
+        -> Value;
 
     fn concat(
         &self,

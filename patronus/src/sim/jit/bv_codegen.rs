@@ -97,20 +97,62 @@ impl BVCodeGenVTable for BVWord {
         self.overflow_guard(ctx.fn_builder.ins().ishl(arg0, arg1), ctx)
     }
 
-    fn equal(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value {
-        self.cmp(lhs, rhs, IntCC::Equal, ctx)
+    fn equal(&self, lhs: Value, rhs: Value, width: WidthInt, ctx: &mut CodeGenContext) -> Value {
+        if width <= 64 {
+            self.cmp(lhs, rhs, IntCC::Equal, ctx)
+        } else {
+            invoke_bv_extern_function(ctx.runtime_lib.bv_ops["equal"], &[lhs, rhs], ctx, self.0)
+        }
     }
-    fn gt(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value {
-        self.cmp(lhs, rhs, IntCC::UnsignedGreaterThan, ctx)
+    fn gt(&self, lhs: Value, rhs: Value, width: WidthInt, ctx: &mut CodeGenContext) -> Value {
+        if width <= 64 {
+            self.cmp(lhs, rhs, IntCC::UnsignedGreaterThan, ctx)
+        } else {
+            invoke_bv_extern_function(ctx.runtime_lib.bv_ops["gt"], &[lhs, rhs], ctx, self.0)
+        }
     }
-    fn ge(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value {
-        self.cmp(lhs, rhs, IntCC::UnsignedGreaterThanOrEqual, ctx)
+    fn ge(&self, lhs: Value, rhs: Value, width: WidthInt, ctx: &mut CodeGenContext) -> Value {
+        if width <= 64 {
+            self.cmp(lhs, rhs, IntCC::UnsignedGreaterThanOrEqual, ctx)
+        } else {
+            invoke_bv_extern_function(ctx.runtime_lib.bv_ops["ge"], &[lhs, rhs], ctx, self.0)
+        }
     }
-    fn gt_signed(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value {
-        self.cmp(lhs, rhs, IntCC::SignedGreaterThan, ctx)
+    fn gt_signed(
+        &self,
+        lhs: Value,
+        rhs: Value,
+        width: WidthInt,
+        ctx: &mut CodeGenContext,
+    ) -> Value {
+        if width <= 64 {
+            self.cmp(lhs, rhs, IntCC::SignedGreaterThan, ctx)
+        } else {
+            invoke_bv_extern_function(
+                ctx.runtime_lib.bv_ops["gt_signed"],
+                &[lhs, rhs],
+                ctx,
+                self.0,
+            )
+        }
     }
-    fn ge_signed(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value {
-        self.cmp(lhs, rhs, IntCC::SignedGreaterThanOrEqual, ctx)
+    fn ge_signed(
+        &self,
+        lhs: Value,
+        rhs: Value,
+        width: WidthInt,
+        ctx: &mut CodeGenContext,
+    ) -> Value {
+        if width <= 64 {
+            self.cmp(lhs, rhs, IntCC::SignedGreaterThanOrEqual, ctx)
+        } else {
+            invoke_bv_extern_function(
+                ctx.runtime_lib.bv_ops["ge_signed"],
+                &[lhs, rhs],
+                ctx,
+                self.0,
+            )
+        }
     }
 
     fn concat(
@@ -232,19 +274,37 @@ impl BVCodeGenVTable for BVIndirect {
     fn shift_left(&self, arg0: Value, arg1: Value, ctx: &mut CodeGenContext) -> Value {
         todo!()
     }
-    fn equal(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value {
+    fn equal(
+        &self,
+        _lhs: Value,
+        _rhs: Value,
+        _width: WidthInt,
+        _ctx: &mut CodeGenContext,
+    ) -> Value {
         unreachable!()
     }
-    fn gt(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value {
+    fn gt(&self, _lhs: Value, _rhs: Value, _width: WidthInt, _ctx: &mut CodeGenContext) -> Value {
         unreachable!()
     }
-    fn ge(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value {
+    fn ge(&self, _lhs: Value, _rhs: Value, _width: WidthInt, _ctx: &mut CodeGenContext) -> Value {
         unreachable!()
     }
-    fn gt_signed(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value {
+    fn gt_signed(
+        &self,
+        _lhs: Value,
+        _rhs: Value,
+        _width: WidthInt,
+        _ctx: &mut CodeGenContext,
+    ) -> Value {
         unreachable!()
     }
-    fn ge_signed(&self, lhs: Value, rhs: Value, ctx: &mut CodeGenContext) -> Value {
+    fn ge_signed(
+        &self,
+        _lhs: Value,
+        _rhs: Value,
+        _width: WidthInt,
+        _ctx: &mut CodeGenContext,
+    ) -> Value {
         unreachable!()
     }
     fn concat(
