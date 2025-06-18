@@ -284,7 +284,7 @@ impl Simulator for JITEngine<'_> {
                     let buffer: Vec<_> = (0..array.num_elements())
                         .map(|idx| {
                             array
-                                .select(&BitVecValue::from_u64(idx as u64, 64))
+                                .select(&BitVecValue::from_u64(idx as u64, index_width))
                                 .to_u64()
                                 .unwrap() as i64
                         })
