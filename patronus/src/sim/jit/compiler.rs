@@ -1,5 +1,6 @@
 use super::{runtime, JITResult, StateBufferView};
 use crate::expr::{self, *};
+use crate::system::*;
 
 use baa::{BitVecValue, BitVecValueRef};
 use cranelift::codegen::ir;
@@ -17,16 +18,22 @@ pub(super) struct JITCompiler {
     bv_data: Vec<Box<BitVecValue>>,
 }
 
-type CompiledEvalFnInternal = extern "C" fn(*const i64) -> i64;
-pub(super) struct CompiledEvalFn {
-    function: CompiledEvalFnInternal,
-}
+pub(super) struct EvalSingleExpr(extern "C" fn(*const i64) -> i64);
+pub(super) struct EvalBatchedExprWithUpdate(extern "C" fn(*const i64, *const i64));
 
-impl CompiledEvalFn {
+impl EvalSingleExpr {
     /// # Safety
     /// caller should guarantee the memory allocated for compiled code has not been reclaimed
     pub(super) unsafe fn call(&self, current_states: &[i64]) -> i64 {
-        (self.function)(current_states.as_ptr())
+        (self.0)(current_states.as_ptr())
+    }
+}
+
+impl EvalBatchedExprWithUpdate {
+    /// # Safety
+    /// caller should guarantee the memory allocated for compiled code has not been reclaimed
+    pub(super) unsafe fn call(&self, current_states: &[i64], next_states: &[i64]) {
+        (self.0)(current_states.as_ptr(), next_states.as_ptr())
     }
 }
 
@@ -48,16 +55,103 @@ impl JITCompiler {
         }
     }
 
-    pub(super) fn compile(
+    pub(super) fn compile_transition_sys<B: StateBufferView<i64>>(
+        &mut self,
+        expr_ctx: &expr::Context,
+        sys: &TransitionSystem,
+        input_state_buffer: &B,
+        output_state_buffer: &B,
+    ) -> JITResult<EvalBatchedExprWithUpdate> {
+        let sig = Signature {
+            params: vec![AbiParam::new(types::I64), AbiParam::new(types::I64)],
+            returns: vec![],
+            call_conv: isa::CallConv::SystemV,
+        };
+
+        let (next_expr_batch, states_expr): (Vec<_>, Vec<_>) = sys
+            .states
+            .iter()
+            .filter_map(|state| state.next.map(|next| (next, state.symbol)))
+            .unzip();
+
+        self.enter_compile_ctx_with(
+            sig,
+            expr_ctx,
+            next_expr_batch,
+            input_state_buffer,
+            |batch, mut codegen_ctx| {
+                debug_assert_eq!(states_expr.len(), batch.len());
+                for (expr, ret) in std::iter::zip(states_expr, batch) {
+                    let param_offset = output_state_buffer.get_state_offset(expr) as u32;
+                    let output_buffer_address =
+                        codegen_ctx.fn_builder.block_params(codegen_ctx.block_id)[1];
+                    codegen_ctx.fn_builder.ins().store(
+                        // buffer is allocated by Rust, therefore trusted
+                        ir::MemFlags::trusted(),
+                        ret,
+                        output_buffer_address,
+                        (param_offset * codegen_ctx.int.bytes()) as i32,
+                    );
+                }
+                codegen_ctx.fn_builder.ins().return_(&[]);
+                codegen_ctx.fn_builder.finalize();
+            },
+        )
+        .map(|address| unsafe {
+            // SAFETY: upheld by the unsafeness of call method
+            EvalBatchedExprWithUpdate(std::mem::transmute::<
+                *const u8,
+                extern "C" fn(*const i64, *const i64),
+            >(address))
+        })
+    }
+
+    pub(super) fn compile_expr<B: StateBufferView<i64>>(
         &mut self,
         expr_ctx: &expr::Context,
         root_expr: ExprRef,
-        input_state_buffer: &impl StateBufferView<i64>,
-    ) -> JITResult<CompiledEvalFn> {
+        input_state_buffer: &B,
+    ) -> JITResult<EvalSingleExpr> {
+        let sig = Signature {
+            params: vec![AbiParam::new(types::I64)],
+            returns: vec![AbiParam::new(types::I64)],
+            call_conv: isa::CallConv::SystemV,
+        };
+
+        self.enter_compile_ctx_with(
+            sig,
+            expr_ctx,
+            vec![root_expr],
+            input_state_buffer,
+            |ret, mut codegen_ctx| {
+                debug_assert_eq!(ret.len(), 1);
+                codegen_ctx.fn_builder.ins().return_(&ret);
+                codegen_ctx.fn_builder.finalize();
+            },
+        )
+        .map(|address| unsafe {
+            // SAFETY: upheld by the unsafeness of call method
+            EvalSingleExpr(std::mem::transmute::<
+                *const u8,
+                extern "C" fn(*const i64) -> i64,
+            >(address))
+        })
+    }
+
+    fn enter_compile_ctx_with<F, B>(
+        &mut self,
+        sig: Signature,
+        expr_ctx: &expr::Context,
+        expr_batch: Vec<ExprRef>,
+        input_state_buffer: &B,
+        codegen_epilogue: F,
+    ) -> JITResult<*const u8>
+    where
+        F: FnOnce(Vec<Value>, CodeGenContext),
+        B: StateBufferView<i64>,
+    {
         let mut cranelift_ctx = self.module.make_context();
-        cranelift_ctx.func.signature.params = vec![ir::AbiParam::new(types::I64)];
-        cranelift_ctx.func.signature.returns = vec![ir::AbiParam::new(types::I64)];
-        cranelift_ctx.func.signature.call_conv = isa::CallConv::SystemV;
+        cranelift_ctx.func.signature = sig;
 
         let runtime_lib =
             runtime::import_runtime_lib_to_func_scope(&mut self.module, &mut cranelift_ctx.func);
@@ -74,14 +168,14 @@ impl JITCompiler {
             runtime_lib,
             block_id: entry_block,
             expr_ctx,
-            root_expr,
+            expr_batch,
             input_state_buffer,
             heap_allocated: FxHashSet::default(),
             bv_data: &mut self.bv_data,
             int: types::I64,
         };
 
-        codegen_ctx.codegen();
+        codegen_ctx.codegen(codegen_epilogue);
 
         let function_id = self
             .module
@@ -91,14 +185,7 @@ impl JITCompiler {
         self.module.clear_context(&mut cranelift_ctx);
         self.module.finalize_definitions()?;
 
-        let entry_address = self.module.get_finalized_function(function_id);
-
-        // SAFETY: uphold by the unsafeness of CompiledEvalFn::call
-        unsafe {
-            Ok(CompiledEvalFn {
-                function: std::mem::transmute::<*const u8, CompiledEvalFnInternal>(entry_address),
-            })
-        }
+        Ok(self.module.get_finalized_function(function_id))
     }
 }
 
@@ -107,7 +194,7 @@ pub(super) struct CodeGenContext<'expr, 'ctx, 'engine> {
     pub(super) runtime_lib: runtime::RuntimeLib,
     pub(super) expr_ctx: &'expr expr::Context,
     block_id: Block,
-    root_expr: ExprRef,
+    expr_batch: Vec<ExprRef>,
     input_state_buffer: &'engine dyn StateBufferView<i64>,
     heap_allocated: FxHashSet<TaggedValue>,
     /// See JITCompiler bv_data field
@@ -121,27 +208,54 @@ struct ExprNode {
     num_references: i64,
 }
 
-impl CodeGenContext<'_, '_, '_> {
-    fn codegen(mut self) {
-        let ret = self.mock_interpret();
-        self.fn_builder.ins().return_(&[ret]);
-        self.fn_builder.finalize();
+#[derive(Debug, Clone, Copy)]
+enum ExprNodeState {
+    Root(bool),
+    Intermediate(bool),
+}
+
+impl ExprNodeState {
+    fn args_available(&self) -> bool {
+        match self {
+            Self::Root(available) => *available,
+            Self::Intermediate(available) => *available,
+        }
     }
 
-    fn mock_interpret(&mut self) -> Value {
+    fn mark_as_args_available(self) -> Self {
+        match self {
+            Self::Root(..) => Self::Root(true),
+            Self::Intermediate(..) => Self::Intermediate(true),
+        }
+    }
+}
+
+impl CodeGenContext<'_, '_, '_> {
+    fn codegen<F: FnOnce(Vec<Value>, Self)>(mut self, epilogue: F) {
+        let ret = self.mock_interpret();
+        epilogue(ret, self);
+    }
+
+    fn mock_interpret(&mut self) -> Vec<Value> {
         let mut value_stack: Vec<TaggedValue> = Vec::new();
         let mut cached: FxHashMap<ExprRef, TaggedValue> = FxHashMap::default();
 
         let expr_nodes: FxHashMap<ExprRef, ExprNode> = self.expr_graph_topo();
-        let mut todo: Vec<(ExprRef, bool)> = vec![(self.root_expr, false)];
+        let mut todo: Vec<(ExprRef, ExprNodeState)> = self
+            .expr_batch
+            .iter()
+            .rev()
+            .map(|&expr| (expr, ExprNodeState::Root(false)))
+            .collect();
 
-        while let Some((e, args_available)) = todo.pop() {
+        while let Some((e, state)) = todo.pop() {
             if let Some(&ret) = cached.get(&e) {
                 value_stack.push(ret);
                 continue;
             }
+
             let expr = &self.expr_ctx[e];
-            if args_available {
+            if state.args_available() {
                 let num_children = expr.num_children();
                 if let Expr::ArrayStore { array, .. } = expr {
                     if expr_nodes[array].num_references > 1 {
@@ -157,23 +271,31 @@ impl CodeGenContext<'_, '_, '_> {
                 cached.insert(e, ret);
                 value_stack.push(ret);
             } else {
-                todo.push((e, true));
+                todo.push((e, state.mark_as_args_available()));
                 let mut children = vec![];
                 expr.collect_children(&mut children);
-                todo.extend(children.into_iter().map(|child| (child, false)).rev());
+                todo.extend(
+                    children
+                        .into_iter()
+                        .map(|child| (child, ExprNodeState::Intermediate(false)))
+                        .rev(),
+                );
+                continue;
             }
         }
 
-        debug_assert_eq!(value_stack.len(), 1);
         // exclude potential allocation for the return value, which will be reclaimed in jit engine
         let heap_resources = self.heap_allocated.iter().copied().collect::<Vec<_>>();
-        let ret = match self.root_expr.get_type(self.expr_ctx) {
-            expr::Type::Array(..) => self.clone_array(value_stack[0]),
-            expr::Type::BV(width) if width > 64 => self.clone_bv(value_stack[0]),
-            _ => value_stack[0],
-        };
+        let value_stack: Vec<Value> = value_stack
+            .into_iter()
+            .map(|ret| match ret.data_type {
+                expr::Type::Array(..) => *self.clone_array(ret),
+                expr::Type::BV(width) if width > 64 => *self.clone_bv(ret),
+                _ => *ret,
+            })
+            .collect();
         self.reclaim_heap_resources(heap_resources);
-        *ret
+        value_stack
     }
 
     /// Compute important expr graph statistics for better codegen
@@ -182,7 +304,7 @@ impl CodeGenContext<'_, '_, '_> {
     /// This allows us to determine whether we could steal heap allocated resources from sub-expr
     fn expr_graph_topo(&self) -> FxHashMap<ExprRef, ExprNode> {
         let mut expr_references: FxHashMap<ExprRef, ExprNode> = FxHashMap::default();
-        let mut todo = vec![self.root_expr];
+        let mut todo = self.expr_batch.clone();
         while let Some(next) = todo.pop() {
             let visited = expr_references
                 .entry(next)
@@ -215,7 +337,7 @@ impl CodeGenContext<'_, '_, '_> {
     }
 }
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub(super) struct TaggedValue {
     pub(super) value: Value,
     pub(super) data_type: expr::Type,

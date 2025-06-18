@@ -6,7 +6,7 @@ use super::*;
 use crate::expr::{self, *};
 use crate::system::*;
 use baa::*;
-use compiler::{CompiledEvalFn, JITCompiler};
+use compiler::*;
 use cranelift::module::ModuleError;
 use rustc_hash::FxHashMap;
 use std::cell::RefCell;
@@ -88,7 +88,8 @@ pub struct JITEngine<'expr> {
 #[derive(Default)]
 struct JITBackend {
     compiler: JITCompiler,
-    compiled_code: FxHashMap<ExprRef, CompiledEvalFn>,
+    compiled_transition_sys: Option<EvalBatchedExprWithUpdate>,
+    compiled_expr_eval: FxHashMap<ExprRef, EvalSingleExpr>,
 }
 
 impl JITBackend {
@@ -98,14 +99,38 @@ impl JITBackend {
         ctx: &expr::Context,
         input_state_buffer: &impl StateBufferView<i64>,
     ) -> i64 {
-        let eval_fn = self.compiled_code.entry(expr).or_insert_with(|| {
+        let eval_fn = self.compiled_expr_eval.entry(expr).or_insert_with(|| {
             self.compiler
-                .compile(ctx, expr, input_state_buffer)
+                .compile_expr(ctx, expr, input_state_buffer)
                 .unwrap_or_else(|err| panic!("fail to compile: `{:?}` due to {:?}", ctx[expr], err))
         });
 
         // SAFETY: jit compiler has not been dropped
         unsafe { eval_fn.call(input_state_buffer.as_slice()) }
+    }
+
+    fn step_transition_sys<B: StateBufferView<i64>>(
+        &mut self,
+        ctx: &expr::Context,
+        sys: &TransitionSystem,
+        input_state_buffer: &B,
+        output_state_buffer: &B,
+    ) {
+        let eval_fn = self.compiled_transition_sys.get_or_insert_with(|| {
+            self.compiler
+                .compile_transition_sys(ctx, sys, input_state_buffer, output_state_buffer)
+                .unwrap_or_else(|err| {
+                    panic!("fail to compile transition step function, due to {:?}", err)
+                })
+        });
+
+        // SAFETY: jit compiler has not been dropped
+        unsafe {
+            eval_fn.call(
+                input_state_buffer.as_slice(),
+                output_state_buffer.as_slice(),
+            )
+        }
     }
 }
 
@@ -141,19 +166,15 @@ impl<'expr> JITEngine<'expr> {
                     index_width
                 );
 
-                    // allocate array buffer for both current and next state
-                    // this maintains the invariance that array states always points a valid boxed slice
-                    for state_buffer in &mut buffers {
-                        state_buffer[offset] =
-                            vec![0_i64; 1 << index_width].leak() as *mut [i64] as *mut i64 as i64;
-                    }
+                    // this maintains the invariance that array states in current buffer always points to a valid boxed slice
+                    buffers[CURRENT_STATE_INDEX][offset] =
+                        vec![0_i64; 1 << index_width].leak() as *mut [i64] as *mut i64 as i64;
                 }
                 expr::Type::BV(width) => {
                     if width > 64 {
-                        for state_buffer in &mut buffers {
-                            let bv = Box::new(BitVecValue::zero(width));
-                            state_buffer[offset] = Box::leak(bv) as *mut _ as i64;
-                        }
+                        // this maintains the invariance that wide bv in current buffer always points to a valid baa:BitVecValue
+                        let bv = Box::new(BitVecValue::zero(width));
+                        buffers[CURRENT_STATE_INDEX][offset] = Box::leak(bv) as *mut _ as i64;
                     }
                 }
             }
@@ -193,27 +214,43 @@ impl<'expr> JITEngine<'expr> {
         }
     }
 
+    fn next_state_buffer(&self) -> StateBuffer<'_, &[i64]> {
+        StateBuffer {
+            buffer: &*self.buffers[NEXT_STATE_INDEX],
+            states_to_offset: &self.states_to_offset,
+            ctx: self.ctx,
+        }
+    }
+
     fn eval_expr(&self, expr: ExprRef) -> i64 {
         self.backend
             .borrow_mut()
             .eval_expr(expr, self.ctx, &self.current_state_buffer())
     }
 
+    fn step_transition_sys(&self) {
+        self.backend.borrow_mut().step_transition_sys(
+            self.ctx,
+            self.sys,
+            &self.current_state_buffer(),
+            &self.next_state_buffer(),
+        );
+    }
+
+    /// Maintains the invariance that before each step, the heap resources allocated
+    /// in the output buffer are reclaimed
     fn swap_state_buffer(&mut self) {
         self.buffers.swap(CURRENT_STATE_INDEX, NEXT_STATE_INDEX);
+        // SAFETY: states in the output buffer will be overwritten in next step
+        unsafe { self.next_state_buffer_mut().reclaim_all() }
     }
 }
 
 impl std::ops::Drop for JITEngine<'_> {
     fn drop(&mut self) {
-        for state in self.states_to_offset.clone().into_keys() {
-            // SAFETY: invoked in drop, those states will no longer be accessed
-            unsafe {
-                self.current_state_buffer_mut()
-                    .reclaim_heap_allocated_expr(state);
-                self.next_state_buffer_mut()
-                    .reclaim_heap_allocated_expr(state);
-            }
+        // SAFETY: invoked in drop, those states will no longer be accessed
+        unsafe {
+            self.current_state_buffer_mut().reclaim_all();
         }
     }
 }
@@ -244,6 +281,14 @@ where
             expr::Type::Array(expr::ArrayType { index_width, .. }) => {
                 runtime::__dealloc_array(value as *mut i64, index_width)
             }
+        }
+    }
+
+    /// # Safety
+    /// the caller should guaranteed that the reclaimed expr is no longer accessed
+    unsafe fn reclaim_all(&self) {
+        for &state in self.states_to_offset.keys() {
+            self.reclaim_heap_allocated_expr(state);
         }
     }
 }
@@ -306,12 +351,7 @@ impl Simulator for JITEngine<'_> {
     }
 
     fn step(&mut self) {
-        for state in &self.sys.states {
-            let Some(next) = state.next else { continue };
-            let ret = self.eval_expr(next);
-            self.next_state_buffer_mut()
-                .try_replace_with_heap_reclaim(state.symbol, ret);
-        }
+        self.step_transition_sys();
         self.swap_state_buffer();
         self.step_count += 1;
     }
