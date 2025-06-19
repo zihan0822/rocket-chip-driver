@@ -22,7 +22,7 @@ pub(super) struct JITCompiler {
 }
 
 pub(super) struct EvalSingleExpr(extern "C" fn(*const i64) -> i64);
-pub(super) struct EvalBatchedExprWithUpdate(extern "C" fn(*const i64, *const i64));
+pub(super) struct EvalBatchedExprWithUpdate(extern "C" fn(*const i64, *mut i64));
 
 impl EvalSingleExpr {
     /// # Safety
@@ -35,8 +35,8 @@ impl EvalSingleExpr {
 impl EvalBatchedExprWithUpdate {
     /// # Safety
     /// caller should guarantee the memory allocated for compiled code has not been reclaimed
-    pub(super) unsafe fn call(&self, current_states: &[i64], next_states: &[i64]) {
-        (self.0)(current_states.as_ptr(), next_states.as_ptr())
+    pub(super) unsafe fn call(&self, current_states: &[i64], next_states: &mut [i64]) {
+        (self.0)(current_states.as_ptr(), next_states.as_mut_ptr())
     }
 }
 
@@ -58,12 +58,12 @@ impl JITCompiler {
         }
     }
 
-    pub(super) fn compile_transition_sys<B: StateBufferView<i64>>(
+    pub(super) fn compile_transition_sys(
         &mut self,
         expr_ctx: &expr::Context,
         sys: &TransitionSystem,
-        input_state_buffer: &B,
-        output_state_buffer: &B,
+        input_state_buffer: &dyn StateBufferView<i64>,
+        output_state_buffer: &dyn StateBufferView<i64>,
     ) -> JITResult<EvalBatchedExprWithUpdate> {
         let sig = Signature {
             params: vec![AbiParam::new(types::I64), AbiParam::new(types::I64)],
@@ -104,16 +104,16 @@ impl JITCompiler {
             // SAFETY: upheld by the unsafeness of call method
             EvalBatchedExprWithUpdate(std::mem::transmute::<
                 *const u8,
-                extern "C" fn(*const i64, *const i64),
+                extern "C" fn(*const i64, *mut i64),
             >(address))
         })
     }
 
-    pub(super) fn compile_expr<B: StateBufferView<i64>>(
+    pub(super) fn compile_expr(
         &mut self,
         expr_ctx: &expr::Context,
         root_expr: ExprRef,
-        input_state_buffer: &B,
+        input_state_buffer: &dyn StateBufferView<i64>,
     ) -> JITResult<EvalSingleExpr> {
         let sig = Signature {
             params: vec![AbiParam::new(types::I64)],
@@ -141,17 +141,16 @@ impl JITCompiler {
         })
     }
 
-    fn enter_compile_ctx_with<F, B>(
+    fn enter_compile_ctx_with<F>(
         &mut self,
         sig: Signature,
         expr_ctx: &expr::Context,
         expr_batch: Vec<ExprRef>,
-        input_state_buffer: &B,
+        input_state_buffer: &dyn StateBufferView<i64>,
         codegen_epilogue: F,
     ) -> JITResult<*const u8>
     where
         F: FnOnce(Vec<Value>, CodeGenContext),
-        B: StateBufferView<i64>,
     {
         let mut cranelift_ctx = self.module.make_context();
         cranelift_ctx.func.signature = sig;

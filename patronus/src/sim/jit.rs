@@ -112,16 +112,16 @@ impl JITBackend {
         unsafe { eval_fn.call(input_state_buffer.as_slice()) }
     }
 
-    fn step_transition_sys<B: StateBufferView<i64>>(
+    fn step_transition_sys(
         &mut self,
         ctx: &expr::Context,
         sys: &TransitionSystem,
-        input_state_buffer: &B,
-        output_state_buffer: &B,
+        input_state_buffer: &impl StateBufferView<i64>,
+        output_state_buffer: &mut impl StateBufferViewMut<i64>,
     ) {
         let eval_fn = self.compiled_transition_sys.get_or_insert_with(|| {
             self.compiler
-                .compile_transition_sys(ctx, sys, input_state_buffer, output_state_buffer)
+                .compile_transition_sys(ctx, sys, input_state_buffer, &*output_state_buffer)
                 .unwrap_or_else(|err| {
                     panic!("fail to compile transition step function, due to {:?}", err)
                 })
@@ -131,7 +131,7 @@ impl JITBackend {
         unsafe {
             eval_fn.call(
                 input_state_buffer.as_slice(),
-                output_state_buffer.as_slice(),
+                output_state_buffer.as_mut_slice(),
             )
         }
     }
@@ -253,6 +253,7 @@ impl<'expr> JITEngine<'expr> {
         }
     }
 
+    #[allow(dead_code)]
     fn next_state_buffer(&self) -> StateBuffer<'_, &[i64]> {
         StateBuffer {
             buffer: &*self.buffers[NEXT_STATE_INDEX],
@@ -267,12 +268,21 @@ impl<'expr> JITEngine<'expr> {
             .eval_expr(expr, self.ctx, &self.current_state_buffer())
     }
 
-    fn step_transition_sys(&self) {
+    fn step_transition_sys(&mut self) {
+        let (current, next) = self.buffers.split_at_mut(NEXT_STATE_INDEX);
         self.backend.borrow_mut().step_transition_sys(
             self.ctx,
             self.sys,
-            &self.current_state_buffer(),
-            &self.next_state_buffer(),
+            &StateBuffer {
+                buffer: &*current[0],
+                states_to_offset: &self.states_to_offset,
+                ctx: self.ctx,
+            },
+            &mut StateBuffer {
+                buffer: &mut *next[0],
+                states_to_offset: &self.states_to_offset,
+                ctx: self.ctx,
+            },
         );
     }
 
