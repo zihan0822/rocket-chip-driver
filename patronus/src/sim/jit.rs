@@ -150,10 +150,29 @@ impl<'expr> JITEngine<'expr> {
             states_to_offset.entry(state).or_insert(offset);
         }
 
-        let mut buffers: [Box<[i64]>; 2] =
+        let buffers: [Box<[i64]>; 2] =
             std::array::from_fn(|_| vec![0_i64; states_to_offset.len()].into_boxed_slice());
-        for (&state, &offset) in &states_to_offset {
-            match state.get_type(ctx) {
+        let mut engine = Self {
+            backend: RefCell::default(),
+            buffers,
+            ctx,
+            sys,
+            states_to_offset,
+            step_count: 0,
+        };
+        engine.bootstrap_state_buffers();
+        engine
+    }
+
+    /// Maintains the invariance that all heap allocated states in the current buffer
+    /// and all heap allocated init(immortal) states in the next buffer point to a valid object
+    fn bootstrap_state_buffers(&mut self) {
+        for state in self
+            .mortal_states()
+            .into_iter()
+            .chain(self.immortal_states())
+        {
+            match state.get_type(self.ctx) {
                 expr::Type::Array(expr::ArrayType {
                     index_width,
                     data_width,
@@ -168,29 +187,46 @@ impl<'expr> JITEngine<'expr> {
                     "currently no sparse array support, size of the dense array should be less than or equal to 2^12, but got `{}`", 
                     index_width
                 );
-
-                    // this maintains the invariance that array states in current buffer always points to a valid boxed slice
-                    buffers[CURRENT_STATE_INDEX][offset] =
-                        vec![0_i64; 1 << index_width].leak() as *mut [i64] as *mut i64 as i64;
+                    *self.current_state_buffer_mut().get_state_mut(state) =
+                        runtime::__alloc_const_array(index_width, 0) as i64;
                 }
                 expr::Type::BV(width) => {
                     if width > 64 {
-                        // this maintains the invariance that wide bv in current buffer always points to a valid baa:BitVecValue
-                        let bv = Box::new(BitVecValue::zero(width));
-                        buffers[CURRENT_STATE_INDEX][offset] = Box::leak(bv) as *mut _ as i64;
+                        *self.current_state_buffer_mut().get_state_mut(state) =
+                            runtime::__alloc_bv(width) as i64;
                     }
                 }
             }
         }
 
-        Self {
-            backend: RefCell::default(),
-            buffers,
-            ctx,
-            sys,
-            states_to_offset,
-            step_count: 0,
+        for state in self.immortal_states() {
+            match state.get_type(self.ctx) {
+                expr::Type::Array(ArrayType { index_width, .. }) => {
+                    *self.next_state_buffer_mut().get_state_mut(state) =
+                        runtime::__alloc_const_array(index_width, 0) as i64;
+                }
+                expr::Type::BV(width) => {
+                    if width > 64 {
+                        *self.next_state_buffer_mut().get_state_mut(state) =
+                            runtime::__alloc_bv(width) as i64;
+                    }
+                }
+            }
         }
+    }
+
+    /// non-init states, resources allocated for those states will be reclaimed during every step
+    fn mortal_states(&self) -> impl IntoIterator<Item = ExprRef> {
+        self.sys
+            .states
+            .iter()
+            .map(|state| state.symbol)
+            .collect::<Vec<_>>()
+    }
+
+    /// init states, resources allocated for those states will only be reclaimed when dropping the JITEngine
+    fn immortal_states(&self) -> impl IntoIterator<Item = ExprRef> {
+        self.sys.inputs.to_vec()
     }
 
     fn current_state_buffer(&self) -> StateBuffer<'_, &[i64]> {
@@ -244,8 +280,13 @@ impl<'expr> JITEngine<'expr> {
     /// in the output buffer are reclaimed
     fn swap_state_buffer(&mut self) {
         self.buffers.swap(CURRENT_STATE_INDEX, NEXT_STATE_INDEX);
-        // SAFETY: states in the output buffer will be overwritten in next step
-        unsafe { self.next_state_buffer_mut().reclaim_all() }
+        // SAFETY: non-init states in the output buffer will be overwritten in next step
+        unsafe {
+            for state in self.mortal_states() {
+                self.next_state_buffer_mut()
+                    .reclaim_heap_allocated_expr(state)
+            }
+        }
     }
 }
 
@@ -254,6 +295,10 @@ impl std::ops::Drop for JITEngine<'_> {
         // SAFETY: invoked in drop, those states will no longer be accessed
         unsafe {
             self.current_state_buffer_mut().reclaim_all();
+            for init_state in self.immortal_states() {
+                self.next_state_buffer_mut()
+                    .reclaim_heap_allocated_expr(init_state);
+            }
         }
     }
 }
