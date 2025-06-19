@@ -1,3 +1,6 @@
+// Copyright 2025 Cornell University
+// released under BSD 3-Clause License
+// author: Zihan Li <zl2225@cornell.edu>
 use crate::expr::*;
 use cranelift::codegen::ir::{types, AbiParam, FuncRef, Function};
 use cranelift::jit::{JITBuilder, JITModule};

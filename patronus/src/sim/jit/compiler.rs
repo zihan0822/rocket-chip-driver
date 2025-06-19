@@ -1,3 +1,6 @@
+// Copyright 2025 Cornell University
+// released under BSD 3-Clause License
+// author: Zihan Li <zl2225@cornell.edu>
 use super::{runtime, JITResult, StateBufferView};
 use crate::expr::{self, *};
 use crate::system::*;

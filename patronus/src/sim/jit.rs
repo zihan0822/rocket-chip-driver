@@ -1,3 +1,6 @@
+// Copyright 2025 Cornell University
+// released under BSD 3-Clause License
+// author: Zihan Li <zl2225@cornell.edu>
 mod bv_codegen;
 mod compiler;
 mod runtime;
