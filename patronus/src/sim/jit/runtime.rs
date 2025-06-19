@@ -133,12 +133,9 @@ pub(super) unsafe extern "C" fn __clone_array(src: *const i64, index_width: Widt
     array.leak() as *mut [i64] as *mut i64
 }
 
-pub(super) unsafe extern "C" fn __alloc_const_array(
-    index_width: WidthInt,
-    default_data: i64,
-) -> *const i64 {
+pub(super) extern "C" fn __alloc_const_array(index_width: WidthInt, default_data: i64) -> *mut i64 {
     let len = 1 << index_width;
-    vec![default_data; len].leak() as *const [i64] as *const i64
+    vec![default_data; len].leak() as *mut [i64] as *mut i64
 }
 
 pub(super) unsafe extern "C" fn __dealloc_array(src: *mut i64, index_width: WidthInt) {
@@ -147,8 +144,12 @@ pub(super) unsafe extern "C" fn __dealloc_array(src: *mut i64, index_width: Widt
     let _ = Box::from_raw(ptr);
 }
 
+pub(super) extern "C" fn __alloc_bv(width: WidthInt) -> *mut baa::BitVecValue {
+    Box::leak(Box::new(baa::BitVecValue::zero(width)))
+}
+
 pub(super) unsafe extern "C" fn __clone_bv(src: *const baa::BitVecValue) -> *mut baa::BitVecValue {
-    Box::leak(Box::new((*src).clone())) as *mut baa::BitVecValue
+    Box::leak(Box::new((*src).clone()))
 }
 
 pub(super) unsafe extern "C" fn __dealloc_bv(src: *mut baa::BitVecValue) {
