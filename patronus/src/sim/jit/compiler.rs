@@ -12,13 +12,13 @@ use cranelift::module::Module;
 use cranelift::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
 
+/// we need a vec_box here because the address of those elements are implicitly
+/// referenced by the compiled code. we need to make sure they are pinned on heap
+#[allow(clippy::vec_box)]
 pub(super) struct JITCompiler {
     module: JITModule,
-    /// we need a vec_box instead of vec of `BitVecValue` here because
-    /// the address of those elements are implicitly referenced by the compiled code.
-    /// we need to make sure they are pinned on heap
-    #[allow(clippy::vec_box)]
-    bv_data: Vec<Box<BitVecValue>>,
+    pub(super) bv_data: Vec<Box<BitVecValue>>,
+    pub(super) array_data: Vec<Box<[i64]>>,
 }
 
 pub(super) struct EvalSingleExpr(extern "C" fn(*const i64) -> i64);
@@ -55,6 +55,7 @@ impl JITCompiler {
         Self {
             module,
             bv_data: vec![],
+            array_data: vec![],
         }
     }
 
@@ -88,13 +89,37 @@ impl JITCompiler {
                     let param_offset = output_state_buffer.get_state_offset(expr) as u32;
                     let output_buffer_address =
                         codegen_ctx.fn_builder.block_params(codegen_ctx.block_id)[1];
-                    codegen_ctx.fn_builder.ins().store(
-                        // buffer is allocated by Rust, therefore trusted
-                        ir::MemFlags::trusted(),
-                        ret,
-                        output_buffer_address,
-                        (param_offset * codegen_ctx.int.bytes()) as i32,
-                    );
+                    let data_type = expr.get_type(expr_ctx);
+                    match data_type {
+                        expr::Type::BV(..) => {
+                            codegen_ctx.fn_builder.ins().store(
+                                // buffer is allocated by Rust, therefore trusted
+                                ir::MemFlags::trusted(),
+                                ret,
+                                output_buffer_address,
+                                (param_offset * codegen_ctx.int.bytes()) as i32,
+                            );
+                        }
+                        expr::Type::Array(..) => {
+                            let dst = codegen_ctx.fn_builder.ins().load(
+                                types::I64,
+                                // buffer is allocated by Rust, therefore trusted
+                                ir::MemFlags::trusted(),
+                                output_buffer_address,
+                                (param_offset * codegen_ctx.int.bytes()) as i32,
+                            );
+                            codegen_ctx.copy_from_array(
+                                TaggedValue {
+                                    value: dst,
+                                    data_type,
+                                },
+                                TaggedValue {
+                                    value: ret,
+                                    data_type,
+                                },
+                            );
+                        }
+                    }
                 }
                 codegen_ctx.fn_builder.ins().return_(&[]);
                 codegen_ctx.fn_builder.finalize();
@@ -126,8 +151,15 @@ impl JITCompiler {
             expr_ctx,
             vec![root_expr],
             input_state_buffer,
-            |ret, mut codegen_ctx| {
+            |mut ret, mut codegen_ctx| {
                 debug_assert_eq!(ret.len(), 1);
+                let data_type = root_expr.get_type(expr_ctx);
+                if let expr::Type::Array(..) = data_type {
+                    ret[0] = *codegen_ctx.clone_array(TaggedValue {
+                        value: ret[0],
+                        data_type,
+                    });
+                }
                 codegen_ctx.fn_builder.ins().return_(&ret);
                 codegen_ctx.fn_builder.finalize();
             },
@@ -173,7 +205,7 @@ impl JITCompiler {
             expr_batch,
             input_state_buffer,
             heap_allocated: FxHashSet::default(),
-            bv_data: &mut self.bv_data,
+            compiler: self,
             int: types::I64,
         };
 
@@ -199,9 +231,7 @@ pub(super) struct CodeGenContext<'expr, 'ctx, 'engine> {
     expr_batch: Vec<ExprRef>,
     input_state_buffer: &'engine dyn StateBufferView<i64>,
     heap_allocated: FxHashSet<TaggedValue>,
-    /// See JITCompiler bv_data field
-    #[allow(clippy::vec_box)]
-    pub(super) bv_data: &'ctx mut Vec<Box<BitVecValue>>,
+    pub(super) compiler: &'ctx mut JITCompiler,
     pub(super) int: cranelift::prelude::Type,
 }
 
@@ -261,7 +291,10 @@ impl CodeGenContext<'_, '_, '_> {
                 let num_children = expr.num_children();
                 if let Expr::ArrayStore { array, .. } = expr {
                     if expr_nodes[array].num_references > 1 {
-                        let cow = self.clone_array(cached[array]);
+                        let cow = self.reserve_intermediate_array_cache(
+                            expr.get_array_type(self.expr_ctx).unwrap(),
+                        );
+                        self.copy_from_array(cow, cached[array]);
                         let stack_size = value_stack.len();
                         // first argument of `ArrayStore` operation is the src array
                         value_stack[stack_size - num_children..][0] = cow;
@@ -291,7 +324,6 @@ impl CodeGenContext<'_, '_, '_> {
         let value_stack: Vec<Value> = value_stack
             .into_iter()
             .map(|ret| match ret.data_type {
-                expr::Type::Array(..) => *self.clone_array(ret),
                 expr::Type::BV(width) if width > 64 => *self.clone_bv(ret),
                 _ => *ret,
             })
@@ -376,6 +408,36 @@ impl CodeGenContext<'_, '_, '_> {
         }
     }
 
+    /// Reserves a long lived array cache, whose lifetime is tied to the JITCompiler
+    /// It is not registered as per-step heap allocation, therefore can be used across multiple steps to reduce heap transaction
+    fn reserve_intermediate_array_cache(&mut self, tpe: ArrayType) -> TaggedValue {
+        assert!(tpe.index_width <= 12 && tpe.data_width <= 64);
+        let cache = vec![0_i64; 1 << tpe.index_width].into_boxed_slice();
+        let value = self
+            .fn_builder
+            .ins()
+            .iconst(self.int, cache.as_ptr() as i64);
+        self.compiler.array_data.push(cache);
+        TaggedValue {
+            value,
+            data_type: expr::Type::Array(tpe),
+        }
+    }
+
+    fn copy_from_array(&mut self, dst: TaggedValue, src: TaggedValue) {
+        let expr::Type::Array(tpe) = dst.data_type else {
+            unreachable!()
+        };
+        assert_eq!(src.data_type, dst.data_type);
+        let index_width = self
+            .fn_builder
+            .ins()
+            .iconst(self.int, tpe.index_width as i64);
+        self.fn_builder
+            .ins()
+            .call(self.runtime_lib.copy_from_array, &[*dst, *src, index_width]);
+    }
+
     fn dealloc_array(&mut self, array_to_dealloc: TaggedValue) {
         let expr::Type::Array(tpe) = array_to_dealloc.data_type else {
             unreachable!()
@@ -458,7 +520,10 @@ impl CodeGenContext<'_, '_, '_> {
         let value = match &self.expr_ctx[expr] {
             Expr::ArraySymbol { .. } => {
                 let src = self.load_input_state(expr);
-                return self.clone_array(src);
+                let sym = self
+                    .reserve_intermediate_array_cache(expr.get_array_type(self.expr_ctx).unwrap());
+                self.copy_from_array(sym, src);
+                return sym;
             }
             Expr::BVIte { .. } | Expr::ArrayIte { .. } => {
                 self.fn_builder.ins().select(*args[0], *args[1], *args[2])
@@ -495,8 +560,12 @@ impl CodeGenContext<'_, '_, '_> {
                 )
             }
             Expr::ArrayConstant { .. } => {
-                return self
-                    .alloc_const_array(args[0], expr.get_array_type(self.expr_ctx).unwrap());
+                let tpe = expr.get_array_type(self.expr_ctx).unwrap();
+                // XXX: get rid of the extra alloc
+                let array_const = self.alloc_const_array(args[0], tpe);
+                let cache = self.reserve_intermediate_array_cache(tpe);
+                self.copy_from_array(cache, array_const);
+                return cache;
             }
             _ => self.dispatch_bv_operation_codegen(expr, args),
         };

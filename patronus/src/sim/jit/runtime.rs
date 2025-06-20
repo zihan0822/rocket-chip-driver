@@ -14,6 +14,7 @@ pub(super) struct RuntimeLib {
     pub(super) clone_array: FuncRef,
     pub(super) dealloc_array: FuncRef,
     pub(super) alloc_const_array: FuncRef,
+    pub(super) copy_from_array: FuncRef,
     pub(super) clone_bv: FuncRef,
     pub(super) dealloc_bv: FuncRef,
     pub(super) bv_ops: FxHashMap<&'static str, FuncRef>,
@@ -23,6 +24,7 @@ inventory::collect!(trampoline::BVOpRegistry);
 const CLONE_ARRAY_SYM: &str = "__clone_array";
 const DEALLOC_ARRAY_SYM: &str = "__dealloc_array";
 const ALLOC_CONST_ARRAY_SYM: &str = "__alloc_const_array";
+const COPY_FROM_ARRAY_SYM: &str = "__copy_from_array";
 const CLONE_BV_SYM: &str = "__clone_bv";
 const DEALLOC_BV_SYM: &str = "__dealloc_bv";
 
@@ -30,6 +32,7 @@ pub(super) fn load_runtime_lib(builder: &mut JITBuilder) {
     builder.symbol(CLONE_ARRAY_SYM, __clone_array as *const u8);
     builder.symbol(DEALLOC_ARRAY_SYM, __dealloc_array as *const u8);
     builder.symbol(ALLOC_CONST_ARRAY_SYM, __alloc_const_array as *const u8);
+    builder.symbol(COPY_FROM_ARRAY_SYM, __copy_from_array as *const u8);
     builder.symbol(CLONE_BV_SYM, __clone_bv as *const u8);
     builder.symbol(DEALLOC_BV_SYM, __dealloc_bv as *const u8);
     for registered in inventory::iter::<trampoline::BVOpRegistry>() {
@@ -65,6 +68,13 @@ pub(super) fn import_runtime_lib_to_func_scope(
         [types::I64, types::I64],
         [types::I64],
     );
+    let copy_from_array = import_extern_function(
+        module,
+        func,
+        COPY_FROM_ARRAY_SYM,
+        [types::I64, types::I64, types::I64],
+        [],
+    );
     let clone_bv = import_extern_function(module, func, CLONE_BV_SYM, [types::I64], [types::I64]);
     let dealloc_bv = import_extern_function(module, func, DEALLOC_BV_SYM, [types::I64], []);
 
@@ -72,6 +82,7 @@ pub(super) fn import_runtime_lib_to_func_scope(
         clone_array,
         dealloc_array,
         alloc_const_array,
+        copy_from_array,
         clone_bv,
         dealloc_bv,
         bv_ops: import_bv_runtime_to_func_scope(module, func),
@@ -131,6 +142,17 @@ pub(super) unsafe extern "C" fn __clone_array(src: *const i64, index_width: Widt
     let src = std::slice::from_raw_parts(src, len);
     array.copy_from_slice(src);
     array.leak() as *mut [i64] as *mut i64
+}
+
+pub(super) unsafe extern "C" fn __copy_from_array(
+    dst: *mut i64,
+    src: *const i64,
+    index_width: WidthInt,
+) {
+    let len = 1 << index_width;
+    let dst = std::slice::from_raw_parts_mut(dst, len);
+    let src = std::slice::from_raw_parts(src, len);
+    dst.copy_from_slice(src);
 }
 
 pub(super) extern "C" fn __alloc_const_array(index_width: WidthInt, default_data: i64) -> *mut i64 {

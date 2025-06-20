@@ -215,18 +215,35 @@ impl<'expr> JITEngine<'expr> {
         }
     }
 
-    /// non-init states, resources allocated for those states will be reclaimed during every step
+    /// non-init bv states, resources allocated for those states will be reclaimed during every step
     fn mortal_states(&self) -> impl IntoIterator<Item = ExprRef> {
         self.sys
             .states
             .iter()
-            .map(|state| state.symbol)
+            .filter_map(|state| {
+                if let expr::Type::BV(..) = state.symbol.get_type(self.ctx) {
+                    Some(state.symbol)
+                } else {
+                    None
+                }
+            })
             .collect::<Vec<_>>()
     }
 
-    /// init states, resources allocated for those states will only be reclaimed when dropping the JITEngine
+    /// init and array states, resources allocated for those states will only be reclaimed when dropping the JITEngine
     fn immortal_states(&self) -> impl IntoIterator<Item = ExprRef> {
-        self.sys.inputs.to_vec()
+        self.sys
+            .states
+            .iter()
+            .filter_map(|state| {
+                if let expr::Type::Array(..) = state.symbol.get_type(self.ctx) {
+                    Some(state.symbol)
+                } else {
+                    None
+                }
+            })
+            .chain(self.sys.inputs.iter().copied())
+            .collect::<Vec<_>>()
     }
 
     fn current_state_buffer(&self) -> StateBuffer<'_, &[i64]> {
