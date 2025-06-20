@@ -33,7 +33,7 @@ trait StateBufferView<T> {
     fn get_state_ref(&self, expr: ExprRef) -> &T;
     fn as_slice(&self) -> &[T];
 }
-#[allow(dead_code)]
+
 trait StateBufferViewMut<T>: StateBufferView<T> {
     fn get_state_mut(&mut self, expr: ExprRef) -> &mut T;
     fn as_mut_slice(&mut self) -> &mut [T];
@@ -84,6 +84,10 @@ pub struct JITEngine<'expr> {
     sys: &'expr TransitionSystem,
     /// interior mutability for lazy compilation triggered by `Simulator::get`
     backend: RefCell<JITBackend>,
+    /// non-init bv states, resources allocated for those states will be reclaimed during every step
+    mortal_states: Vec<ExprRef>,
+    /// init and array states, resources allocated for those states will only be reclaimed when dropping the JITEngine
+    immortal_states: Vec<ExprRef>,
     states_to_offset: FxHashMap<ExprRef, usize>,
     step_count: u64,
 }
@@ -137,6 +141,36 @@ impl JITBackend {
     }
 }
 
+macro_rules! current_state_buffer {
+    ($engine: ident) => {
+        StateBuffer {
+            buffer: &*$engine.buffers[CURRENT_STATE_INDEX],
+            states_to_offset: &$engine.states_to_offset,
+            ctx: $engine.ctx,
+        }
+    };
+}
+
+macro_rules! current_state_buffer_mut {
+    ($engine: ident) => {
+        StateBuffer {
+            buffer: &mut *$engine.buffers[CURRENT_STATE_INDEX],
+            states_to_offset: &$engine.states_to_offset,
+            ctx: $engine.ctx,
+        }
+    };
+}
+
+macro_rules! next_state_buffer_mut {
+    ($engine: ident) => {
+        StateBuffer {
+            buffer: &mut *$engine.buffers[NEXT_STATE_INDEX],
+            states_to_offset: &$engine.states_to_offset,
+            ctx: $engine.ctx,
+        }
+    };
+}
+
 impl<'expr> JITEngine<'expr> {
     pub fn new(ctx: &'expr expr::Context, sys: &'expr TransitionSystem) -> JITEngine<'expr> {
         let mut states_to_offset: FxHashMap<ExprRef, usize> = FxHashMap::default();
@@ -149,11 +183,36 @@ impl<'expr> JITEngine<'expr> {
             let offset = states_to_offset.len();
             states_to_offset.entry(state).or_insert(offset);
         }
+        let mortal_states = sys
+            .states
+            .iter()
+            .filter_map(|state| {
+                if let expr::Type::BV(..) = state.symbol.get_type(ctx) {
+                    Some(state.symbol)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        let immortal_states = sys
+            .states
+            .iter()
+            .filter_map(|state| {
+                if let expr::Type::Array(..) = state.symbol.get_type(ctx) {
+                    Some(state.symbol)
+                } else {
+                    None
+                }
+            })
+            .chain(sys.inputs.iter().copied())
+            .collect::<Vec<_>>();
 
         let buffers: [Box<[i64]>; 2] =
             std::array::from_fn(|_| vec![0_i64; states_to_offset.len()].into_boxed_slice());
         let mut engine = Self {
             backend: RefCell::default(),
+            mortal_states,
+            immortal_states,
             buffers,
             ctx,
             sys,
@@ -167,11 +226,7 @@ impl<'expr> JITEngine<'expr> {
     /// Maintains the invariance that all heap allocated states in the current buffer
     /// and all heap allocated init(immortal) states in the next buffer point to a valid object
     fn bootstrap_state_buffers(&mut self) {
-        for state in self
-            .mortal_states()
-            .into_iter()
-            .chain(self.immortal_states())
-        {
+        for &state in self.mortal_states.iter().chain(&self.immortal_states) {
             match state.get_type(self.ctx) {
                 expr::Type::Array(expr::ArrayType {
                     index_width,
@@ -187,102 +242,38 @@ impl<'expr> JITEngine<'expr> {
                     "currently no sparse array support, size of the dense array should be less than or equal to 2^12, but got `{}`", 
                     index_width
                 );
-                    *self.current_state_buffer_mut().get_state_mut(state) =
+                    *current_state_buffer_mut!(self).get_state_mut(state) =
                         runtime::__alloc_const_array(index_width, 0) as i64;
                 }
                 expr::Type::BV(width) => {
                     if width > 64 {
-                        *self.current_state_buffer_mut().get_state_mut(state) =
+                        *current_state_buffer_mut!(self).get_state_mut(state) =
                             runtime::__alloc_bv(width) as i64;
                     }
                 }
             }
         }
 
-        for state in self.immortal_states() {
+        for &state in &self.immortal_states {
             match state.get_type(self.ctx) {
                 expr::Type::Array(ArrayType { index_width, .. }) => {
-                    *self.next_state_buffer_mut().get_state_mut(state) =
+                    *next_state_buffer_mut!(self).get_state_mut(state) =
                         runtime::__alloc_const_array(index_width, 0) as i64;
                 }
                 expr::Type::BV(width) => {
                     if width > 64 {
-                        *self.next_state_buffer_mut().get_state_mut(state) =
+                        *next_state_buffer_mut!(self).get_state_mut(state) =
                             runtime::__alloc_bv(width) as i64;
                     }
                 }
             }
-        }
-    }
-
-    /// non-init bv states, resources allocated for those states will be reclaimed during every step
-    fn mortal_states(&self) -> impl IntoIterator<Item = ExprRef> {
-        self.sys
-            .states
-            .iter()
-            .filter_map(|state| {
-                if let expr::Type::BV(..) = state.symbol.get_type(self.ctx) {
-                    Some(state.symbol)
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>()
-    }
-
-    /// init and array states, resources allocated for those states will only be reclaimed when dropping the JITEngine
-    fn immortal_states(&self) -> impl IntoIterator<Item = ExprRef> {
-        self.sys
-            .states
-            .iter()
-            .filter_map(|state| {
-                if let expr::Type::Array(..) = state.symbol.get_type(self.ctx) {
-                    Some(state.symbol)
-                } else {
-                    None
-                }
-            })
-            .chain(self.sys.inputs.iter().copied())
-            .collect::<Vec<_>>()
-    }
-
-    fn current_state_buffer(&self) -> StateBuffer<'_, &[i64]> {
-        StateBuffer {
-            buffer: &*self.buffers[CURRENT_STATE_INDEX],
-            states_to_offset: &self.states_to_offset,
-            ctx: self.ctx,
-        }
-    }
-
-    fn current_state_buffer_mut(&mut self) -> StateBuffer<'_, &mut [i64]> {
-        StateBuffer {
-            buffer: &mut *self.buffers[CURRENT_STATE_INDEX],
-            states_to_offset: &self.states_to_offset,
-            ctx: self.ctx,
-        }
-    }
-
-    fn next_state_buffer_mut(&mut self) -> StateBuffer<'_, &mut [i64]> {
-        StateBuffer {
-            buffer: &mut *self.buffers[NEXT_STATE_INDEX],
-            states_to_offset: &self.states_to_offset,
-            ctx: self.ctx,
-        }
-    }
-
-    #[allow(dead_code)]
-    fn next_state_buffer(&self) -> StateBuffer<'_, &[i64]> {
-        StateBuffer {
-            buffer: &*self.buffers[NEXT_STATE_INDEX],
-            states_to_offset: &self.states_to_offset,
-            ctx: self.ctx,
         }
     }
 
     fn eval_expr(&self, expr: ExprRef) -> i64 {
         self.backend
             .borrow_mut()
-            .eval_expr(expr, self.ctx, &self.current_state_buffer())
+            .eval_expr(expr, self.ctx, &current_state_buffer!(self))
     }
 
     fn step_transition_sys(&mut self) {
@@ -309,9 +300,8 @@ impl<'expr> JITEngine<'expr> {
         self.buffers.swap(CURRENT_STATE_INDEX, NEXT_STATE_INDEX);
         // SAFETY: non-init states in the output buffer will be overwritten in next step
         unsafe {
-            for state in self.mortal_states() {
-                self.next_state_buffer_mut()
-                    .reclaim_heap_allocated_expr(state)
+            for &state in &self.mortal_states {
+                next_state_buffer_mut!(self).reclaim_heap_allocated_expr(state)
             }
         }
     }
@@ -321,10 +311,9 @@ impl std::ops::Drop for JITEngine<'_> {
     fn drop(&mut self) {
         // SAFETY: invoked in drop, those states will no longer be accessed
         unsafe {
-            self.current_state_buffer_mut().reclaim_all();
-            for init_state in self.immortal_states() {
-                self.next_state_buffer_mut()
-                    .reclaim_heap_allocated_expr(init_state);
+            current_state_buffer_mut!(self).reclaim_all();
+            for &state in &self.immortal_states {
+                next_state_buffer_mut!(self).reclaim_heap_allocated_expr(state);
             }
         }
     }
@@ -373,7 +362,7 @@ impl Simulator for JITEngine<'_> {
     fn init(&mut self, kind: InitKind) {
         let mut generator = InitValueGenerator::from_kind(kind);
 
-        for state in self.states_to_offset.clone().into_keys() {
+        for &state in self.states_to_offset.keys() {
             let tpe = state.get_type(self.ctx);
             let init_value = generator.gen(tpe);
             match init_value {
@@ -384,8 +373,7 @@ impl Simulator for JITEngine<'_> {
                         // SAFETY: &bv is a valid pointer to `BitVecValue`
                         unsafe { runtime::__clone_bv(&bv as *const BitVecValue) as i64 }
                     };
-                    self.current_state_buffer_mut()
-                        .try_replace_with_heap_reclaim(state, bv)
+                    current_state_buffer_mut!(self).try_replace_with_heap_reclaim(state, bv)
                 }
                 baa::Value::Array(array) => {
                     let expr::Type::Array(expr::ArrayType {
@@ -410,8 +398,7 @@ impl Simulator for JITEngine<'_> {
                         })
                         .collect();
                     let ptr = buffer.leak() as *mut [i64] as *mut i64 as i64;
-                    self.current_state_buffer_mut()
-                        .try_replace_with_heap_reclaim(state, ptr)
+                    current_state_buffer_mut!(self).try_replace_with_heap_reclaim(state, ptr)
                 }
             }
         }
@@ -419,8 +406,7 @@ impl Simulator for JITEngine<'_> {
         for state in &self.sys.states {
             if let Some(init) = state.init {
                 let ret = self.eval_expr(init);
-                self.current_state_buffer_mut()
-                    .try_replace_with_heap_reclaim(state.symbol, ret);
+                current_state_buffer_mut!(self).try_replace_with_heap_reclaim(state.symbol, ret);
             }
         }
     }
@@ -440,14 +426,14 @@ impl Simulator for JITEngine<'_> {
                 value
             )
         });
-        *self.current_state_buffer_mut().get_state_mut(expr) = value as i64;
+        *current_state_buffer_mut!(self).get_state_mut(expr) = value as i64;
     }
 
     fn get(&self, expr: ExprRef) -> baa::Value {
         let mut is_cached_symbol = false;
         let value = if let Some(&offset) = self.states_to_offset.get(&expr) {
             is_cached_symbol = true;
-            self.current_state_buffer().as_slice()[offset]
+            current_state_buffer!(self).as_slice()[offset]
         } else {
             self.eval_expr(expr)
         };
