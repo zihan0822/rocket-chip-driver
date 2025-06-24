@@ -2,6 +2,7 @@
 // released under BSD 3-Clause License
 // author: Zihan Li <zl2225@cornell.edu>
 use crate::expr::*;
+use baa::Word;
 use cranelift::codegen::ir::{types, AbiParam, FuncRef, Function};
 use cranelift::jit::{JITBuilder, JITModule};
 use cranelift::module::{Linkage, Module};
@@ -102,17 +103,21 @@ fn import_bv_runtime_to_func_scope(
     let mut bv_runtime_lib = FxHashMap::default();
     for registered in inventory::iter::<BVOpRegistry>() {
         let num_params = match registered.kind {
-            BVOpKind::Unary(_) => 1,
-            BVOpKind::Binary(_) | BVOpKind::Cmp(_) => 2,
-            BVOpKind::Slice(_) | BVOpKind::Extend(_) | BVOpKind::Shift(_) => 3,
-            BVOpKind::Concat(_) => 4,
+            BVOpKind::Unary(_) | BVOpKind::Cmp(_) => 2,
+            BVOpKind::Binary(_) | BVOpKind::Slice(_) => 3,
+            BVOpKind::SliceWithOutputBuffer(_) | BVOpKind::Extend(_) | BVOpKind::Shift(_) => 4,
+            BVOpKind::Concat(_) => 5,
+        };
+        let num_returns = match registered.kind {
+            BVOpKind::Cmp(_) | BVOpKind::Slice(_) => 1,
+            _ => 0,
         };
         let func_ref = import_extern_function(
             module,
             func,
             &bv_operation_name_mangle(registered.sym),
             std::iter::repeat(types::I64).take(num_params),
-            [types::I64],
+            std::iter::repeat(types::I64).take(num_returns),
         );
         bv_runtime_lib.insert(registered.sym, func_ref);
     }
@@ -193,7 +198,7 @@ pub(super) unsafe extern "C" fn __copy_from_bv(
 
 mod trampoline {
     use crate::expr::*;
-    use baa::{BitVecOps, BitVecValue};
+    use baa::{BitVecMutOps, BitVecOps, BitVecValue};
 
     pub(super) struct BVOpRegistry {
         pub(super) sym: &'static str,
@@ -207,6 +212,7 @@ mod trampoline {
                 BVOpKind::Unary(address) => address as *const u8,
                 BVOpKind::Cmp(address) => address as *const u8,
                 BVOpKind::Slice(address) => address as *const u8,
+                BVOpKind::SliceWithOutputBuffer(address) => address as *const u8,
                 BVOpKind::Concat(address) => address as *const u8,
                 BVOpKind::Extend(address) => address as *const u8,
                 BVOpKind::Shift(address) => address as *const u8,
@@ -215,22 +221,24 @@ mod trampoline {
     }
     type MaybeIndirect = i64;
     pub(super) enum BVOpKind {
-        Binary(unsafe extern "C" fn(*const BitVecValue, *const BitVecValue) -> *mut BitVecValue),
-        Unary(unsafe extern "C" fn(*const BitVecValue) -> *mut BitVecValue),
+        Binary(unsafe extern "C" fn(*mut BitVecValue, *const BitVecValue, *const BitVecValue)),
+        Unary(unsafe extern "C" fn(*mut BitVecValue, *const BitVecValue)),
         Cmp(unsafe extern "C" fn(*const BitVecValue, *const BitVecValue) -> MaybeIndirect),
         Slice(unsafe extern "C" fn(*const BitVecValue, WidthInt, WidthInt) -> MaybeIndirect),
+        SliceWithOutputBuffer(
+            unsafe extern "C" fn(*mut BitVecValue, *const BitVecValue, WidthInt, WidthInt),
+        ),
         Concat(
             unsafe extern "C" fn(
+                *mut BitVecValue,
                 MaybeIndirect,
                 MaybeIndirect,
                 WidthInt,
                 WidthInt,
-            ) -> *mut BitVecValue,
+            ),
         ),
-        Extend(unsafe extern "C" fn(MaybeIndirect, WidthInt, WidthInt) -> *mut BitVecValue),
-        Shift(
-            unsafe extern "C" fn(*const BitVecValue, MaybeIndirect, WidthInt) -> *mut BitVecValue,
-        ),
+        Extend(unsafe extern "C" fn(*mut BitVecValue, MaybeIndirect, WidthInt, WidthInt)),
+        Shift(unsafe extern "C" fn(*mut BitVecValue, *const BitVecValue, MaybeIndirect, WidthInt)),
     }
 
     macro_rules! baa_binary_op_shim {
@@ -240,10 +248,11 @@ mod trampoline {
                 sym: stringify!($baa_op_name)
             });
             pub(super) unsafe extern "C" fn $func(
+                dst: *mut BitVecValue,
                 lhs: *const BitVecValue,
                 rhs: *const BitVecValue,
-            ) -> *mut BitVecValue {
-                Box::leak(Box::new((&*lhs).$baa_op_name(&*rhs)))
+            ) {
+                *dst = (&*lhs).$baa_op_name(&*rhs);
             }
         };
     }
@@ -272,8 +281,11 @@ mod trampoline {
                 kind: BVOpKind::Unary($func),
                 sym: stringify!($baa_op_name)
             });
-            pub(super) unsafe extern "C" fn $func(value: *const BitVecValue) -> *mut BitVecValue {
-                Box::leak(Box::new((&*value).$baa_op_name()))
+            pub(super) unsafe extern "C" fn $func(
+                dst: *mut BitVecValue,
+                value: *const BitVecValue,
+            ) {
+                *dst = (&*value).$baa_op_name();
             }
         };
     }
@@ -285,16 +297,17 @@ mod trampoline {
                 sym: stringify!($baa_op_name)
             });
             pub(super) unsafe extern "C" fn $func(
+                dst: *mut BitVecValue,
                 value: MaybeIndirect,
                 original_width: WidthInt,
                 by: WidthInt,
-            ) -> *mut BitVecValue {
+            ) {
                 let value = if original_width <= 64 {
                     &BitVecValue::from_i64(value, original_width)
                 } else {
                     &*(value as *const BitVecValue)
                 };
-                Box::leak(Box::new(value.$baa_op_name(by)))
+                *dst = value.$baa_op_name(by);
             }
         };
     }
@@ -305,16 +318,17 @@ mod trampoline {
                 sym: stringify!($baa_op_name)
             });
             pub(super) unsafe extern "C" fn $func(
+                dst: *mut BitVecValue,
                 value: *const BitVecValue,
                 shift: MaybeIndirect,
                 shift_data_width: WidthInt,
-            ) -> *mut BitVecValue {
+            ) {
                 let shift = if shift_data_width <= 64 {
                     &BitVecValue::from_i64(shift, shift_data_width)
                 } else {
                     &*(shift as *const BitVecValue)
                 };
-                Box::leak(Box::new((&*value).$baa_op_name(shift)))
+                *dst = (&*value).$baa_op_name(shift);
             }
         };
     }
@@ -352,11 +366,22 @@ mod trampoline {
         lo: WidthInt,
     ) -> MaybeIndirect {
         let ret = (*value).slice(hi, lo);
-        if ret.width() <= 64 {
-            ret.to_u64().unwrap() as MaybeIndirect
-        } else {
-            Box::leak(Box::new(ret)) as *mut BitVecValue as MaybeIndirect
-        }
+        debug_assert!(ret.width() <= 64);
+        ret.to_u64().unwrap() as MaybeIndirect
+    }
+
+    inventory::submit!(BVOpRegistry {
+        kind: BVOpKind::SliceWithOutputBuffer(__bv_slice_with_output_buffer),
+        sym: "slice_with_output_buffer"
+    });
+    pub(super) unsafe extern "C" fn __bv_slice_with_output_buffer(
+        dst: *mut BitVecValue,
+        value: *const BitVecValue,
+        hi: WidthInt,
+        lo: WidthInt,
+    ) {
+        debug_assert!((hi - lo + 1) > 64);
+        super::slice((*dst).words_mut(), (*value).words(), hi, lo);
     }
 
     inventory::submit!(BVOpRegistry {
@@ -364,11 +389,12 @@ mod trampoline {
         sym: "concat"
     });
     pub(super) unsafe extern "C" fn __bv_concat(
+        dst: *mut BitVecValue,
         hi: MaybeIndirect,
         lo: MaybeIndirect,
         hi_width: WidthInt,
         lo_width: WidthInt,
-    ) -> *mut BitVecValue {
+    ) {
         let hi = if hi_width <= 64 {
             &BitVecValue::from_u64(hi as u64, hi_width)
         } else {
@@ -379,6 +405,80 @@ mod trampoline {
         } else {
             &*(lo as *const BitVecValue)
         };
-        Box::leak(Box::new(hi.concat(lo)))
+        super::concat((*dst).words_mut(), hi.words(), lo.words(), lo_width);
     }
+}
+
+fn concat(dst: &mut [baa::Word], msb: &[baa::Word], lsb: &[baa::Word], lsb_width: WidthInt) {
+    // copy lsb to dst
+    assign(dst, lsb);
+
+    let lsb_offset = lsb_width % baa::Word::BITS;
+    if lsb_offset == 0 {
+        // copy msb to dst
+        for (d, m) in dst.iter_mut().skip(lsb.len()).zip(msb.iter()) {
+            *d = *m;
+        }
+    } else {
+        // copy a shifted version of the msb to dst
+        let shift_right = baa::Word::BITS - lsb_offset;
+        let m = mask(shift_right);
+        let mut prev = dst[lsb.len() - 1]; // the msb of the lsb
+        for (d, s) in dst
+            .iter_mut()
+            .skip(lsb.len() - 1)
+            .zip(msb.iter().chain([0].iter()))
+        {
+            *d = prev | ((*s) & m) << lsb_offset;
+            prev = (*s) >> shift_right;
+        }
+    }
+}
+
+#[inline]
+pub fn mask(bits: WidthInt) -> baa::Word {
+    if bits == baa::Word::BITS || bits == 0 {
+        baa::Word::MAX
+    } else {
+        assert!(bits < baa::Word::BITS);
+        ((1 as baa::Word) << bits) - 1
+    }
+}
+
+#[inline]
+fn assign(dst: &mut [baa::Word], source: &[baa::Word]) {
+    for (d, s) in dst.iter_mut().zip(source.iter()) {
+        *d = *s;
+    }
+}
+
+fn slice(dst: &mut [Word], source: &[Word], hi: WidthInt, lo: WidthInt) {
+    let lo_offset = lo % Word::BITS;
+    let hi_word = (hi / Word::BITS) as usize;
+    let lo_word = (lo / Word::BITS) as usize;
+    let src = &source[lo_word..(hi_word + 1)];
+
+    let shift_right = lo_offset;
+    if shift_right == 0 {
+        assign(dst, src);
+    } else {
+        // assign with a shift
+        let shift_left = Word::BITS - shift_right;
+        let m = mask(shift_right);
+        let mut prev = src[0] >> shift_right;
+        // We append a zero to the src iter in case src.len() == dst.len().
+        // If src.len() == dst.len() + 1, then the 0 will just be ignored by `zip`.
+        for (d, s) in dst.iter_mut().zip(src.iter().skip(1).chain([0].iter())) {
+            *d = prev | ((*s) & m) << shift_left;
+            prev = (*s) >> shift_right;
+        }
+    }
+    // mask the result msb
+    mask_msb(dst, hi - lo + 1);
+}
+
+#[inline]
+fn mask_msb(dst: &mut [Word], width: WidthInt) {
+    let m = mask(width % Word::BITS);
+    *dst.last_mut().unwrap() &= m;
 }

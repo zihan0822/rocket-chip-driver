@@ -437,6 +437,22 @@ impl CodeGenContext<'_, '_, '_> {
         }
     }
 
+    /// Reserves a long lived wide bit vector cache, whose lifetime is tied to the JITCompiler
+    /// It is not registered as per-step heap allocation, therefore can be used across multiple steps to reduce heap transaction
+    pub(super) fn reserve_intermediate_bv_cache(&mut self, width: WidthInt) -> TaggedValue {
+        assert!(width > 64);
+        let cache = Box::new(BitVecValue::zero(width));
+        let value = self
+            .fn_builder
+            .ins()
+            .iconst(self.int, (&*cache) as *const BitVecValue as i64);
+        self.compiler.bv_data.push(cache);
+        TaggedValue {
+            value,
+            data_type: expr::Type::BV(width),
+        }
+    }
+
     fn copy_from_array(&mut self, dst: TaggedValue, src: TaggedValue) {
         let expr::Type::Array(tpe) = dst.data_type else {
             unreachable!()
