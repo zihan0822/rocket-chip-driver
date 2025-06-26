@@ -11,6 +11,7 @@ use crate::system::*;
 use baa::*;
 use compiler::*;
 use cranelift::module::ModuleError;
+use fixedbitset::FixedBitSet;
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::cell::RefCell;
 
@@ -84,31 +85,30 @@ enum DirtyUpdatePolicy {
     Batched,
 }
 struct DirtyStateRegistry {
-    states: FxHashSet<State>,
+    states: FixedBitSet,
     num_total_states: f64,
 }
 
 impl DirtyStateRegistry {
-    fn new(num_total_states: usize, init_states: FxHashSet<State>) -> Self {
-        let states = FxHashSet::from_iter(init_states);
+    fn new(init_states: FixedBitSet, num_total_states: usize) -> Self {
         Self {
-            states,
+            states: init_states,
             num_total_states: num_total_states as f64,
         }
     }
 
     #[inline]
-    fn register(&mut self, dirty_states: impl IntoIterator<Item = State>) {
-        self.states.extend(dirty_states);
+    fn register(&mut self, dirty_states: &FixedBitSet) {
+        self.states.union_with(dirty_states);
     }
 
     #[inline]
-    fn clear_and_track(&mut self, dirty_states: FxHashSet<State>) {
+    fn clear_and_track(&mut self, dirty_states: FixedBitSet) {
         self.states = dirty_states;
     }
 
     fn select_update_policy(&self) -> DirtyUpdatePolicy {
-        let dirty_percentage = (self.states.len() as f64) / self.num_total_states;
+        let dirty_percentage = (self.states.count_ones(..) as f64) / self.num_total_states;
         if dirty_percentage >= BATCHED_UPDATE_THRESHOLD {
             DirtyUpdatePolicy::Batched
         } else {
@@ -118,7 +118,7 @@ impl DirtyStateRegistry {
 
     #[inline]
     fn dirty_percentage(&self) -> f64 {
-        (self.states.len() as f64) / self.num_total_states
+        (self.states.count_ones(..) as f64) / self.num_total_states
     }
 }
 
@@ -133,9 +133,12 @@ pub struct JITEngine<'expr> {
     /// init and array states, resources allocated for those states will only be reclaimed when dropping the JITEngine
     immortal_states: Vec<ExprRef>,
     /// for each leaf state, tracks all root state expr that transitively depends on it
-    upstream_dependencies: FxHashMap<ExprRef, FxHashSet<State>>,
+    upstream_dependencies: FxHashMap<ExprRef, FixedBitSet>,
     /// maintains set of states that need to be recomputed at next step
     dirty_registry: DirtyStateRegistry,
+    /// states corresponding to the first `sys.states.len()` expr in the state buffer
+    /// types are cached for better perf
+    mutable_slot_states: Vec<(State, expr::Type)>,
     states_to_offset: FxHashMap<ExprRef, usize>,
     step_count: u64,
 }
@@ -232,15 +235,17 @@ macro_rules! next_state_buffer_mut {
 impl<'expr> JITEngine<'expr> {
     pub fn new(ctx: &'expr expr::Context, sys: &'expr TransitionSystem) -> JITEngine<'expr> {
         let mut states_to_offset: FxHashMap<ExprRef, usize> = FxHashMap::default();
-        for state in sys
-            .states
-            .iter()
-            .map(|state| state.symbol)
-            .chain(sys.inputs.iter().copied())
-        {
+        let mut mutable_slot_states: Vec<(State, expr::Type)> = vec![];
+        for state in &sys.states {
+            mutable_slot_states.push((state.clone(), state.symbol.get_type(ctx)));
             let offset = states_to_offset.len();
-            states_to_offset.entry(state).or_insert(offset);
+            states_to_offset.entry(state.symbol).or_insert(offset);
         }
+        for &input in &sys.inputs {
+            let offset = states_to_offset.len();
+            states_to_offset.entry(input).or_insert(offset);
+        }
+
         let mortal_states = sys
             .states
             .iter()
@@ -267,48 +272,51 @@ impl<'expr> JITEngine<'expr> {
 
         let buffers: [Box<[i64]>; 2] =
             std::array::from_fn(|_| vec![0_i64; states_to_offset.len()].into_boxed_slice());
-        let init_states: FxHashSet<_> = sys
-            .states
-            .iter()
-            .filter(|state| state.next.is_some())
-            .cloned()
-            .collect();
+
+        let mut init_states = FixedBitSet::with_capacity(mutable_slot_states.len());
+        init_states.insert_range(..);
+        let dirty_registry = DirtyStateRegistry::new(init_states, mutable_slot_states.len());
 
         let mut engine = Self {
             backend: RefCell::default(),
             mortal_states,
             immortal_states,
+            mutable_slot_states,
             buffers,
             ctx,
             sys,
             states_to_offset,
-            upstream_dependencies: Self::find_leaf_states_upstream_dep(ctx, sys),
-            dirty_registry: DirtyStateRegistry::new(init_states.len(), init_states),
+            upstream_dependencies: FxHashMap::default(),
+            dirty_registry,
             step_count: 0,
         };
         engine.bootstrap_state_buffers();
+        engine.find_leaf_states_upstream_dep();
         engine
     }
 
-    fn find_leaf_states_upstream_dep(
-        ctx: &expr::Context,
-        sys: &TransitionSystem,
-    ) -> FxHashMap<ExprRef, FxHashSet<State>> {
+    fn find_leaf_states_upstream_dep(&mut self) {
         let mut todo = Vec::from_iter(
-            sys.states
+            self.sys
+                .states
                 .iter()
                 .filter_map(|state| state.next.map(|next| (state.clone(), next))),
         );
-        let mut upstream_dependencies: FxHashMap<ExprRef, FxHashSet<State>> = FxHashMap::default();
         while let Some((root, next)) = todo.pop() {
-            let expr = &ctx[next];
+            let expr = &self.ctx[next];
             if expr.num_children() == 0 && expr.is_symbol() {
-                upstream_dependencies.entry(next).or_default().insert(root);
+                let dependents = self
+                    .upstream_dependencies
+                    .entry(next)
+                    .or_insert_with(|| FixedBitSet::with_capacity(self.mutable_slot_states.len()));
+                let offset_in_state_buffer = self.states_to_offset[&root.symbol];
+                if offset_in_state_buffer < self.mutable_slot_states.len() {
+                    dependents.insert(offset_in_state_buffer);
+                }
             } else {
                 expr.for_each_child(|&child| todo.push((root.clone(), child)));
             }
         }
-        upstream_dependencies
     }
 
     /// Maintains the invariance that all heap allocated states in the current buffer
@@ -387,10 +395,8 @@ impl<'expr> JITEngine<'expr> {
     fn swap_state_buffer(&mut self) {
         self.mark_dirty_states();
         self.buffers.swap(CURRENT_STATE_INDEX, NEXT_STATE_INDEX);
-        let dirty_symbols = self.get_dirty_symbols();
-        for (&state, &offset) in &self.states_to_offset {
-            if !dirty_symbols.contains(&state) {
-                let tpe = state.get_type(self.ctx);
+        for (offset, &(_, tpe)) in self.mutable_slot_states.iter().enumerate() {
+            if !self.dirty_registry.states.contains(offset) {
                 let current_slot = unsafe {
                     StateSlot::from_typed_slot_value(
                         current_state_buffer!(self).as_slice()[offset],
@@ -415,31 +421,17 @@ impl<'expr> JITEngine<'expr> {
         // }
     }
 
-    fn get_dirty_symbols(&self) -> FxHashSet<ExprRef> {
-        self.dirty_registry
-            .states
-            .iter()
-            .map(|state| state.symbol)
-            .collect()
-    }
-
     fn cached_states_shootdown(&mut self) {
-        self.dirty_registry.clear_and_track(
-            self.sys
-                .states
-                .iter()
-                .filter(|state| state.next.is_some())
-                .cloned()
-                .collect(),
-        );
+        let mut all_dirty = FixedBitSet::with_capacity(self.mutable_slot_states.len());
+        all_dirty.insert_range(..);
+        self.dirty_registry.clear_and_track(all_dirty);
     }
 
     /// Inspect current state and next state to find those that are modified
     /// Schedule them to be re-computed at next `step` by adding them to `dirty_states`
     fn mark_dirty_states(&mut self) {
-        let mut next_step_dirty_states = FxHashSet::default();
-        for (&state, &offset) in current_state_buffer!(self).states_to_offset {
-            let tpe = state.get_type(self.ctx);
+        let mut next_step_dirty_states = FixedBitSet::with_capacity(self.mutable_slot_states.len());
+        for (offset, &(ref state, tpe)) in self.mutable_slot_states.iter().enumerate() {
             let (current_slot, next_slot) = unsafe {
                 (
                     StateSlot::from_typed_slot_value(
@@ -453,8 +445,8 @@ impl<'expr> JITEngine<'expr> {
                 )
             };
             if current_slot.ne(&next_slot) {
-                if let Some(roots) = self.upstream_dependencies.get(&state) {
-                    next_step_dirty_states.extend(roots.clone());
+                if let Some(roots) = self.upstream_dependencies.get(&state.symbol) {
+                    next_step_dirty_states.union_with(&roots);
                 }
             }
         }
@@ -637,7 +629,8 @@ impl Simulator for JITEngine<'_> {
     }
 
     fn step(&mut self) {
-        for state in &self.dirty_registry.states {
+        for offset in self.dirty_registry.states.ones() {
+            let state = &self.mutable_slot_states[offset].0;
             let next = state.next.unwrap();
             let ret = self.eval_expr(next);
             next_state_buffer_mut!(self).try_replace_with_heap_reclaim(state.symbol, ret);
@@ -656,9 +649,10 @@ impl Simulator for JITEngine<'_> {
             )
         });
         *current_state_buffer_mut!(self).get_state_mut(expr) = value as i64;
+        *next_state_buffer_mut!(self).get_state_mut(expr) = value as i64;
 
         if let Some(roots) = self.upstream_dependencies.get(&expr) {
-            self.dirty_registry.register(roots.clone())
+            self.dirty_registry.register(&roots)
         }
     }
 
