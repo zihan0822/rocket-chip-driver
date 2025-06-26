@@ -12,7 +12,7 @@ use baa::*;
 use compiler::*;
 use cranelift::module::ModuleError;
 use fixedbitset::FixedBitSet;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 use std::cell::RefCell;
 
 type JITResult<T> = Result<T, JITError>;
@@ -108,8 +108,7 @@ impl DirtyStateRegistry {
     }
 
     fn select_update_policy(&self) -> DirtyUpdatePolicy {
-        let dirty_percentage = (self.states.count_ones(..) as f64) / self.num_total_states;
-        if dirty_percentage >= BATCHED_UPDATE_THRESHOLD {
+        if self.dirty_percentage() >= BATCHED_UPDATE_THRESHOLD {
             DirtyUpdatePolicy::Batched
         } else {
             DirtyUpdatePolicy::Sparse
@@ -129,7 +128,7 @@ pub struct JITEngine<'expr> {
     /// interior mutability for lazy compilation triggered by `Simulator::get`
     backend: RefCell<JITBackend>,
     /// for each leaf state, tracks all root state expr that transitively depends on it
-    upstream_dependencies: FxHashMap<ExprRef, FixedBitSet>,
+    upstream_dependents: FxHashMap<ExprRef, FixedBitSet>,
     /// maintains set of states that need to be recomputed at next step
     dirty_registry: DirtyStateRegistry,
     /// states corresponding to the first `sys.states.len()` expr in the state buffer
@@ -256,7 +255,7 @@ impl<'expr> JITEngine<'expr> {
             sys,
             states_to_offset,
             mutable_slot_states,
-            upstream_dependencies: FxHashMap::default(),
+            upstream_dependents: FxHashMap::default(),
             dirty_registry,
             step_count: 0,
         };
@@ -276,7 +275,7 @@ impl<'expr> JITEngine<'expr> {
             let expr = &self.ctx[next];
             if expr.num_children() == 0 && expr.is_symbol() {
                 let dependents = self
-                    .upstream_dependencies
+                    .upstream_dependents
                     .entry(next)
                     .or_insert_with(|| FixedBitSet::with_capacity(self.mutable_slot_states.len()));
                 let offset_in_state_buffer = self.states_to_offset[&root.symbol];
@@ -345,8 +344,6 @@ impl<'expr> JITEngine<'expr> {
         );
     }
 
-    /// Maintains the invariance that before each step, the heap resources allocated
-    /// in the output buffer are reclaimed
     fn swap_state_buffer(&mut self) {
         self.mark_dirty_states();
         self.buffers.swap(CURRENT_STATE_INDEX, NEXT_STATE_INDEX);
@@ -394,8 +391,8 @@ impl<'expr> JITEngine<'expr> {
                 )
             };
             if current_slot.ne(&next_slot) {
-                if let Some(roots) = self.upstream_dependencies.get(&state.symbol) {
-                    next_step_dirty_states.union_with(&roots);
+                if let Some(roots) = self.upstream_dependents.get(&state.symbol) {
+                    next_step_dirty_states.union_with(roots);
                 }
             }
         }
@@ -576,11 +573,18 @@ impl Simulator for JITEngine<'_> {
     }
 
     fn step(&mut self) {
-        for offset in self.dirty_registry.states.ones() {
-            let state = &self.mutable_slot_states[offset].0;
-            let next = state.next.unwrap();
-            let ret = self.eval_expr(next);
-            next_state_buffer_mut!(self).try_replace_with_heap_reclaim(state.symbol, ret);
+        match self.dirty_registry.select_update_policy() {
+            DirtyUpdatePolicy::Sparse => {
+                for offset in self.dirty_registry.states.ones() {
+                    let state = &self.mutable_slot_states[offset].0;
+                    let next = state.next.unwrap();
+                    let ret = self.eval_expr(next);
+                    next_state_buffer_mut!(self).try_replace_with_heap_reclaim(state.symbol, ret);
+                }
+            }
+            DirtyUpdatePolicy::Batched => {
+                self.step_transition_sys();
+            }
         }
         self.swap_state_buffer();
         self.step_count += 1;
@@ -598,8 +602,8 @@ impl Simulator for JITEngine<'_> {
         *current_state_buffer_mut!(self).get_state_mut(expr) = value as i64;
         *next_state_buffer_mut!(self).get_state_mut(expr) = value as i64;
 
-        if let Some(roots) = self.upstream_dependencies.get(&expr) {
-            self.dirty_registry.register(&roots)
+        if let Some(roots) = self.upstream_dependents.get(&expr) {
+            self.dirty_registry.register(roots)
         }
     }
 
