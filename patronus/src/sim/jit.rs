@@ -128,10 +128,6 @@ pub struct JITEngine<'expr> {
     sys: &'expr TransitionSystem,
     /// interior mutability for lazy compilation triggered by `Simulator::get`
     backend: RefCell<JITBackend>,
-    /// non-init bv states, resources allocated for those states will be reclaimed during every step
-    mortal_states: Vec<ExprRef>,
-    /// init and array states, resources allocated for those states will only be reclaimed when dropping the JITEngine
-    immortal_states: Vec<ExprRef>,
     /// for each leaf state, tracks all root state expr that transitively depends on it
     upstream_dependencies: FxHashMap<ExprRef, FixedBitSet>,
     /// maintains set of states that need to be recomputed at next step
@@ -246,30 +242,6 @@ impl<'expr> JITEngine<'expr> {
             states_to_offset.entry(input).or_insert(offset);
         }
 
-        let mortal_states = sys
-            .states
-            .iter()
-            .filter_map(|state| {
-                if let expr::Type::BV(..) = state.symbol.get_type(ctx) {
-                    Some(state.symbol)
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-        let immortal_states = sys
-            .states
-            .iter()
-            .filter_map(|state| {
-                if let expr::Type::Array(..) = state.symbol.get_type(ctx) {
-                    Some(state.symbol)
-                } else {
-                    None
-                }
-            })
-            .chain(sys.inputs.iter().copied())
-            .collect::<Vec<_>>();
-
         let buffers: [Box<[i64]>; 2] =
             std::array::from_fn(|_| vec![0_i64; states_to_offset.len()].into_boxed_slice());
 
@@ -279,13 +251,11 @@ impl<'expr> JITEngine<'expr> {
 
         let mut engine = Self {
             backend: RefCell::default(),
-            mortal_states,
-            immortal_states,
-            mutable_slot_states,
             buffers,
             ctx,
             sys,
             states_to_offset,
+            mutable_slot_states,
             upstream_dependencies: FxHashMap::default(),
             dirty_registry,
             step_count: 0,
@@ -322,44 +292,29 @@ impl<'expr> JITEngine<'expr> {
     /// Maintains the invariance that all heap allocated states in the current buffer
     /// and all heap allocated init(immortal) states in the next buffer point to a valid object
     fn bootstrap_state_buffers(&mut self) {
-        for &state in self.mortal_states.iter().chain(&self.immortal_states) {
-            match state.get_type(self.ctx) {
-                expr::Type::Array(expr::ArrayType {
-                    index_width,
-                    data_width,
-                }) => {
-                    assert!(
-                        data_width <= 64,
-                        "only support bv with width less than equal to 64, but got `{}`",
-                        data_width
-                    );
-                    assert!(
-                    index_width <= 12,
-                    "currently no sparse array support, size of the dense array should be less than or equal to 2^12, but got `{}`", 
-                    index_width
-                );
-                    *current_state_buffer_mut!(self).get_state_mut(state) =
-                        runtime::__alloc_const_array(index_width, 0) as i64;
-                }
-                expr::Type::BV(width) => {
-                    if width > 64 {
-                        *current_state_buffer_mut!(self).get_state_mut(state) =
-                            runtime::__alloc_bv(width) as i64;
+        for (&state, &offset) in &self.states_to_offset {
+            for buffer in &mut self.buffers {
+                match state.get_type(self.ctx) {
+                    expr::Type::Array(expr::ArrayType {
+                        index_width,
+                        data_width,
+                    }) => {
+                        assert!(
+                            data_width <= 64,
+                            "only support bv with width less than equal to 64, but got `{}`",
+                            data_width
+                        );
+                        assert!(
+                            index_width <= 12,
+                            "currently no sparse array support, size of the dense array should be less than or equal to 2^12, but got `{}`", 
+                            index_width
+                        );
+                        buffer[offset] = runtime::__alloc_const_array(index_width, 0) as i64;
                     }
-                }
-            }
-        }
-
-        for &state in self.mortal_states.iter().chain(self.immortal_states.iter()) {
-            match state.get_type(self.ctx) {
-                expr::Type::Array(ArrayType { index_width, .. }) => {
-                    *next_state_buffer_mut!(self).get_state_mut(state) =
-                        runtime::__alloc_const_array(index_width, 0) as i64;
-                }
-                expr::Type::BV(width) => {
-                    if width > 64 {
-                        *next_state_buffer_mut!(self).get_state_mut(state) =
-                            runtime::__alloc_bv(width) as i64;
+                    expr::Type::BV(width) => {
+                        if width > 64 {
+                            buffer[offset] = runtime::__alloc_bv(width) as i64;
+                        }
                     }
                 }
             }
@@ -413,12 +368,6 @@ impl<'expr> JITEngine<'expr> {
                 next_slot.clone_from(current_slot);
             }
         }
-        // // SAFETY: non-init states in the output buffer will be overwritten in next step
-        // unsafe {
-        //     for &state in &self.mortal_states {
-        //         next_state_buffer_mut!(self).reclaim_heap_allocated_expr(state)
-        //     }
-        // }
     }
 
     fn cached_states_shootdown(&mut self) {
@@ -528,9 +477,7 @@ impl std::ops::Drop for JITEngine<'_> {
         // SAFETY: invoked in drop, those states will no longer be accessed
         unsafe {
             current_state_buffer_mut!(self).reclaim_all();
-            for &state in &self.immortal_states {
-                next_state_buffer_mut!(self).reclaim_heap_allocated_expr(state);
-            }
+            next_state_buffer_mut!(self).reclaim_all();
         }
     }
 }

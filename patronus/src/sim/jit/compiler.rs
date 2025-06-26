@@ -90,34 +90,37 @@ impl JITCompiler {
                     let output_buffer_address =
                         codegen_ctx.fn_builder.block_params(codegen_ctx.block_id)[1];
                     let data_type = expr.get_type(expr_ctx);
-                    match data_type {
-                        expr::Type::BV(..) => {
-                            codegen_ctx.fn_builder.ins().store(
-                                // buffer is allocated by Rust, therefore trusted
-                                ir::MemFlags::trusted(),
-                                ret,
-                                output_buffer_address,
-                                (param_offset * codegen_ctx.int.bytes()) as i32,
-                            );
-                        }
-                        expr::Type::Array(..) => {
-                            let dst = codegen_ctx.fn_builder.ins().load(
+                    if matches!(data_type, expr::Type::BV(width) if width <= 64) {
+                        codegen_ctx.fn_builder.ins().store(
+                            // buffer is allocated by Rust, therefore trusted
+                            ir::MemFlags::trusted(),
+                            ret,
+                            output_buffer_address,
+                            (param_offset * codegen_ctx.int.bytes()) as i32,
+                        );
+                    } else {
+                        let dst = TaggedValue {
+                            value: codegen_ctx.fn_builder.ins().load(
                                 types::I64,
                                 // buffer is allocated by Rust, therefore trusted
                                 ir::MemFlags::trusted(),
                                 output_buffer_address,
                                 (param_offset * codegen_ctx.int.bytes()) as i32,
-                            );
-                            codegen_ctx.copy_from_array(
-                                TaggedValue {
-                                    value: dst,
-                                    data_type,
-                                },
-                                TaggedValue {
-                                    value: ret,
-                                    data_type,
-                                },
-                            );
+                            ),
+                            data_type,
+                        };
+                        let src = TaggedValue {
+                            value: ret,
+                            data_type,
+                        };
+                        match data_type {
+                            expr::Type::BV(..) => {
+                                codegen_ctx.copy_from_bv(dst, src);
+                                codegen_ctx.dealloc_bv(src);
+                            }
+                            expr::Type::Array(..) => {
+                                codegen_ctx.copy_from_array(dst, src);
+                            }
                         }
                     }
                 }
@@ -507,6 +510,13 @@ impl CodeGenContext<'_, '_, '_> {
         };
         self.register_heap_allocation(ret);
         ret
+    }
+
+    fn copy_from_bv(&mut self, dst: TaggedValue, src: TaggedValue) {
+        assert_eq!(src.data_type, dst.data_type);
+        self.fn_builder
+            .ins()
+            .call(self.runtime_lib.copy_from_bv, &[*dst, *src]);
     }
 
     fn expr_codegen(&mut self, expr: ExprRef, args: &[TaggedValue]) -> TaggedValue {
