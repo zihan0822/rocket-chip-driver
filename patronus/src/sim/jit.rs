@@ -342,6 +342,7 @@ impl<'expr> JITEngine<'expr> {
                 ctx: self.ctx,
             },
         );
+        self.cached_states_shootdown();
     }
 
     fn swap_state_buffer(&mut self) {
@@ -376,8 +377,10 @@ impl<'expr> JITEngine<'expr> {
     /// Inspect current state and next state to find those that are modified
     /// Schedule them to be re-computed at next `step` by adding them to `dirty_states`
     fn mark_dirty_states(&mut self) {
+        let states_require_reexamine = &self.dirty_registry.states;
         let mut next_step_dirty_states = FixedBitSet::with_capacity(self.mutable_slot_states.len());
-        for (offset, &(ref state, tpe)) in self.mutable_slot_states.iter().enumerate() {
+        for offset in states_require_reexamine.ones() {
+            let &(ref state, tpe) = &self.mutable_slot_states[offset];
             let (current_slot, next_slot) = unsafe {
                 (
                     StateSlot::from_typed_slot_value(
