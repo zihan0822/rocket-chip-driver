@@ -210,7 +210,7 @@ macro_rules! current_state_buffer_mut {
 macro_rules! next_state_buffer {
     ($engine: ident) => {
         StateBuffer {
-            buffer: &mut *$engine.buffers[NEXT_STATE_INDEX],
+            buffer: &*$engine.buffers[NEXT_STATE_INDEX],
             states_to_offset: &$engine.states_to_offset,
             ctx: $engine.ctx,
         }
@@ -346,24 +346,23 @@ impl<'expr> JITEngine<'expr> {
     }
 
     fn swap_state_buffer(&mut self) {
+        let previous_dirty_states = self.dirty_registry.states.clone();
         self.mark_dirty_states();
-        self.buffers.swap(CURRENT_STATE_INDEX, NEXT_STATE_INDEX);
-        for (offset, &(_, tpe)) in self.mutable_slot_states.iter().enumerate() {
-            if !self.dirty_registry.states.contains(offset) {
-                let current_slot = unsafe {
-                    StateSlot::from_typed_slot_value(
-                        current_state_buffer!(self).as_slice()[offset],
-                        tpe,
-                    )
-                };
-                let mut next_state_buffer = next_state_buffer_mut!(self);
-                let mut next_slot = unsafe {
-                    StateSlotMut::from_typed_slot_value(
-                        &mut next_state_buffer.as_mut_slice()[offset],
-                        tpe,
-                    )
-                };
-                next_slot.clone_from(current_slot);
+        // If all mutable states are marked dirty, which can be caused by `cached_states_shootdown` when
+        // the very last update strategy we choose is `step_transition_sys`, we optimize state buffer updating by directly swapping
+        // current and next buffer
+        if previous_dirty_states.count_zeroes(..) == 0 {
+            self.buffers.swap(CURRENT_STATE_INDEX, NEXT_STATE_INDEX);
+        } else {
+            let [current_state_buffer, next_state_buffer] = self
+                .buffers
+                .get_disjoint_mut([CURRENT_STATE_INDEX, NEXT_STATE_INDEX])
+                .unwrap();
+            for offset in previous_dirty_states.ones() {
+                std::mem::swap(
+                    &mut current_state_buffer[offset],
+                    &mut next_state_buffer[offset],
+                );
             }
         }
     }
@@ -410,13 +409,6 @@ enum StateSlot<'a> {
     Array(&'a [i64]),
 }
 
-#[derive(PartialEq, Eq)]
-enum StateSlotMut<'a> {
-    ThinBitVec(&'a mut i64),
-    WideBitVec(&'a mut BitVecValue),
-    Array(&'a mut [i64]),
-}
-
 impl<'a> StateSlot<'a> {
     /// # Safety
     /// caller should guarantee that the value passed in points to a valid object of type `tpe`
@@ -435,39 +427,6 @@ impl<'a> StateSlot<'a> {
                 let len = 1 << index_width;
                 Self::Array(std::slice::from_raw_parts(value as *const i64, len))
             }
-        }
-    }
-}
-
-impl<'a> StateSlotMut<'a> {
-    /// # Safety
-    /// caller should guarantee that the value passed in points to a valid object of type `tpe`
-    /// caller should make sure the returned slot will only be used within valid lifetime
-    ///
-    /// An extra level of indirection will be followed for wide bv and array
-    unsafe fn from_typed_slot_value(value: &'a mut i64, tpe: expr::Type) -> Self {
-        match tpe {
-            expr::Type::BV(width) => match width {
-                0..=64 => Self::ThinBitVec(value),
-                _ => Self::WideBitVec(&mut *(*value as *mut BitVecValue)),
-            },
-            expr::Type::Array(ArrayType {
-                index_width,
-                data_width,
-            }) => {
-                assert!(index_width <= 12 && data_width <= 64);
-                let len = 1 << index_width;
-                Self::Array(std::slice::from_raw_parts_mut(*value as *mut i64, len))
-            }
-        }
-    }
-
-    fn clone_from(&mut self, src: StateSlot) {
-        match (self, src) {
-            (Self::ThinBitVec(dst), StateSlot::ThinBitVec(src)) => dst.clone_from(&src),
-            (Self::WideBitVec(dst), StateSlot::WideBitVec(src)) => dst.clone_from(src),
-            (Self::Array(dst), StateSlot::Array(src)) => dst.copy_from_slice(src),
-            _ => unreachable!(),
         }
     }
 }
