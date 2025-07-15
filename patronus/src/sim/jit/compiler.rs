@@ -21,14 +21,14 @@ pub(super) struct JITCompiler {
     pub(super) array_data: Vec<Box<[i64]>>,
 }
 
-pub(super) struct EvalSingleExpr(extern "C" fn(*const i64) -> i64);
+pub(super) struct EvalSingleExprWithUpdate(extern "C" fn(*const i64, *mut i64));
 pub(super) struct EvalBatchedExprWithUpdate(extern "C" fn(*const i64, *mut i64));
 
-impl EvalSingleExpr {
+impl EvalSingleExprWithUpdate {
     /// # Safety
     /// caller should guarantee the memory allocated for compiled code has not been reclaimed
-    pub(super) unsafe fn call(&self, current_states: &[i64]) -> i64 {
-        (self.0)(current_states.as_ptr())
+    pub(super) unsafe fn call(&self, current_states: &[i64], ret_placeholder: *mut i64) {
+        (self.0)(current_states.as_ptr(), ret_placeholder);
     }
 }
 
@@ -90,39 +90,21 @@ impl JITCompiler {
                     let output_buffer_address =
                         codegen_ctx.fn_builder.block_params(codegen_ctx.block_id)[1];
                     let data_type = expr.get_type(expr_ctx);
-                    if matches!(data_type, expr::Type::BV(width) if width <= 64) {
-                        codegen_ctx.fn_builder.ins().store(
+                    let dst = if matches!(data_type, expr::Type::BV(width) if width <= 64) {
+                        codegen_ctx.fn_builder.ins().iadd_imm(
+                            output_buffer_address,
+                            (param_offset * codegen_ctx.int.bytes()) as i64,
+                        )
+                    } else {
+                        codegen_ctx.fn_builder.ins().load(
+                            types::I64,
                             // buffer is allocated by Rust, therefore trusted
                             ir::MemFlags::trusted(),
-                            ret,
                             output_buffer_address,
                             (param_offset * codegen_ctx.int.bytes()) as i32,
-                        );
-                    } else {
-                        let dst = TaggedValue {
-                            value: codegen_ctx.fn_builder.ins().load(
-                                types::I64,
-                                // buffer is allocated by Rust, therefore trusted
-                                ir::MemFlags::trusted(),
-                                output_buffer_address,
-                                (param_offset * codegen_ctx.int.bytes()) as i32,
-                            ),
-                            data_type,
-                        };
-                        let src = TaggedValue {
-                            value: ret,
-                            data_type,
-                        };
-                        match data_type {
-                            expr::Type::BV(..) => {
-                                codegen_ctx.copy_from_bv(dst, src);
-                                codegen_ctx.dealloc_bv(src);
-                            }
-                            expr::Type::Array(..) => {
-                                codegen_ctx.copy_from_array(dst, src);
-                            }
-                        }
-                    }
+                        )
+                    };
+                    store_compiled_code_ret_at(dst, ret, data_type, &mut codegen_ctx);
                 }
                 codegen_ctx.fn_builder.ins().return_(&[]);
                 codegen_ctx.fn_builder.finalize();
@@ -142,10 +124,10 @@ impl JITCompiler {
         expr_ctx: &expr::Context,
         root_expr: ExprRef,
         input_state_buffer: &dyn StateBufferView<i64>,
-    ) -> JITResult<EvalSingleExpr> {
+    ) -> JITResult<EvalSingleExprWithUpdate> {
         let sig = Signature {
-            params: vec![AbiParam::new(types::I64)],
-            returns: vec![AbiParam::new(types::I64)],
+            params: vec![AbiParam::new(types::I64), AbiParam::new(types::I64)],
+            returns: vec![],
             call_conv: isa::CallConv::SystemV,
         };
 
@@ -154,24 +136,20 @@ impl JITCompiler {
             expr_ctx,
             vec![root_expr],
             input_state_buffer,
-            |mut ret, mut codegen_ctx| {
+            |ret, mut codegen_ctx| {
                 debug_assert_eq!(ret.len(), 1);
                 let data_type = root_expr.get_type(expr_ctx);
-                if let expr::Type::Array(..) = data_type {
-                    ret[0] = *codegen_ctx.clone_array(TaggedValue {
-                        value: ret[0],
-                        data_type,
-                    });
-                }
-                codegen_ctx.fn_builder.ins().return_(&ret);
+                let dst = codegen_ctx.fn_builder.block_params(codegen_ctx.block_id)[1];
+                store_compiled_code_ret_at(dst, ret[0], data_type, &mut codegen_ctx);
+                codegen_ctx.fn_builder.ins().return_(&[]);
                 codegen_ctx.fn_builder.finalize();
             },
         )
         .map(|address| unsafe {
             // SAFETY: upheld by the unsafeness of call method
-            EvalSingleExpr(std::mem::transmute::<
+            EvalSingleExprWithUpdate(std::mem::transmute::<
                 *const u8,
-                extern "C" fn(*const i64) -> i64,
+                extern "C" fn(*const i64, *mut i64),
             >(address))
         })
     }
@@ -223,6 +201,38 @@ impl JITCompiler {
         self.module.finalize_definitions()?;
 
         Ok(self.module.get_finalized_function(function_id))
+    }
+}
+
+/// `dst` is a pointer to object with type aligned with `src`.
+/// Necessary clean up procedure for the returned value emitted from compiled code is executed after copy
+fn store_compiled_code_ret_at(
+    dst: cranelift::prelude::Value,
+    src: cranelift::prelude::Value,
+    data_type: expr::Type,
+    codegen_ctx: &mut CodeGenContext,
+) {
+    if matches!(data_type, expr::Type::BV(width) if width <= 64) {
+        codegen_ctx
+            .fn_builder
+            .ins()
+            .store(ir::MemFlags::trusted(), src, dst, 0);
+        return;
+    }
+    let dst = TaggedValue {
+        value: dst,
+        data_type,
+    };
+    let src = TaggedValue {
+        value: src,
+        data_type,
+    };
+    match data_type {
+        expr::Type::BV(..) => {
+            codegen_ctx.copy_from_bv(dst, src);
+            codegen_ctx.dealloc_bv(src);
+        }
+        expr::Type::Array(..) => codegen_ctx.copy_from_array(dst, src),
     }
 }
 
@@ -455,6 +465,7 @@ impl CodeGenContext<'_, '_, '_> {
         );
     }
 
+    #[allow(dead_code)]
     fn clone_array(&mut self, from: TaggedValue) -> TaggedValue {
         let expr::Type::Array(tpe) = from.data_type else {
             unreachable!()

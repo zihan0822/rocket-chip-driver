@@ -142,16 +142,19 @@ pub struct JITEngine<'expr> {
 struct JITBackend {
     compiler: JITCompiler,
     compiled_transition_sys: Option<EvalBatchedExprWithUpdate>,
-    compiled_expr_eval: FxHashMap<ExprRef, EvalSingleExpr>,
+    compiled_expr_eval: FxHashMap<ExprRef, EvalSingleExprWithUpdate>,
 }
 
 impl JITBackend {
-    fn eval_expr(
+    /// # Safety
+    /// The caller should guarantee that `ret_placeholder` is a valid pointer to object of the same type as `expr`
+    unsafe fn eval_expr(
         &mut self,
         expr: ExprRef,
         ctx: &expr::Context,
         input_state_buffer: &impl StateBufferView<i64>,
-    ) -> i64 {
+        ret_placeholder: *mut (),
+    ) {
         let eval_fn = self.compiled_expr_eval.entry(expr).or_insert_with(|| {
             self.compiler
                 .compile_expr(ctx, expr, input_state_buffer)
@@ -159,7 +162,7 @@ impl JITBackend {
         });
 
         // SAFETY: jit compiler has not been dropped
-        unsafe { eval_fn.call(input_state_buffer.as_slice()) }
+        eval_fn.call(input_state_buffer.as_slice(), ret_placeholder as *mut i64);
     }
 
     fn step_transition_sys(
@@ -320,10 +323,68 @@ impl<'expr> JITEngine<'expr> {
         }
     }
 
-    fn eval_expr(&self, expr: ExprRef) -> i64 {
-        self.backend
-            .borrow_mut()
-            .eval_expr(expr, self.ctx, &current_state_buffer!(self))
+    /// Evaluates expression binded to slot at `offset` and saves the result at the same position in the next state buffer.
+    /// This function directly takes slot offset as parameter instead of `ExprRef` to avoid `states_to_offset` search overhead.
+    fn eval_expr_at_slot(&self, offset: usize) {
+        let &(ref state, tpe) = &self.mutable_slot_states[offset];
+        let ret_placeholder = if matches!(tpe, expr::Type::BV(width) if width <= 64) {
+            &next_state_buffer!(self).as_slice()[offset] as *const _ as *mut ()
+        } else {
+            next_state_buffer!(self).as_slice()[offset] as *mut ()
+        };
+        // SAFETY: `ret_placeholder` is obtained from `next_state_buffer` at the same slot, so it points to
+        // an object of correct type. There is no alias xor mut conflit here, `ret_placeholder` is guaranteed to not
+        // overlap with `current_state_buffer`
+        unsafe {
+            self.eval_expr_with_ret_placeholder(state.next.unwrap(), ret_placeholder);
+        }
+    }
+
+    /// Computes expressions that do not bind to a mutable state slot.
+    /// Interpretation of the returned value varies depending on the expression type.
+    /// For wide bit vector and array, the returned value is a pointer to leaked heap allocated object.
+    fn eval_non_state_expr(&self, expr: ExprRef) -> i64 {
+        match expr.get_type(self.ctx) {
+            expr::Type::BV(width) => {
+                if width <= 64 {
+                    let mut ret_placeholder: i64 = 0;
+                    // SAFETY: ref mut of stack allocated `i64` for thin bitvector
+                    unsafe {
+                        self.eval_expr_with_ret_placeholder(
+                            expr,
+                            &mut ret_placeholder as *mut _ as *mut (),
+                        );
+                    }
+                    ret_placeholder
+                } else {
+                    let bv = runtime::__alloc_bv(width) as *mut ();
+                    // SAFETY: heap allocated wide bitvector
+                    unsafe {
+                        self.eval_expr_with_ret_placeholder(expr, bv);
+                    }
+                    bv as i64
+                }
+            }
+            expr::Type::Array(ArrayType { index_width, .. }) => {
+                unsafe {
+                    // SAFETY: heap allocated array
+                    let array = runtime::__alloc_const_array(index_width, 0) as *mut ();
+                    self.eval_expr_with_ret_placeholder(expr, array);
+                    array as i64
+                }
+            }
+        }
+    }
+
+    /// # Safety
+    /// Follows the same requirement as `JITBackend::expr_expr`
+    unsafe fn eval_expr_with_ret_placeholder(&self, expr: ExprRef, ret_placeholder: *mut ()) {
+        self.backend.borrow_mut().eval_expr(
+            expr,
+            self.ctx,
+            &current_state_buffer!(self),
+            ret_placeholder,
+        )
     }
 
     fn step_transition_sys(&mut self) {
@@ -527,7 +588,7 @@ impl Simulator for JITEngine<'_> {
 
         for state in &self.sys.states {
             if let Some(init) = state.init {
-                let ret = self.eval_expr(init);
+                let ret = self.eval_non_state_expr(init);
                 current_state_buffer_mut!(self).try_replace_with_heap_reclaim(state.symbol, ret);
             }
         }
@@ -537,12 +598,10 @@ impl Simulator for JITEngine<'_> {
     fn step(&mut self) {
         match self.dirty_registry.select_update_policy() {
             DirtyUpdatePolicy::Sparse => {
-                for offset in self.dirty_registry.states.ones() {
-                    let state = &self.mutable_slot_states[offset].0;
-                    let next = state.next.unwrap();
-                    let ret = self.eval_expr(next);
-                    next_state_buffer_mut!(self).try_replace_with_heap_reclaim(state.symbol, ret);
-                }
+                self.dirty_registry
+                    .states
+                    .ones()
+                    .for_each(|offset| self.eval_expr_at_slot(offset));
             }
             DirtyUpdatePolicy::Batched => {
                 self.step_transition_sys();
@@ -575,7 +634,7 @@ impl Simulator for JITEngine<'_> {
             is_cached_symbol = true;
             current_state_buffer!(self).as_slice()[offset]
         } else {
-            self.eval_expr(expr)
+            self.eval_non_state_expr(expr)
         };
         match expr.get_type(self.ctx) {
             expr::Type::Array(expr::ArrayType { index_width, .. }) => {
