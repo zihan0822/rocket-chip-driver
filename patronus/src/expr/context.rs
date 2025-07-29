@@ -72,8 +72,8 @@ impl ExprRef {
 /// reference equivalence implies structural equivalence.
 #[derive(Clone)]
 pub struct Context {
+    pub(crate) exprs: indexmap::IndexSet<Expr, FxBuildHasher>,
     strings: indexmap::IndexSet<String, FxBuildHasher>,
-    exprs: indexmap::IndexSet<Expr, FxBuildHasher>,
     values: baa::ValueInterner,
     // cached special values
     true_expr_ref: ExprRef,

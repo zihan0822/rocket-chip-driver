@@ -78,6 +78,11 @@ where
 
 const CURRENT_STATE_INDEX: usize = 0;
 const NEXT_STATE_INDEX: usize = 1;
+/// Minimum number of expr nodes that will enable dynamic switching between per-expr and batched update mode.
+/// If the number of expr nodes is less than or equal to this, JIT will always use batched update mode.
+/// TODO: better heuristics than simple expr nodes count
+const DYNAMIC_MODE_SWITCH_THRESHOLD: usize = 1500;
+/// Minimum dirty percentage of output states that will trigger batched update mode
 const BATCHED_UPDATE_THRESHOLD: f64 = 0.6;
 
 enum DirtyUpdatePolicy {
@@ -125,17 +130,21 @@ pub struct JITEngine<'expr> {
     buffers: [Box<[i64]>; 2],
     ctx: &'expr expr::Context,
     sys: &'expr TransitionSystem,
-    /// interior mutability for lazy compilation triggered by `Simulator::get`
+    /// Interior mutability for lazy compilation triggered by `Simulator::get`
     backend: RefCell<JITBackend>,
-    /// for each leaf state, tracks all root state expr that transitively depends on it
+    /// For each leaf state, tracks all root state expr that transitively depends on it
     upstream_dependents: FxHashMap<ExprRef, FixedBitSet>,
-    /// maintains set of states that need to be recomputed at next step
+    /// Maintains set of states that need to be recomputed at next step
     dirty_registry: DirtyStateRegistry,
-    /// states corresponding to the first `sys.states.len()` expr in the state buffer
+    /// States corresponding to the first `sys.states.len()` expr in the state buffer
     /// types are cached for better perf
     mutable_slot_states: Vec<(State, expr::Type)>,
     states_to_offset: FxHashMap<ExprRef, usize>,
     step_count: u64,
+    /// Whether dynamic switching is enabled is determined by the number of expr nodes.
+    /// When enabled, JIT will switch between per-expr and batched update mode in each `step()` according to the dirty
+    /// percetange of output states.
+    dynamic_update_mode_switching_enabled: bool,
 }
 
 #[derive(Default)]
@@ -250,6 +259,7 @@ impl<'expr> JITEngine<'expr> {
         let mut init_states = FixedBitSet::with_capacity(mutable_slot_states.len());
         init_states.insert_range(..);
         let dirty_registry = DirtyStateRegistry::new(init_states, mutable_slot_states.len());
+        let dynamic_update_mode_switching_enabled = ctx.exprs.len() > DYNAMIC_MODE_SWITCH_THRESHOLD;
 
         let mut engine = Self {
             backend: RefCell::default(),
@@ -261,6 +271,7 @@ impl<'expr> JITEngine<'expr> {
             upstream_dependents: FxHashMap::default(),
             dirty_registry,
             step_count: 0,
+            dynamic_update_mode_switching_enabled,
         };
         engine.bootstrap_state_buffers();
         engine.find_leaf_states_upstream_dep();
@@ -408,6 +419,10 @@ impl<'expr> JITEngine<'expr> {
 
     fn swap_state_buffer(&mut self) {
         let previous_dirty_states = self.dirty_registry.states.clone();
+        if !self.dynamic_update_mode_switching_enabled {
+            self.buffers.swap(CURRENT_STATE_INDEX, NEXT_STATE_INDEX);
+            return;
+        }
         self.mark_dirty_states();
         // If all mutable states are marked dirty, which can be caused by `cached_states_shootdown` when
         // the very last update strategy we choose is `step_transition_sys`, we optimize state buffer updating by directly swapping
@@ -596,16 +611,18 @@ impl Simulator for JITEngine<'_> {
     }
 
     fn step(&mut self) {
-        match self.dirty_registry.select_update_policy() {
-            DirtyUpdatePolicy::Sparse => {
-                self.dirty_registry
-                    .states
-                    .ones()
-                    .for_each(|offset| self.eval_expr_at_slot(offset));
-            }
-            DirtyUpdatePolicy::Batched => {
-                self.step_transition_sys();
-            }
+        if !self.dynamic_update_mode_switching_enabled
+            || matches!(
+                self.dirty_registry.select_update_policy(),
+                DirtyUpdatePolicy::Batched
+            )
+        {
+            self.step_transition_sys();
+        } else {
+            self.dirty_registry
+                .states
+                .ones()
+                .for_each(|offset| self.eval_expr_at_slot(offset));
         }
         self.swap_state_buffer();
         self.step_count += 1;
