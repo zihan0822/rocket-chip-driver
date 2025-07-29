@@ -143,6 +143,7 @@ pub struct JITEngine<'expr> {
     /// When enabled, JIT will switch between per-expr and batched update mode in each `step()` according to the dirty
     /// percetange of output states.
     dynamic_update_mode_switching_enabled: bool,
+    snapshots: Vec<Box<[i64]>>,
 }
 
 #[derive(Default)]
@@ -270,6 +271,7 @@ impl<'expr> JITEngine<'expr> {
             dirty_registry,
             step_count: 0,
             dynamic_update_mode_switching_enabled,
+            snapshots: Vec::default(),
         };
         engine.bootstrap_state_buffers();
         engine.find_leaf_states_upstream_dep();
@@ -471,6 +473,28 @@ impl<'expr> JITEngine<'expr> {
                 }
             }
         }
+    }
+
+    fn clone_state_buffer(&self, src: &impl StateBufferView<i64>) -> Box<[i64]> {
+        let mut dst = vec![0_i64; self.states_to_offset.len()];
+        for (state, &offset) in &self.states_to_offset {
+            let value = src.as_slice()[offset];
+            match state.get_type(self.ctx) {
+                expr::Type::BV(width) => {
+                    if width <= 64 {
+                        dst[offset] = value;
+                    } else {
+                        unsafe {
+                            dst[offset] = runtime::__clone_bv(value as *const BitVecValue) as i64;
+                        }
+                    }
+                }
+                expr::Type::Array(ArrayType { index_width, .. }) => unsafe {
+                    dst[offset] = runtime::__clone_array(value as *const i64, index_width) as i64;
+                },
+            }
+        }
+        dst.into_boxed_slice()
     }
 }
 
@@ -694,10 +718,28 @@ impl Simulator for JITEngine<'_> {
     }
 
     fn take_snapshot(&mut self) -> Self::SnapshotId {
-        todo!()
+        let snapshot = self.clone_state_buffer(&current_state_buffer!(self));
+        let id = self.snapshots.len() as u32;
+        self.snapshots.push(snapshot);
+        id
     }
 
-    fn restore_snapshot(&mut self, _id: Self::SnapshotId) {
-        todo!()
+    fn restore_snapshot(&mut self, id: Self::SnapshotId) {
+        std::mem::swap(
+            &mut self.buffers[CURRENT_STATE_INDEX],
+            &mut self.snapshots[id as usize],
+        );
+        let restored_snapshot = self.clone_state_buffer(&current_state_buffer!(self));
+        let dropped_snapshot =
+            std::mem::replace(&mut self.snapshots[id as usize], restored_snapshot);
+        // SAFETY: `dropped_snapshot` is taken from current state buffer, all its elements are guaranteed to point to a valid heap allocated object
+        unsafe {
+            StateBuffer {
+                buffer: dropped_snapshot,
+                states_to_offset: &self.states_to_offset,
+                ctx: self.ctx,
+            }
+            .reclaim_all();
+        }
     }
 }
