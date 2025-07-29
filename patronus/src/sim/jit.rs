@@ -627,16 +627,23 @@ impl Simulator for JITEngine<'_> {
     }
 
     fn set<'b>(&mut self, expr: ExprRef, value: BitVecValueRef<'b>) {
-        assert!(matches!(self.ctx[expr], Expr::BVSymbol { .. }));
-        assert!(value.width() <= 64);
-        let value = value.to_u64().unwrap_or_else(|| {
-            panic!(
-                "unsupported bv value for jit based interpreter: {:?}",
-                value
-            )
-        });
-        *current_state_buffer_mut!(self).get_state_mut(expr) = value as i64;
-        *next_state_buffer_mut!(self).get_state_mut(expr) = value as i64;
+        let expr::Type::BV(width) = expr.get_type(self.ctx) else {
+            unreachable!()
+        };
+        if width <= 64 {
+            let value = value.to_u64().unwrap();
+            *current_state_buffer_mut!(self).get_state_mut(expr) = value as i64;
+            *next_state_buffer_mut!(self).get_state_mut(expr) = value as i64;
+        } else {
+            // XXX: currently `runtime::__clone_bv` only supports raw pointer to `BitVecValue` as parameter
+            let value: BitVecValue = value.into();
+            unsafe {
+                *current_state_buffer_mut!(self).get_state_mut(expr) =
+                    runtime::__clone_bv(&value as *const BitVecValue) as i64;
+                *next_state_buffer_mut!(self).get_state_mut(expr) =
+                    runtime::__clone_bv(&value as *const BitVecValue) as i64;
+            }
+        }
 
         if let Some(roots) = self.upstream_dependents.get(&expr) {
             self.dirty_registry.register(roots)
