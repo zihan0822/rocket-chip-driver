@@ -2,7 +2,6 @@
 // released under BSD 3-Clause License
 // author: Zihan Li <zl2225@cornell.edu>
 use crate::expr::*;
-use baa::Word;
 use cranelift::codegen::ir::{types, AbiParam, FuncRef, Function};
 use cranelift::jit::{JITBuilder, JITModule};
 use cranelift::module::{Linkage, Module};
@@ -10,7 +9,6 @@ use cranelift::prelude::*;
 use rustc_hash::FxHashMap;
 use trampoline::*;
 
-#[allow(dead_code)]
 pub(super) struct RuntimeLib {
     pub(super) clone_array: FuncRef,
     pub(super) dealloc_array: FuncRef,
@@ -220,11 +218,12 @@ mod trampoline {
         }
     }
     type MaybeIndirect = i64;
+    type ThinBV = i64;
     pub(super) enum BVOpKind {
         Binary(unsafe extern "C" fn(*mut BitVecValue, *const BitVecValue, *const BitVecValue)),
         Unary(unsafe extern "C" fn(*mut BitVecValue, *const BitVecValue)),
-        Cmp(unsafe extern "C" fn(*const BitVecValue, *const BitVecValue) -> MaybeIndirect),
-        Slice(unsafe extern "C" fn(*const BitVecValue, WidthInt, WidthInt) -> MaybeIndirect),
+        Cmp(unsafe extern "C" fn(*const BitVecValue, *const BitVecValue) -> ThinBV),
+        Slice(unsafe extern "C" fn(*const BitVecValue, WidthInt, WidthInt) -> ThinBV),
         SliceWithOutputBuffer(
             unsafe extern "C" fn(*mut BitVecValue, *const BitVecValue, WidthInt, WidthInt),
         ),
@@ -242,59 +241,95 @@ mod trampoline {
     }
 
     macro_rules! baa_binary_op_shim {
-        ($func: ident, $baa_op_name: ident) => {
+        ($($op: ident),*) => {
+            $(
+                paste::paste! {
+                    baa_binary_op_shim!(@internal [<__bv_ $op>], [<$op _in_place>], $op);
+                }
+            )*
+        };
+        (@internal $func: ident, $baa_delegation: ident, $sym: ident) => {
             inventory::submit!(BVOpRegistry {
                 kind: BVOpKind::Binary($func),
-                sym: stringify!($baa_op_name)
+                sym: stringify!($sym)
             });
             pub(super) unsafe extern "C" fn $func(
                 dst: *mut BitVecValue,
                 lhs: *const BitVecValue,
                 rhs: *const BitVecValue,
             ) {
-                *dst = (&*lhs).$baa_op_name(&*rhs);
+                (*dst).$baa_delegation(&*lhs, &*rhs);
             }
-        };
+        }
     }
 
     macro_rules! baa_cmp_op_shim {
-        ($func: ident, $baa_op_name: ident, rename: $rename: ident) => {
+        ($($op: ident $([rename: $rename: ident])?),*) => {
+            $(
+                baa_cmp_op_shim!(@maybe_rename $op $(,$rename)?);
+            )*
+        };
+
+        (@maybe_rename $op: ident, $rename: ident) => {
+            paste::paste! {
+                baa_cmp_op_shim!(@internal [<__bv_ $op>], $op, $rename);
+            }
+        };
+
+        (@maybe_rename $op: ident) => {
+            paste::paste! {
+                baa_cmp_op_shim!(@internal [<__bv_ $op>], $op, $op);
+            }
+        };
+
+        (@internal $func: ident, $baa_delegation: ident, $sym: ident) => {
             inventory::submit!(BVOpRegistry {
                 kind: BVOpKind::Cmp($func),
-                sym: stringify!($rename)
+                sym: stringify!($sym)
             });
             pub(super) unsafe extern "C" fn $func(
                 lhs: *const BitVecValue,
                 rhs: *const BitVecValue,
-            ) -> MaybeIndirect {
-                (&*lhs).$baa_op_name(&*rhs) as MaybeIndirect
+            ) -> ThinBV {
+                (&*lhs).$baa_delegation(&*rhs) as ThinBV
             }
         };
-        ($func: ident, $baa_op_name: ident) => {
-            baa_binary_op_shim!($func, $baa_op_name, rename: $baa_op_name);
-        }
     }
 
     macro_rules! baa_unary_op_shim {
-        ($func: ident, $baa_op_name: ident) => {
+        ($($op: ident),*) => {
+            $(
+                paste::paste! {
+                    baa_unary_op_shim!(@internal [<__bv_ $op>], $op, $op);
+                }
+            )*
+        };
+        (@internal $func: ident, $baa_delegation: ident, $sym: ident) => {
             inventory::submit!(BVOpRegistry {
                 kind: BVOpKind::Unary($func),
-                sym: stringify!($baa_op_name)
+                sym: stringify!($sym)
             });
             pub(super) unsafe extern "C" fn $func(
                 dst: *mut BitVecValue,
                 value: *const BitVecValue,
             ) {
-                *dst = (&*value).$baa_op_name();
+                *dst = (&*value).$baa_delegation();
             }
         };
     }
 
     macro_rules! baa_extend_op_shim {
-        ($func: ident, $baa_op_name: ident) => {
+        ($($op: ident),*) => {
+            $(
+                paste::paste! {
+                    baa_extend_op_shim!(@internal [<__bv_ $op>], [<$op _in_place>], $op);
+                }
+            )*
+        };
+        (@internal $func: ident, $baa_delegation: ident, $sym: ident) => {
             inventory::submit!(BVOpRegistry {
                 kind: BVOpKind::Extend($func),
-                sym: stringify!($baa_op_name)
+                sym: stringify!($sym)
             });
             pub(super) unsafe extern "C" fn $func(
                 dst: *mut BitVecValue,
@@ -307,15 +342,23 @@ mod trampoline {
                 } else {
                     &*(value as *const BitVecValue)
                 };
-                *dst = value.$baa_op_name(by);
+                (*dst).$baa_delegation(value, by);
             }
         };
     }
     macro_rules! baa_shift_op_shim {
-        ($func: ident, $baa_op_name: ident) => {
+        ($($op: ident),*) => {
+            $(
+                paste::paste! {
+                    baa_shift_op_shim!(@internal [<__bv_ $op>], [<$op _in_place>], $op);
+                }
+            )*
+        };
+
+        (@internal $func: ident, $baa_delegation: ident, $sym: ident) => {
             inventory::submit!(BVOpRegistry {
                 kind: BVOpKind::Shift($func),
-                sym: stringify!($baa_op_name)
+                sym: stringify!($sym)
             });
             pub(super) unsafe extern "C" fn $func(
                 dst: *mut BitVecValue,
@@ -328,33 +371,21 @@ mod trampoline {
                 } else {
                     &*(shift as *const BitVecValue)
                 };
-                *dst = (&*value).$baa_op_name(shift);
+                (*dst).$baa_delegation(&*value, shift);
             }
         };
     }
-
-    baa_binary_op_shim!(__bv_add, add);
-    baa_binary_op_shim!(__bv_sub, sub);
-    baa_binary_op_shim!(__bv_mul, mul);
-    baa_binary_op_shim!(__bv_and, and);
-    baa_binary_op_shim!(__bv_or, or);
-    baa_binary_op_shim!(__bv_xor, xor);
-
-    baa_shift_op_shim!(__bv_shift_right, shift_right);
-    baa_shift_op_shim!(__bv_arithmetic_shift_right, arithmetic_shift_right);
-    baa_shift_op_shim!(__bv_shift_left, shift_left);
-
-    baa_unary_op_shim!(__bv_not, not);
-    baa_unary_op_shim!(__bv_negate, negate);
-
-    baa_cmp_op_shim!(__bv_gt, is_greater, rename: gt);
-    baa_cmp_op_shim!(__bv_ge, is_greater_or_equal, rename: ge);
-    baa_cmp_op_shim!(__bv_gt_signed, is_greater_signed, rename: gt_signed);
-    baa_cmp_op_shim!(__bv_ge_signed, is_greater_or_equal_signed, rename: ge_signed);
-    baa_cmp_op_shim!(__bv_equal, is_equal, rename: equal);
-
-    baa_extend_op_shim!(__bv_sign_extend, sign_extend);
-    baa_extend_op_shim!(__bv_zero_extend, zero_extend);
+    baa_binary_op_shim!(add, sub, mul, and, or, xor);
+    baa_shift_op_shim!(shift_right, arithmetic_shift_right, shift_left);
+    baa_extend_op_shim!(sign_extend, zero_extend);
+    baa_unary_op_shim!(not, negate);
+    baa_cmp_op_shim!(
+        is_greater [rename: gt],
+        is_greater_or_equal [rename: ge],
+        is_greater_signed [rename: gt_signed],
+        is_greater_or_equal_signed [rename: ge_signed],
+        is_equal [rename: equal]
+    );
 
     inventory::submit!(BVOpRegistry {
         kind: BVOpKind::Slice(__bv_slice),
@@ -364,10 +395,10 @@ mod trampoline {
         value: *const BitVecValue,
         hi: WidthInt,
         lo: WidthInt,
-    ) -> MaybeIndirect {
+    ) -> ThinBV {
         let ret = (*value).slice(hi, lo);
         debug_assert!(ret.width() <= 64);
-        ret.to_u64().unwrap() as MaybeIndirect
+        ret.to_u64().unwrap() as ThinBV
     }
 
     inventory::submit!(BVOpRegistry {
@@ -381,7 +412,7 @@ mod trampoline {
         lo: WidthInt,
     ) {
         debug_assert!((hi - lo + 1) > 64);
-        super::slice((*dst).words_mut(), (*value).words(), hi, lo);
+        (*dst).slice_in_place(&*value, hi, lo);
     }
 
     inventory::submit!(BVOpRegistry {
@@ -405,80 +436,6 @@ mod trampoline {
         } else {
             &*(lo as *const BitVecValue)
         };
-        super::concat((*dst).words_mut(), hi.words(), lo.words(), lo_width);
+        (*dst).concat_in_place(hi, lo);
     }
-}
-
-fn concat(dst: &mut [baa::Word], msb: &[baa::Word], lsb: &[baa::Word], lsb_width: WidthInt) {
-    // copy lsb to dst
-    assign(dst, lsb);
-
-    let lsb_offset = lsb_width % baa::Word::BITS;
-    if lsb_offset == 0 {
-        // copy msb to dst
-        for (d, m) in dst.iter_mut().skip(lsb.len()).zip(msb.iter()) {
-            *d = *m;
-        }
-    } else {
-        // copy a shifted version of the msb to dst
-        let shift_right = baa::Word::BITS - lsb_offset;
-        let m = mask(shift_right);
-        let mut prev = dst[lsb.len() - 1]; // the msb of the lsb
-        for (d, s) in dst
-            .iter_mut()
-            .skip(lsb.len() - 1)
-            .zip(msb.iter().chain([0].iter()))
-        {
-            *d = prev | ((*s) & m) << lsb_offset;
-            prev = (*s) >> shift_right;
-        }
-    }
-}
-
-#[inline]
-pub fn mask(bits: WidthInt) -> baa::Word {
-    if bits == baa::Word::BITS || bits == 0 {
-        baa::Word::MAX
-    } else {
-        assert!(bits < baa::Word::BITS);
-        ((1 as baa::Word) << bits) - 1
-    }
-}
-
-#[inline]
-fn assign(dst: &mut [baa::Word], source: &[baa::Word]) {
-    for (d, s) in dst.iter_mut().zip(source.iter()) {
-        *d = *s;
-    }
-}
-
-fn slice(dst: &mut [Word], source: &[Word], hi: WidthInt, lo: WidthInt) {
-    let lo_offset = lo % Word::BITS;
-    let hi_word = (hi / Word::BITS) as usize;
-    let lo_word = (lo / Word::BITS) as usize;
-    let src = &source[lo_word..(hi_word + 1)];
-
-    let shift_right = lo_offset;
-    if shift_right == 0 {
-        assign(dst, src);
-    } else {
-        // assign with a shift
-        let shift_left = Word::BITS - shift_right;
-        let m = mask(shift_right);
-        let mut prev = src[0] >> shift_right;
-        // We append a zero to the src iter in case src.len() == dst.len().
-        // If src.len() == dst.len() + 1, then the 0 will just be ignored by `zip`.
-        for (d, s) in dst.iter_mut().zip(src.iter().skip(1).chain([0].iter())) {
-            *d = prev | ((*s) & m) << shift_left;
-            prev = (*s) >> shift_right;
-        }
-    }
-    // mask the result msb
-    mask_msb(dst, hi - lo + 1);
-}
-
-#[inline]
-fn mask_msb(dst: &mut [Word], width: WidthInt) {
-    let m = mask(width % Word::BITS);
-    *dst.last_mut().unwrap() &= m;
 }
