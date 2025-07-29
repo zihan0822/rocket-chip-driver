@@ -91,13 +91,16 @@ enum DirtyUpdatePolicy {
 }
 struct DirtyStateRegistry {
     states: FixedBitSet,
+    /// Currently used in `mark_dirty_states` to store the dirty states for next step to avoid heap allocation
+    scratch_states: FixedBitSet,
     num_total_states: f64,
 }
 
 impl DirtyStateRegistry {
     fn new(init_states: FixedBitSet, num_total_states: usize) -> Self {
         Self {
-            states: init_states,
+            states: init_states.clone(),
+            scratch_states: FixedBitSet::with_capacity(num_total_states),
             num_total_states: num_total_states as f64,
         }
     }
@@ -105,11 +108,6 @@ impl DirtyStateRegistry {
     #[inline]
     fn register(&mut self, dirty_states: &FixedBitSet) {
         self.states.union_with(dirty_states);
-    }
-
-    #[inline]
-    fn clear_and_track(&mut self, dirty_states: FixedBitSet) {
-        self.states = dirty_states;
     }
 
     fn select_update_policy(&self) -> DirtyUpdatePolicy {
@@ -418,16 +416,16 @@ impl<'expr> JITEngine<'expr> {
     }
 
     fn swap_state_buffer(&mut self) {
-        let previous_dirty_states = self.dirty_registry.states.clone();
         if !self.dynamic_update_mode_switching_enabled {
             self.buffers.swap(CURRENT_STATE_INDEX, NEXT_STATE_INDEX);
             return;
         }
         self.mark_dirty_states();
+        let previous_dirty_states = &self.dirty_registry.states;
         // If all mutable states are marked dirty, which can be caused by `cached_states_shootdown` when
         // the very last update strategy we choose is `step_transition_sys`, we optimize state buffer updating by directly swapping
         // current and next buffer
-        if previous_dirty_states.count_zeroes(..) == 0 {
+        if previous_dirty_states.is_full() {
             self.buffers.swap(CURRENT_STATE_INDEX, NEXT_STATE_INDEX);
         } else {
             let [current_state_buffer, next_state_buffer] = self
@@ -441,31 +439,30 @@ impl<'expr> JITEngine<'expr> {
                 );
             }
         }
+        std::mem::swap(
+            &mut self.dirty_registry.states,
+            &mut self.dirty_registry.scratch_states,
+        );
     }
 
     fn cached_states_shootdown(&mut self) {
-        let mut all_dirty = FixedBitSet::with_capacity(self.mutable_slot_states.len());
-        all_dirty.insert_range(..);
-        self.dirty_registry.clear_and_track(all_dirty);
+        self.dirty_registry.states.insert_range(..);
     }
 
     /// Inspect current state and next state to find those that are modified
     /// Schedule them to be re-computed at next `step` by adding them to `dirty_states`
     fn mark_dirty_states(&mut self) {
         let states_require_reexamine = &self.dirty_registry.states;
-        let mut next_step_dirty_states = FixedBitSet::with_capacity(self.mutable_slot_states.len());
+        let next_step_dirty_states = &mut self.dirty_registry.scratch_states;
+        next_step_dirty_states.clear();
+        let (current_state_buffer, next_state_buffer) =
+            (current_state_buffer!(self), next_state_buffer!(self));
         for offset in states_require_reexamine.ones() {
             let &(ref state, tpe) = &self.mutable_slot_states[offset];
             let (current_slot, next_slot) = unsafe {
                 (
-                    StateSlot::from_typed_slot_value(
-                        current_state_buffer!(self).as_slice()[offset],
-                        tpe,
-                    ),
-                    StateSlot::from_typed_slot_value(
-                        next_state_buffer!(self).as_slice()[offset],
-                        tpe,
-                    ),
+                    StateSlot::from_typed_slot_value(&current_state_buffer.as_slice()[offset], tpe),
+                    StateSlot::from_typed_slot_value(&next_state_buffer.as_slice()[offset], tpe),
                 )
             };
             if current_slot.ne(&next_slot) {
@@ -474,13 +471,12 @@ impl<'expr> JITEngine<'expr> {
                 }
             }
         }
-        self.dirty_registry.clear_and_track(next_step_dirty_states);
     }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 enum StateSlot<'a> {
-    ThinBitVec(i64),
+    ThinBitVec(&'a i64),
     WideBitVec(&'a BitVecValue),
     Array(&'a [i64]),
 }
@@ -489,11 +485,13 @@ impl<'a> StateSlot<'a> {
     /// # Safety
     /// caller should guarantee that the value passed in points to a valid object of type `tpe`
     /// caller should make sure the returned slot will only be used within valid lifetime
-    unsafe fn from_typed_slot_value(value: i64, tpe: expr::Type) -> Self {
+    ///
+    /// An extra level of indirection is followed for wide bit vector and array.
+    unsafe fn from_typed_slot_value(value: &'a i64, tpe: expr::Type) -> Self {
         match tpe {
             expr::Type::BV(width) => match width {
                 0..=64 => Self::ThinBitVec(value),
-                _ => Self::WideBitVec(&*(value as *const BitVecValue)),
+                _ => Self::WideBitVec(&*(*value as *const BitVecValue)),
             },
             expr::Type::Array(ArrayType {
                 index_width,
@@ -501,7 +499,7 @@ impl<'a> StateSlot<'a> {
             }) => {
                 assert!(index_width <= 12 && data_width <= 64);
                 let len = 1 << index_width;
-                Self::Array(std::slice::from_raw_parts(value as *const i64, len))
+                Self::Array(std::slice::from_raw_parts(*value as *const i64, len))
             }
         }
     }
@@ -647,13 +645,16 @@ impl Simulator for JITEngine<'_> {
 
     fn get(&self, expr: ExprRef) -> baa::Value {
         let mut is_cached_symbol = false;
+        let tpe;
         let value = if let Some(&offset) = self.states_to_offset.get(&expr) {
             is_cached_symbol = true;
+            tpe = self.mutable_slot_states[offset].1;
             current_state_buffer!(self).as_slice()[offset]
         } else {
+            tpe = expr.get_type(self.ctx);
             self.eval_non_state_expr(expr)
         };
-        match expr.get_type(self.ctx) {
+        match tpe {
             expr::Type::Array(expr::ArrayType { index_width, .. }) => {
                 // SAFETY: jit compiler guarantees that value points to a boxed slice with len 1 << index_width
                 unsafe {
