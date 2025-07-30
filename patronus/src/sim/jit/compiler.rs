@@ -14,7 +14,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 /// we need a vec_box here because the address of those elements are implicitly
 /// referenced by the compiled code. we need to make sure they are pinned on heap
-#[allow(clippy::vec_box)]
+#[expect(clippy::vec_box)]
 pub(super) struct JITCompiler {
     module: JITModule,
     pub(super) bv_data: Vec<Box<BitVecValue>>,
@@ -185,7 +185,7 @@ impl JITCompiler {
             expr_ctx,
             expr_batch,
             input_state_buffer,
-            heap_allocated: FxHashSet::default(),
+            short_lived_heap_allocation: FxHashSet::default(),
             compiler: self,
             int: types::I64,
         };
@@ -205,7 +205,6 @@ impl JITCompiler {
 }
 
 /// `dst` is a pointer to object with type aligned with `src`.
-/// Necessary clean up procedure for the returned value emitted from compiled code is executed after copy
 fn store_compiled_code_ret_at(
     dst: cranelift::prelude::Value,
     src: cranelift::prelude::Value,
@@ -230,7 +229,6 @@ fn store_compiled_code_ret_at(
     match data_type {
         expr::Type::BV(..) => {
             codegen_ctx.copy_from_bv(dst, src);
-            codegen_ctx.dealloc_bv(src);
         }
         expr::Type::Array(..) => codegen_ctx.copy_from_array(dst, src),
     }
@@ -243,7 +241,7 @@ pub(super) struct CodeGenContext<'expr, 'ctx, 'engine> {
     block_id: Block,
     expr_batch: Vec<ExprRef>,
     input_state_buffer: &'engine dyn StateBufferView<i64>,
-    heap_allocated: FxHashSet<TaggedValue>,
+    short_lived_heap_allocation: FxHashSet<TaggedValue>,
     pub(super) compiler: &'ctx mut JITCompiler,
     pub(super) int: cranelift::prelude::Type,
 }
@@ -332,17 +330,11 @@ impl CodeGenContext<'_, '_, '_> {
             }
         }
 
-        // exclude potential allocation for the return value, which will be reclaimed in jit engine
-        let heap_resources = self.heap_allocated.iter().copied().collect::<Vec<_>>();
-        let value_stack: Vec<Value> = value_stack
-            .into_iter()
-            .map(|ret| match ret.data_type {
-                expr::Type::BV(width) if width > 64 => *self.clone_bv(ret),
-                _ => *ret,
-            })
-            .collect();
-        self.reclaim_heap_resources(heap_resources);
-        value_stack
+        // We have maintained the invariance that for every heap allocated value on the final value stack,
+        // there is a long lived cache associated with it. Therefore, it is safe to reclaim all heap allocated object that has lifetime
+        // tied to the eval function call here (before epilogue).
+        self.reclaim_short_lived_heap_resources();
+        value_stack.into_iter().map(|ret| *ret).collect()
     }
 
     /// Compute important expr graph statistics for better codegen
@@ -366,12 +358,14 @@ impl CodeGenContext<'_, '_, '_> {
         expr_references
     }
 
-    pub(super) fn register_heap_allocation(&mut self, value: TaggedValue) {
-        self.heap_allocated.insert(value);
+    /// Heap allocations registered with this function are considered to be short lived as opposed to long lived cache.
+    /// They have lifetime that ties to the eval function. Therefore, they will introduce heap transactions per eval function call.
+    fn register_short_lived_heap_allocation(&mut self, value: TaggedValue) {
+        self.short_lived_heap_allocation.insert(value);
     }
 
-    fn reclaim_heap_resources(&mut self, items: impl IntoIterator<Item = TaggedValue>) {
-        for value in items {
+    fn reclaim_short_lived_heap_resources(&mut self) {
+        for value in self.short_lived_heap_allocation.clone() {
             match value.data_type {
                 expr::Type::Array(..) => self.dealloc_array(value),
                 expr::Type::BV(width) => {
@@ -481,7 +475,7 @@ impl CodeGenContext<'_, '_, '_> {
         );
     }
 
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     fn clone_array(&mut self, from: TaggedValue) -> TaggedValue {
         let expr::Type::Array(tpe) = from.data_type else {
             unreachable!()
@@ -498,7 +492,7 @@ impl CodeGenContext<'_, '_, '_> {
             value: self.fn_builder.inst_results(call)[0],
             data_type: from.data_type,
         };
-        self.register_heap_allocation(ret);
+        self.register_short_lived_heap_allocation(ret);
         ret
     }
 
@@ -515,7 +509,7 @@ impl CodeGenContext<'_, '_, '_> {
             value: self.fn_builder.inst_results(call)[0],
             data_type: expr::Type::Array(tpe),
         };
-        self.register_heap_allocation(ret);
+        self.register_short_lived_heap_allocation(ret);
         ret
     }
 
@@ -525,6 +519,7 @@ impl CodeGenContext<'_, '_, '_> {
             .call(self.runtime_lib.dealloc_bv, &[*bv_to_dealloc]);
     }
 
+    #[expect(dead_code)]
     pub(super) fn clone_bv(&mut self, src: TaggedValue) -> TaggedValue {
         assert!(src.requires_bv_delegation());
         let call = self
@@ -535,11 +530,11 @@ impl CodeGenContext<'_, '_, '_> {
             value: self.fn_builder.inst_results(call)[0],
             data_type: src.data_type,
         };
-        self.register_heap_allocation(ret);
+        self.register_short_lived_heap_allocation(ret);
         ret
     }
 
-    fn copy_from_bv(&mut self, dst: TaggedValue, src: TaggedValue) {
+    pub(super) fn copy_from_bv(&mut self, dst: TaggedValue, src: TaggedValue) {
         assert_eq!(src.data_type, dst.data_type);
         self.fn_builder
             .ins()

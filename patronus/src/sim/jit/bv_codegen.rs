@@ -182,18 +182,22 @@ fn invoke_bv_extern_function(
 impl BVCodeGenVTable for BVIndirect {
     fn symbol(&self, arg: ExprRef, ctx: &mut CodeGenContext) -> Value {
         let value = ctx.load_input_state(arg);
-        *ctx.clone_bv(value)
+        let dst = ctx.reserve_intermediate_bv_cache(self.0);
+        ctx.copy_from_bv(dst, value);
+        *dst
     }
 
     fn literal(&self, value: BitVecValueRef, ctx: &mut CodeGenContext) -> Value {
         let owned_bv_literal: Box<BitVecValue> = Box::new(value.into());
         let ptr = owned_bv_literal.as_ref() as *const BitVecValue;
         ctx.compiler.bv_data.push(owned_bv_literal);
-        let src = ctx.fn_builder.ins().iconst(ctx.int, ptr as i64);
-        *ctx.clone_bv(TaggedValue {
-            value: src,
+        let src = TaggedValue {
+            value: ctx.fn_builder.ins().iconst(ctx.int, ptr as i64),
             data_type: expr::Type::BV(self.0),
-        })
+        };
+        let dst = ctx.reserve_intermediate_bv_cache(self.0);
+        ctx.copy_from_bv(dst, src);
+        *dst
     }
 
     fn add(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value {
