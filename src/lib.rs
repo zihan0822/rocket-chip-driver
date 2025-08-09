@@ -73,32 +73,17 @@ pub unsafe extern "C" fn bootstrap_driver(btor_path: *const c_char) -> bool {
 /// Panics if `bootstrap_simulator` has never been called.
 #[unsafe(no_mangle)]
 pub extern "C" fn step_driver() {
-    ROCKET_CHIP_SIMULATOR
-        .get()
-        .expect("`bootstrap_simulator` has never been called`")
-        .lock()
-        .unwrap()
-        .step();
+    rocket_chip_simulator!().step();
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn set_driver_debug_module_input(request: ffi::req) {
-    ROCKET_CHIP_SIMULATOR
-        .get()
-        .expect("`bootstrap has never been called`")
-        .lock()
-        .unwrap()
-        .with_mut(|driver| driver.debug_module.set_input(driver.sim, request))
+    rocket_chip_simulator!().with_mut(|driver| driver.debug_module.set_input(driver.sim, request))
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn get_driver_debug_module_output() -> ffi::resp {
-    ROCKET_CHIP_SIMULATOR
-        .get()
-        .expect("`bootstrap` has never been called")
-        .lock()
-        .unwrap()
-        .with(|driver| driver.debug_module.get_output(driver.sim))
+    rocket_chip_simulator!().with(|driver| driver.debug_module.get_output(driver.sim))
 }
 
 impl Driver {
