@@ -1,24 +1,40 @@
+[package]
+name = "rocket-chip-driver"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
 [workspace]
 resolver = "2"
-members = ["patronus", "patronus-egraphs", "patronus-dse", "tools/bmc", "tools/egraphs-cond-synth", "tools/sim", "tools/simplify", "tools/view"]
+members = ["patronus"]
 
 [workspace.package]
-edition = "2021"
-authors = ["Kevin Laeufer <laeufer@berkeley.edu>"]
+edition = "2024"
+authors = ["Kevin Laeufer <laeufer@berkeley.edu>", "Zihan Li <zl2225@cornell.edu>"]
 repository = "https://github.com/cucapra/patronus"
 readme = "Readme.md"
 license = "BSD-3-Clause"
-rust-version = "1.73.0"
 
 [workspace.dependencies]
 rustc-hash = "2.x"
 baa = { git = "https://github.com/cucapra/baa", rev = "89ecd2", features = ["rand1"] }
-egg = "0.9.5"
 regex = "1.11.1"
 boolean_expression = "0.4.4"
 clap =  { version = "4.x", features = ["derive"] }
 patronus = {path = "patronus"}
 thiserror = "2.0.6"
+
+[dependencies]
+patronus.workspace = true
+baa.workspace = true
+ouroboros = "0.18.5"
+
+
+[build-dependencies]
+bindgen = "0.72.0"
+cbindgen = "0.29.0"
+convert_case = "0.8.0"
 
 # speed up execution of tests using insta
 [profile.dev.package]

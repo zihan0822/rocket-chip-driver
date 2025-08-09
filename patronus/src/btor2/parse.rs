@@ -701,6 +701,7 @@ impl<'a> Parser<'a> {
                 let data_tpe = self.get_tpe_from_id(line, tokens[4])?;
                 let index_width = index_tpe.get_bit_vector_width().unwrap();
                 let data_width = data_tpe.get_bit_vector_width().unwrap();
+                dbg!(index_width, data_width);
                 self.type_map.insert(
                     line_id,
                     Type::Array(ArrayType {
@@ -911,11 +912,10 @@ fn report_errors(errors: Errors, name: &str, source: &str) {
 fn report_error(error: ParserError, file: &codespan_reporting::files::SimpleFile<&str, &str>) {
     let diagnostic = codespan_reporting::diagnostic::Diagnostic::error()
         .with_message(error.msg)
-        .with_labels(vec![codespan_reporting::diagnostic::Label::primary(
-            (),
-            error.start..error.end,
-        )
-        .with_message(error.explain)]);
+        .with_labels(vec![
+            codespan_reporting::diagnostic::Label::primary((), error.start..error.end)
+                .with_message(error.explain),
+        ]);
     let writer = codespan_reporting::term::termcolor::StandardStream::stderr(
         codespan_reporting::term::termcolor::ColorChoice::Auto,
     );
@@ -927,9 +927,7 @@ fn str_offset(needle: &str, haystack: &str) -> usize {
     let offset = (needle.as_ptr() as usize) - (haystack.as_ptr() as usize);
     assert!(
         offset < haystack.len(),
-        "{} is not fully contained in {}",
-        needle,
-        haystack
+        "{needle} is not fully contained in {haystack}"
     );
     offset
 }

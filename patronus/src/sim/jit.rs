@@ -163,14 +163,18 @@ impl JITBackend {
         input_state_buffer: &impl StateBufferView<i64>,
         ret_placeholder: *mut (),
     ) {
-        let eval_fn = self.compiled_expr_eval.entry(expr).or_insert_with(|| {
-            self.compiler
-                .compile_expr(ctx, expr, input_state_buffer)
-                .unwrap_or_else(|err| panic!("fail to compile: `{:?}` due to {:?}", ctx[expr], err))
-        });
+        unsafe {
+            let eval_fn = self.compiled_expr_eval.entry(expr).or_insert_with(|| {
+                self.compiler
+                    .compile_expr(ctx, expr, input_state_buffer)
+                    .unwrap_or_else(|err| {
+                        panic!("fail to compile: `{:?}` due to {:?}", ctx[expr], err)
+                    })
+            });
 
-        // SAFETY: jit compiler has not been dropped
-        eval_fn.call(input_state_buffer.as_slice(), ret_placeholder as *mut i64);
+            // SAFETY: jit compiler has not been dropped
+            eval_fn.call(input_state_buffer.as_slice(), ret_placeholder as *mut i64);
+        }
     }
 
     fn step_transition_sys(
@@ -184,7 +188,7 @@ impl JITBackend {
             self.compiler
                 .compile_transition_sys(ctx, sys, input_state_buffer, &*output_state_buffer)
                 .unwrap_or_else(|err| {
-                    panic!("fail to compile transition step function, due to {:?}", err)
+                    panic!("fail to compile transition step function, due to {err:?}")
                 })
         });
 
@@ -314,13 +318,11 @@ impl<'expr> JITEngine<'expr> {
                     }) => {
                         assert!(
                             data_width <= 64,
-                            "only support bv with width less than equal to 64, but got `{}`",
-                            data_width
+                            "only support bv with width less than equal to 64, but got `{data_width}`"
                         );
                         assert!(
-                            index_width <= 12,
-                            "currently no sparse array support, size of the dense array should be less than or equal to 2^12, but got `{}`", 
-                            index_width
+                            index_width <= 20,
+                            "currently no sparse array support, size of the dense array should be less than or equal to 2^12, but got `{index_width}`"
                         );
                         buffer[offset] = runtime::__alloc_const_array(index_width, 0) as i64;
                     }
@@ -390,12 +392,14 @@ impl<'expr> JITEngine<'expr> {
     /// # Safety
     /// Follows the same requirement as `JITBackend::expr_expr`
     unsafe fn eval_expr_with_ret_placeholder(&self, expr: ExprRef, ret_placeholder: *mut ()) {
-        self.backend.borrow_mut().eval_expr(
-            expr,
-            self.ctx,
-            &current_state_buffer!(self),
-            ret_placeholder,
-        )
+        unsafe {
+            self.backend.borrow_mut().eval_expr(
+                expr,
+                self.ctx,
+                &current_state_buffer!(self),
+                ret_placeholder,
+            )
+        }
     }
 
     fn step_transition_sys(&mut self) {
@@ -512,18 +516,20 @@ impl<'a> StateSlot<'a> {
     ///
     /// An extra level of indirection is followed for wide bit vector and array.
     unsafe fn from_typed_slot_value(value: &'a i64, tpe: expr::Type) -> Self {
-        match tpe {
-            expr::Type::BV(width) => match width {
-                0..=64 => Self::ThinBitVec(value),
-                _ => Self::WideBitVec(&*(*value as *const BitVecValue)),
-            },
-            expr::Type::Array(ArrayType {
-                index_width,
-                data_width,
-            }) => {
-                assert!(index_width <= 12 && data_width <= 64);
-                let len = 1 << index_width;
-                Self::Array(std::slice::from_raw_parts(*value as *const i64, len))
+        unsafe {
+            match tpe {
+                expr::Type::BV(width) => match width {
+                    0..=64 => Self::ThinBitVec(value),
+                    _ => Self::WideBitVec(&*(*value as *const BitVecValue)),
+                },
+                expr::Type::Array(ArrayType {
+                    index_width,
+                    data_width,
+                }) => {
+                    assert!(index_width <= 12 && data_width <= 64);
+                    let len = 1 << index_width;
+                    Self::Array(std::slice::from_raw_parts(*value as *const i64, len))
+                }
             }
         }
     }
@@ -555,15 +561,17 @@ where
     /// # Safety
     /// the caller should guaranteed that the reclaimed expr is no longer accessed
     unsafe fn reclaim_heap_allocated_expr(&self, expr: ExprRef) {
-        let value = *self.get_state_ref(expr);
-        match expr.get_type(self.ctx) {
-            expr::Type::BV(width) => {
-                if width > 64 {
-                    runtime::__dealloc_bv(value as *mut BitVecValue);
+        unsafe {
+            let value = *self.get_state_ref(expr);
+            match expr.get_type(self.ctx) {
+                expr::Type::BV(width) => {
+                    if width > 64 {
+                        runtime::__dealloc_bv(value as *mut BitVecValue);
+                    }
                 }
-            }
-            expr::Type::Array(expr::ArrayType { index_width, .. }) => {
-                runtime::__dealloc_array(value as *mut i64, index_width)
+                expr::Type::Array(expr::ArrayType { index_width, .. }) => {
+                    runtime::__dealloc_array(value as *mut i64, index_width)
+                }
             }
         }
     }
@@ -571,8 +579,10 @@ where
     /// # Safety
     /// the caller should guaranteed that the reclaimed expr is no longer accessed
     unsafe fn reclaim_all(&self) {
-        for &state in self.states_to_offset.keys() {
-            self.reclaim_heap_allocated_expr(state);
+        unsafe {
+            for &state in self.states_to_offset.keys() {
+                self.reclaim_heap_allocated_expr(state);
+            }
         }
     }
 }
@@ -584,7 +594,7 @@ impl Simulator for JITEngine<'_> {
 
         for &state in self.states_to_offset.keys() {
             let tpe = state.get_type(self.ctx);
-            let init_value = generator.gen(tpe);
+            let init_value = generator.generate(tpe);
             match init_value {
                 baa::Value::BitVec(bv) => {
                     let bv = if bv.width() <= 64 {

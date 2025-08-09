@@ -2,7 +2,7 @@
 // released under BSD 3-Clause License
 // author: Zihan Li <zl2225@cornell.edu>
 use crate::expr::*;
-use cranelift::codegen::ir::{types, AbiParam, FuncRef, Function};
+use cranelift::codegen::ir::{AbiParam, FuncRef, Function, types};
 use cranelift::jit::{JITBuilder, JITModule};
 use cranelift::module::{Linkage, Module};
 use cranelift::prelude::*;
@@ -114,8 +114,8 @@ fn import_bv_runtime_to_func_scope(
             module,
             func,
             &bv_operation_name_mangle(registered.sym),
-            std::iter::repeat(types::I64).take(num_params),
-            std::iter::repeat(types::I64).take(num_returns),
+            std::iter::repeat_n(types::I64, num_params),
+            std::iter::repeat_n(types::I64, num_returns),
         );
         bv_runtime_lib.insert(registered.sym, func_ref);
     }
@@ -136,7 +136,7 @@ fn import_extern_function(
 
     let id = module
         .declare_function(name, Linkage::Import, &sig)
-        .unwrap_or_else(|reason| panic!("fail to load {}, due to {:#?}", name, reason));
+        .unwrap_or_else(|reason| panic!("fail to load {name}, due to {reason:#?}"));
     module.declare_func_in_func(id, func)
 }
 
@@ -146,11 +146,13 @@ fn bv_operation_name_mangle(sym: &str) -> String {
 }
 
 pub(super) unsafe extern "C" fn __clone_array(src: *const i64, index_width: WidthInt) -> *mut i64 {
-    let len = 1 << index_width;
-    let mut array = vec![0_i64; len];
-    let src = std::slice::from_raw_parts(src, len);
-    array.copy_from_slice(src);
-    array.leak() as *mut [i64] as *mut i64
+    unsafe {
+        let len = 1 << index_width;
+        let mut array = vec![0_i64; len];
+        let src = std::slice::from_raw_parts(src, len);
+        array.copy_from_slice(src);
+        array.leak() as *mut [i64] as *mut i64
+    }
 }
 
 pub(super) unsafe extern "C" fn __copy_from_array(
@@ -158,10 +160,12 @@ pub(super) unsafe extern "C" fn __copy_from_array(
     src: *const i64,
     index_width: WidthInt,
 ) {
-    let len = 1 << index_width;
-    let dst = std::slice::from_raw_parts_mut(dst, len);
-    let src = std::slice::from_raw_parts(src, len);
-    dst.copy_from_slice(src);
+    unsafe {
+        let len = 1 << index_width;
+        let dst = std::slice::from_raw_parts_mut(dst, len);
+        let src = std::slice::from_raw_parts(src, len);
+        dst.copy_from_slice(src);
+    }
 }
 
 pub(super) extern "C" fn __alloc_const_array(index_width: WidthInt, default_data: i64) -> *mut i64 {
@@ -170,9 +174,11 @@ pub(super) extern "C" fn __alloc_const_array(index_width: WidthInt, default_data
 }
 
 pub(super) unsafe extern "C" fn __dealloc_array(src: *mut i64, index_width: WidthInt) {
-    let len = 1 << index_width;
-    let ptr = std::ptr::slice_from_raw_parts_mut(src, len);
-    let _ = Box::from_raw(ptr);
+    unsafe {
+        let len = 1 << index_width;
+        let ptr = std::ptr::slice_from_raw_parts_mut(src, len);
+        let _ = Box::from_raw(ptr);
+    }
 }
 
 pub(super) extern "C" fn __alloc_bv(width: WidthInt) -> *mut baa::BitVecValue {
@@ -180,18 +186,22 @@ pub(super) extern "C" fn __alloc_bv(width: WidthInt) -> *mut baa::BitVecValue {
 }
 
 pub(super) unsafe extern "C" fn __clone_bv(src: *const baa::BitVecValue) -> *mut baa::BitVecValue {
-    Box::leak(Box::new((*src).clone()))
+    unsafe { Box::leak(Box::new((*src).clone())) }
 }
 
 pub(super) unsafe extern "C" fn __dealloc_bv(src: *mut baa::BitVecValue) {
-    let _ = Box::from_raw(src);
+    unsafe {
+        let _ = Box::from_raw(src);
+    }
 }
 
 pub(super) unsafe extern "C" fn __copy_from_bv(
     dst: *mut baa::BitVecValue,
     src: *const baa::BitVecValue,
 ) {
-    *dst = (*src).clone();
+    unsafe {
+        *dst = (*src).clone();
+    }
 }
 
 mod trampoline {
@@ -257,9 +267,9 @@ mod trampoline {
                 dst: *mut BitVecValue,
                 lhs: *const BitVecValue,
                 rhs: *const BitVecValue,
-            ) {
+            ) { unsafe {
                 (*dst).$baa_delegation(&*lhs, &*rhs);
-            }
+            }}
         }
     }
 
@@ -290,9 +300,9 @@ mod trampoline {
             pub(super) unsafe extern "C" fn $func(
                 lhs: *const BitVecValue,
                 rhs: *const BitVecValue,
-            ) -> ThinBV {
+            ) -> ThinBV { unsafe {
                 (&*lhs).$baa_delegation(&*rhs) as ThinBV
-            }
+            }}
         };
     }
 
@@ -312,9 +322,9 @@ mod trampoline {
             pub(super) unsafe extern "C" fn $func(
                 dst: *mut BitVecValue,
                 value: *const BitVecValue,
-            ) {
+            ) { unsafe {
                 *dst = (&*value).$baa_delegation();
-            }
+            }}
         };
     }
 
@@ -336,14 +346,14 @@ mod trampoline {
                 value: MaybeIndirect,
                 original_width: WidthInt,
                 by: WidthInt,
-            ) {
+            ) { unsafe {
                 let value = if original_width <= 64 {
                     &BitVecValue::from_i64(value, original_width)
                 } else {
                     &*(value as *const BitVecValue)
                 };
                 (*dst).$baa_delegation(value, by);
-            }
+            }}
         };
     }
     macro_rules! baa_shift_op_shim {
@@ -365,14 +375,14 @@ mod trampoline {
                 value: *const BitVecValue,
                 shift: MaybeIndirect,
                 shift_data_width: WidthInt,
-            ) {
+            ) { unsafe {
                 let shift = if shift_data_width <= 64 {
                     &BitVecValue::from_i64(shift, shift_data_width)
                 } else {
                     &*(shift as *const BitVecValue)
                 };
                 (*dst).$baa_delegation(&*value, shift);
-            }
+            }}
         };
     }
     baa_binary_op_shim!(add, sub, mul, and, or, xor);
@@ -396,9 +406,11 @@ mod trampoline {
         hi: WidthInt,
         lo: WidthInt,
     ) -> ThinBV {
-        let ret = (*value).slice(hi, lo);
-        debug_assert!(ret.width() <= 64);
-        ret.to_u64().unwrap() as ThinBV
+        unsafe {
+            let ret = (*value).slice(hi, lo);
+            debug_assert!(ret.width() <= 64);
+            ret.to_u64().unwrap() as ThinBV
+        }
     }
 
     inventory::submit!(BVOpRegistry {
@@ -411,8 +423,10 @@ mod trampoline {
         hi: WidthInt,
         lo: WidthInt,
     ) {
-        debug_assert!((hi - lo + 1) > 64);
-        (*dst).slice_in_place(&*value, hi, lo);
+        unsafe {
+            debug_assert!((hi - lo + 1) > 64);
+            (*dst).slice_in_place(&*value, hi, lo);
+        }
     }
 
     inventory::submit!(BVOpRegistry {
@@ -426,16 +440,18 @@ mod trampoline {
         hi_width: WidthInt,
         lo_width: WidthInt,
     ) {
-        let hi = if hi_width <= 64 {
-            &BitVecValue::from_u64(hi as u64, hi_width)
-        } else {
-            &*(hi as *const BitVecValue)
-        };
-        let lo = if lo_width <= 64 {
-            &BitVecValue::from_u64(lo as u64, lo_width)
-        } else {
-            &*(lo as *const BitVecValue)
-        };
-        (*dst).concat_in_place(hi, lo);
+        unsafe {
+            let hi = if hi_width <= 64 {
+                &BitVecValue::from_u64(hi as u64, hi_width)
+            } else {
+                &*(hi as *const BitVecValue)
+            };
+            let lo = if lo_width <= 64 {
+                &BitVecValue::from_u64(lo as u64, lo_width)
+            } else {
+                &*(lo as *const BitVecValue)
+            };
+            (*dst).concat_in_place(hi, lo);
+        }
     }
 }

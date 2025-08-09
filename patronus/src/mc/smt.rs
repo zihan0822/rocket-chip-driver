@@ -4,10 +4,10 @@
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
 use crate::expr::*;
-use crate::mc::types::InitValue;
 use crate::mc::Witness;
+use crate::mc::types::InitValue;
 use crate::smt::*;
-use crate::system::analysis::{analyze_for_serialization, count_expr_uses, UseCountInt, Uses};
+use crate::system::analysis::{UseCountInt, Uses, analyze_for_serialization, count_expr_uses};
 use crate::system::{State, TransitionSystem};
 use baa::*;
 use rustc_hash::FxHashSet;
@@ -41,7 +41,7 @@ impl<S: Solver<std::fs::File>> SmtModelChecker<S> {
         sys: &TransitionSystem,
         k_max: u64,
     ) -> Result<ModelCheckResult> {
-        assert!(k_max > 0 && k_max <= 2000, "unreasonable k_max={}", k_max);
+        assert!(k_max > 0 && k_max <= 2000, "unreasonable k_max={k_max}");
         let replay_file = if self.opts.save_smt_replay {
             Some(std::fs::File::create("replay.smt")?)
         } else {
@@ -71,7 +71,7 @@ impl<S: Solver<std::fs::File>> SmtModelChecker<S> {
             // assume all constraints hold in this step
             for expr_ref in constraints.iter() {
                 let expr = enc.get_at(ctx, *expr_ref, k);
-                smt_ctx.assert(&ctx, expr)?;
+                smt_ctx.assert(ctx, expr)?;
             }
 
             // make sure the constraints are not contradictory
@@ -80,15 +80,14 @@ impl<S: Solver<std::fs::File>> SmtModelChecker<S> {
                 assert_eq!(
                     res,
                     CheckSatResponse::Sat,
-                    "Found unsatisfiable constraints in cycle {}",
-                    k
+                    "Found unsatisfiable constraints in cycle {k}"
                 );
             }
 
             if self.opts.check_bad_states_individually {
-                for (_bs_id, expr_ref) in bad_states.iter().enumerate() {
+                for expr_ref in bad_states.iter() {
                     let expr = enc.get_at(ctx, *expr_ref, k);
-                    let res = check_assuming(&ctx, &mut smt_ctx, [expr])?;
+                    let res = check_assuming(ctx, &mut smt_ctx, [expr])?;
 
                     // count expression uses
                     let use_counts = count_expr_uses(ctx, sys);
@@ -112,7 +111,7 @@ impl<S: Solver<std::fs::File>> SmtModelChecker<S> {
                     .map(|expr_ref| enc.get_at(ctx, *expr_ref, k))
                     .collect::<Vec<_>>();
                 let any_bad = all_bads.into_iter().reduce(|a, b| ctx.or(a, b)).unwrap();
-                let res = check_assuming(&ctx, &mut smt_ctx, [any_bad])?;
+                let res = check_assuming(ctx, &mut smt_ctx, [any_bad])?;
 
                 // count expression uses
                 let use_counts = count_expr_uses(ctx, sys);
@@ -381,10 +380,10 @@ impl UnrollSmtEncoding {
                 let name = ctx.string(name_at(&ctx[info.name], step).into());
                 let symbol_at = ctx.symbol(name, tpe);
                 if ctx[*expr].is_symbol() {
-                    smt_ctx.declare_const(&ctx, symbol_at)?;
+                    smt_ctx.declare_const(ctx, symbol_at)?;
                 } else {
                     let value = self.expr_in_step(ctx, *expr, step);
-                    smt_ctx.define_const(&ctx, symbol_at, value)?;
+                    smt_ctx.define_const(ctx, symbol_at, value)?;
                 }
             }
         }
@@ -548,5 +547,5 @@ impl TransitionSystemEncoding for UnrollSmtEncoding {
 }
 
 fn name_at(name: &str, step: u64) -> String {
-    format!("{}@{}", name, step)
+    format!("{name}@{step}")
 }

@@ -14,8 +14,8 @@
 //! are no checks to ensure that a [`ExprRef`] or [`StringRef`] from different contexts are
 //! not matched. Thus working with more than one [`Context`] object can be dangerous.
 
-use crate::expr::nodes::*;
 use crate::expr::TypeCheck;
+use crate::expr::nodes::*;
 use baa::{
     ArrayOps, BitVecValue, BitVecValueIndex, BitVecValueRef, IndexToRef, SparseArrayValue, Value,
 };
@@ -48,7 +48,7 @@ impl StringRef {
 
 /// Uniquely identifies an [`Expr`] stored in a [`Context`].
 #[derive(PartialEq, Eq, Clone, Copy, Hash, Ord, PartialOrd)]
-pub struct ExprRef(NonZeroU32);
+pub struct ExprRef(pub NonZeroU32);
 
 impl Debug for ExprRef {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -403,9 +403,9 @@ impl Context {
         })
     }
 
-    pub fn build(&mut self, foo: impl FnOnce(Builder) -> ExprRef) -> ExprRef {
+    pub fn build(&mut self, with_builder: impl FnOnce(Builder) -> ExprRef) -> ExprRef {
         let builder = Builder::new(self);
-        foo(builder)
+        with_builder(builder)
     }
 }
 

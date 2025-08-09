@@ -417,7 +417,7 @@ impl SerializableIrNode for ExprRef {
 
 impl SerializableIrNode for Type {
     fn serialize<W: Write>(&self, _ctx: &Context, writer: &mut W) -> std::io::Result<()> {
-        write!(writer, "{}", self)
+        write!(writer, "{self}")
     }
 }
 

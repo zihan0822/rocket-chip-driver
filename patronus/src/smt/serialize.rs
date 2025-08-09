@@ -198,7 +198,7 @@ pub fn serialize_expr(out: &mut impl Write, ctx: &Context, expr: ExprRef) -> Res
                 if let Expr::BVZeroExt { e, by, .. } = expr {
                     if e.get_type(ctx).is_bool() {
                         let zeros = "0".repeat(*by as usize);
-                        write!(out, " #b{}1 #b{}0", zeros, zeros)?;
+                        write!(out, " #b{zeros}1 #b{zeros}0")?;
                     }
                 }
                 // everyone gets a closing parenthesis
@@ -402,7 +402,7 @@ fn escape_smt_identifier(id: &str) -> std::borrow::Cow<'_, str> {
     if is_simple_smt_identifier(id) {
         std::borrow::Cow::Borrowed(id)
     } else {
-        let escaped = format!("|{}|", id);
+        let escaped = format!("|{id}|");
         std::borrow::Cow::Owned(escaped)
     }
 }

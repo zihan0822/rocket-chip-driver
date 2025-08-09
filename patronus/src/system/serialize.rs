@@ -3,11 +3,11 @@
 // released under BSD 3-Clause License
 // author: Kevin Laeufer <laeufer@cornell.edu>
 
-use super::analysis::{analyze_for_serialization, SerializeSignalKind};
 use super::TransitionSystem;
+use super::analysis::{SerializeSignalKind, analyze_for_serialization};
 use crate::expr::{
-    serialize_expr, serialize_expr_ref, Context, ExprRef, SerializableIrNode, SparseExprMap,
-    TypeCheck,
+    Context, ExprRef, SerializableIrNode, SparseExprMap, TypeCheck, serialize_expr,
+    serialize_expr_ref,
 };
 use std::io::Write;
 
@@ -37,7 +37,7 @@ fn serialize_transition_system<W: Write>(
     // this closure allows us to use node names instead of serializing all sub-expressions
     let serialize_child = |expr_ref: &ExprRef, writer: &mut W| -> std::io::Result<bool> {
         if let Some(name) = &names[*expr_ref] {
-            write!(writer, "{}", name)?;
+            write!(writer, "{name}")?;
             Ok(false)
         } else {
             Ok(true) // recurse to child
@@ -54,7 +54,7 @@ fn serialize_transition_system<W: Write>(
 
         // print the kind and name
         let kind = kind_to_string(root.kind);
-        write!(writer, "{} {}", kind, name)?;
+        write!(writer, "{kind} {name}")?;
 
         // print the type
         let tpe = expr.get_type(ctx);

@@ -44,10 +44,10 @@ fn init_signal(
     ctx: &Context,
     state: &mut SymbolValueStore,
     symbol: ExprRef,
-    gen: &mut InitValueGenerator,
+    generator: &mut InitValueGenerator,
 ) {
     let tpe = ctx[symbol].get_type(ctx);
-    match gen.gen(tpe) {
+    match generator.generate(tpe) {
         Value::Array(value) => {
             state.define_array(symbol, value);
         }
@@ -57,20 +57,42 @@ fn init_signal(
     }
 }
 
+impl Interpreter<'_> {
+    pub fn register_traced_states<I: AsRef<str>>(&self, to_trace: impl IntoIterator<Item = I>) {
+        for target_name in to_trace.into_iter() {
+            let target_name = target_name.as_ref();
+            let state_expr_ref = self
+                .sys
+                .states
+                .iter()
+                .find(|state| {
+                    self.ctx
+                        .get_symbol_name(state.symbol)
+                        .is_some_and(|name| name.eq(target_name))
+                })
+                .map_or_else(
+                    || panic!("{target_name} not found"),
+                    |state| state.next.expect("{target_name} does not have next state"),
+                );
+            crate::expr::register_traced_expr(state_expr_ref);
+        }
+    }
+}
+
 impl<'a> Simulator for Interpreter<'a> {
     type SnapshotId = u32;
 
     fn init(&mut self, kind: InitKind) {
-        let mut gen = InitValueGenerator::from_kind(kind);
+        let mut generator = InitValueGenerator::from_kind(kind);
 
         self.data.clear();
 
         // allocate space for inputs, and states
         for state in self.sys.states.iter() {
-            init_signal(self.ctx, &mut self.data, state.symbol, &mut gen);
+            init_signal(self.ctx, &mut self.data, state.symbol, &mut generator);
         }
         for &symbol in self.sys.inputs.iter() {
-            init_signal(self.ctx, &mut self.data, symbol, &mut gen);
+            init_signal(self.ctx, &mut self.data, symbol, &mut generator);
         }
 
         // evaluate init expressions
@@ -88,14 +110,23 @@ impl<'a> Simulator for Interpreter<'a> {
             .sys
             .states
             .iter()
-            .map(|s| s.next.map(|n| eval_expr(self.ctx, &self.data, n)))
+            .enumerate()
+            .map(|(i, s)| {
+                let name = if let crate::expr::Expr::BVSymbol { name, .. } = self.ctx[s.symbol] {
+                    &self.ctx[name]
+                } else {
+                    ""
+                };
+                eprintln!("eval state #{i}: {} [next: {:?}]", name, s.next);
+                s.next.map(|n| eval_expr(self.ctx, &self.data, n))
+            })
             .collect::<Vec<_>>();
-
         // assign next value to store
         for (state, next_value) in self.sys.states.iter().zip(next_states.into_iter()) {
             if let Some(value) = next_value {
                 self.data.update(state.symbol, value);
             }
+            eprintln!("finish one state");
         }
 
         // increment step cout

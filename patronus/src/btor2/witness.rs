@@ -63,8 +63,7 @@ pub fn parse_witnesses(input: &mut impl BufRead, parse_max: usize) -> Result<Vec
             ParserState::Start => {
                 assert_eq!(
                     line, "sat",
-                    "Expected witness header to be `sat`, not `{}`",
-                    line
+                    "Expected witness header to be `sat`, not `{line}`"
                 );
                 ParserState::WaitForProp
             }
@@ -78,7 +77,7 @@ pub fn parse_witnesses(input: &mut impl BufRead, parse_max: usize) -> Result<Vec
                     } else if token.starts_with('j') {
                         panic!("justice props are not supported");
                     } else {
-                        panic!("unexpected property token: {}", token);
+                        panic!("unexpected property token: {token}");
                     }
                 }
                 ParserState::WaitForFrame
@@ -88,7 +87,7 @@ pub fn parse_witnesses(input: &mut impl BufRead, parse_max: usize) -> Result<Vec
                     // no state initialization frame -> jump straight to inputs
                     start_inputs(line, &wit)
                 } else {
-                    assert_eq!(line, "#0", "Expected initial state frame, not: {}", line);
+                    assert_eq!(line, "#0", "Expected initial state frame, not: {line}");
                     start_state(line)
                 }
             }
@@ -175,10 +174,7 @@ fn parse_assignment<'a>(tokens: &'a [&'a str]) -> (usize, &'a str, InitValue) {
     let is_array = match tokens.len() {
         3 => false, // its a bit vector
         4 => true,
-        _ => panic!(
-            "Expected assignment to consist of 3-4 parts, not: {:?}",
-            tokens
-        ),
+        _ => panic!("Expected assignment to consist of 3-4 parts, not: {tokens:?}"),
     };
     // index of the state or input
     let index = tokens[0].parse::<u64>().unwrap() as usize;
@@ -243,7 +239,7 @@ pub fn print_witness(out: &mut impl Write, witness: &Witness) -> std::io::Result
             let name = maybe_name
                 .as_ref()
                 .map(Cow::from)
-                .unwrap_or(Cow::from(format!("state_{}", id)));
+                .unwrap_or(Cow::from(format!("state_{id}")));
             print_witness_init_value(out, value, &name, id, "#0")?;
         }
     }
@@ -260,7 +256,7 @@ pub fn print_witness(out: &mut impl Write, witness: &Witness) -> std::io::Result
                 let name = maybe_name
                     .as_ref()
                     .map(Cow::from)
-                    .unwrap_or(Cow::from(format!("input_{}", id)));
+                    .unwrap_or(Cow::from(format!("input_{id}")));
                 print_witness_input_value(out, value, &name, id, &suffix)?;
             }
         }
