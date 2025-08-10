@@ -3,7 +3,6 @@
 
 #include "htif.h"
 #include "context.h"
-#include "dmi.h"
 #include <stdint.h>
 #include <queue>
 #include <semaphore.h>
@@ -18,6 +17,17 @@ class dtm_t : public htif_t
   dtm_t(int argc, char**argv);
   ~dtm_t();
 
+  struct req {
+    uint32_t addr;
+    uint32_t op;
+    uint32_t data;
+  };
+  
+  struct resp {
+    uint32_t resp;
+    uint32_t data;
+  };
+
   void tick(
     bool  req_ready,
     bool  resp_valid,
@@ -28,7 +38,7 @@ class dtm_t : public htif_t
     resp  resp_bits
   );
 
-  
+
   bool req_valid() { return req_wait; }
   req req_bits() { return req_buf; }
   bool resp_ready() { return true; }

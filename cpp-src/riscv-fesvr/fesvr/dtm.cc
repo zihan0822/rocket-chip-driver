@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <stdexcept>
 #include <pthread.h>
 
 #define RV_X(x, s, n) \
