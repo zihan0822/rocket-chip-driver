@@ -1,13 +1,9 @@
-#![allow(non_snake_case)]
-#![allow(non_upper_case_globals)]
-#![allow(non_camel_case_types)]
-
 mod macros;
 
 use patronus::expr::*;
 use patronus::sim::*;
 use patronus::system::*;
-use std::os::raw::c_char;
+use std::ffi::{c_char, c_uchar, c_uint};
 use std::sync::{Mutex, OnceLock};
 
 const TRACED_STATES: &[&str] =
@@ -15,11 +11,6 @@ const TRACED_STATES: &[&str] =
 static ROCKET_CHIP_SIMULATOR: OnceLock<Mutex<Driver>> = OnceLock::new();
 
 type SimBackend<'ctx> = Interpreter<'ctx>;
-
-#[allow(dead_code)]
-mod ffi {
-    include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
-}
 
 /// HACK: self-referential struct
 /// Currently `patronus::Interpreter` borrows `Context` and `TransitionSystem`  
@@ -39,17 +30,42 @@ struct Driver {
 
 debug_module! {
     struct DebugModule {
-        #[in<7> = io_debug_req_bits_addr, c_struct_field = addr]
-        in_req_bits_addr,
-        #[in<32> = io_debug_req_bits_data, c_struct_field = data]
-        in_req_bits_data,
-        #[in<2> = io_debug_req_bits_op, c_struct_field = op]
-        in_req_bits_op,
-        #[out = io_debug_resp_bits_data, c_struct_field = data]
+        #[in<7> = io_debug_req_bits_addr, c_struct_field = req_addr]
+        in_req_addr,
+        #[in<32> = io_debug_req_bits_data, c_struct_field = req_data]
+        in_req_data,
+        #[in<2> = io_debug_req_bits_op, c_struct_field = req_op]
+        in_req_op,
+        #[in<1> = io_debug_resp_ready, c_struct_field = resp_ready]
+        in_resp_ready,
+        #[in<1> = io_debug_req_valud, c_struct_field = req_valid]
+        in_req_valid,
+        #[out = io_debug_resp_bits_resp, c_struct_field = resp_resp]
+        out_resp_resp,
+        #[out = io_debug_resp_bits_data, c_struct_field = resp_data]
         out_resp_data,
-        #[out = io_debug_resp_bits_resp, c_struct_field = resp]
-        out_resp_bits,
+        #[out = io_debug_req_ready, c_struct_field = req_ready]
+        out_req_ready,
+        #[out = io_debug_resp_valid, c_struct_field = resp_valid]
+        out_resp_valid,
     }
+}
+
+#[repr(C)]
+pub struct debug_module_input_payload_t {
+    pub req_addr: c_uint,
+    pub req_op: c_uint,
+    pub req_data: c_uint,
+    pub resp_ready: c_uint,
+    pub req_valid: c_uchar,
+}
+
+#[repr(C)]
+pub struct debug_module_output_payload_t {
+    pub resp_resp: c_uint,
+    pub resp_data: c_uint,
+    pub req_ready: c_uchar,
+    pub resp_valid: c_uchar,
 }
 
 /// Returns whether bootstrap is successful.
@@ -77,12 +93,12 @@ pub extern "C" fn step_driver() {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn set_driver_debug_module_input(request: ffi::req) {
+pub extern "C" fn set_driver_debug_module_input(request: debug_module_input_payload_t) {
     rocket_chip_simulator!().with_mut(|driver| driver.debug_module.set_input(driver.sim, request))
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn get_driver_debug_module_output() -> ffi::resp {
+pub extern "C" fn get_driver_debug_module_output() -> debug_module_output_payload_t {
     rocket_chip_simulator!().with(|driver| driver.debug_module.get_output(driver.sim))
 }
 

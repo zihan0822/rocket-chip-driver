@@ -28,7 +28,7 @@ macro_rules! debug_module {
                 }
             }
 
-            fn set_input(&self, backend: &mut $crate::SimBackend, request: $crate::ffi::req) {
+            fn set_input(&self, backend: &mut $crate::SimBackend, request: $crate::debug_module_input_payload_t) {
                 $(
                     backend.set(
                         self.$in_field,
@@ -37,8 +37,8 @@ macro_rules! debug_module {
                 )*
             }
 
-            fn get_output(&self, backend: &$crate::SimBackend) -> $crate::ffi::resp {
-                $crate::ffi::resp {
+            fn get_output(&self, backend: &$crate::SimBackend) -> $crate::debug_module_output_payload_t {
+                $crate::debug_module_output_payload_t {
                     $($resp_c_struct_field: backend.get(self.$out_field).try_into_u64().unwrap() as _,)*
                 }
             }

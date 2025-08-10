@@ -32,7 +32,6 @@ ouroboros = "0.18.5"
 
 
 [build-dependencies]
-bindgen = "0.72.0"
 cbindgen = "0.29.0"
 convert_case = "0.8.0"
 
