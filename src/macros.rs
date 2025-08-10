@@ -3,7 +3,7 @@ macro_rules! debug_module {
     (
         struct $name:ident  {
             $(
-                #[in = $btor_in_port:ident, c_struct_field = $req_c_struct_field:ident]
+                #[in<$in_width:literal> = $btor_in_port:ident, c_struct_field = $req_c_struct_field:ident]
                 $in_field:ident,
             )*
             $(
@@ -32,7 +32,7 @@ macro_rules! debug_module {
                 $(
                     backend.set(
                         self.$in_field,
-                        (&baa::BitVecValue::from_u64(request.$req_c_struct_field as _, 32)).into()
+                        (&baa::BitVecValue::from_u64(request.$req_c_struct_field as _, $in_width)).into()
                     );
                 )*
             }

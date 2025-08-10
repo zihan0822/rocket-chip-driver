@@ -39,11 +39,11 @@ struct Driver {
 
 debug_module! {
     struct DebugModule {
-        #[in = io_debug_req_bits_addr, c_struct_field = addr]
+        #[in<7> = io_debug_req_bits_addr, c_struct_field = addr]
         in_req_bits_addr,
-        #[in = io_debug_req_bits_data, c_struct_field = data]
+        #[in<32> = io_debug_req_bits_data, c_struct_field = data]
         in_req_bits_data,
-        #[in = io_debug_req_bits_op, c_struct_field = op]
+        #[in<2> = io_debug_req_bits_op, c_struct_field = op]
         in_req_bits_op,
         #[out = io_debug_resp_bits_data, c_struct_field = data]
         out_resp_data,
