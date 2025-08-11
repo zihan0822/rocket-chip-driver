@@ -701,7 +701,6 @@ impl<'a> Parser<'a> {
                 let data_tpe = self.get_tpe_from_id(line, tokens[4])?;
                 let index_width = index_tpe.get_bit_vector_width().unwrap();
                 let data_width = data_tpe.get_bit_vector_width().unwrap();
-                dbg!(index_width, data_width);
                 self.type_map.insert(
                     line_id,
                     Type::Array(ArrayType {

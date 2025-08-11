@@ -58,6 +58,7 @@ fn init_signal(
 }
 
 impl Interpreter<'_> {
+    #[cfg(feature = "trace")]
     pub fn register_traced_states<I: AsRef<str>>(&self, to_trace: impl IntoIterator<Item = I>) {
         for target_name in to_trace.into_iter() {
             let target_name = target_name.as_ref();
@@ -112,12 +113,14 @@ impl<'a> Simulator for Interpreter<'a> {
             .iter()
             .enumerate()
             .map(|(i, s)| {
-                let name = if let crate::expr::Expr::BVSymbol { name, .. } = self.ctx[s.symbol] {
-                    &self.ctx[name]
-                } else {
-                    ""
-                };
-                eprintln!("eval state #{i}: {} [next: {:?}]", name, s.next);
+                #[cfg(feature = "trace")]
+                if let crate::expr::Expr::BVSymbol { name, .. } = self.ctx[s.symbol] {
+                    eprintln!(
+                        "[{i}/{}] eval state: {}",
+                        self.sys.states.len(),
+                        &self.ctx[name]
+                    );
+                }
                 s.next.map(|n| eval_expr(self.ctx, &self.data, n))
             })
             .collect::<Vec<_>>();

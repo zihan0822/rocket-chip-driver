@@ -14,7 +14,8 @@ pub mod traversal;
 mod types;
 
 pub use context::{Builder, Context, ExprRef, StringRef};
-pub(crate) use eval::register_traced_expr;
+#[cfg(feature = "trace")]
+pub(crate) use eval::trace::register_traced_expr;
 pub use eval::{SymbolValueStore, eval_array_expr, eval_bv_expr, eval_expr};
 pub use foreach::ForEachChild;
 pub use meta::{

@@ -6,8 +6,7 @@ use patronus::system::*;
 use std::ffi::{c_char, c_uchar, c_uint};
 use std::sync::{Mutex, OnceLock};
 
-const TRACED_STATES: &[&str] =
-    &["ldut.tile_prci_domain.element_reset_domain_rockettile.core.mem_reg_wdata"];
+const TRACED_STATES: &[&str] = &[];
 static ROCKET_CHIP_SIMULATOR: OnceLock<Mutex<Driver>> = OnceLock::new();
 
 type SimBackend<'ctx> = Interpreter<'ctx>;

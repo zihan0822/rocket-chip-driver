@@ -7,20 +7,26 @@ use baa::{
     ArrayMutOps, ArrayOps, ArrayValue, BitVecMutOps, BitVecOps, BitVecValue, BitVecValueIndex,
     BitVecValueRef, IndexToMutRef, IndexToRef, Value, Word,
 };
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use std::collections::HashMap;
-use std::sync::{LazyLock, Mutex};
 
-pub fn register_traced_expr(expr: ExprRef) {
-    TRACED_EXPR.lock().unwrap().insert(expr);
+#[cfg(feature = "trace")]
+pub(crate) mod trace {
+    use super::ExprRef;
+    use rustc_hash::FxHashSet;
+    use std::sync::{LazyLock, Mutex};
+
+    pub fn register_traced_expr(expr: ExprRef) {
+        TRACED_EXPR.lock().unwrap().insert(expr);
+    }
+
+    pub fn starting_tracing(expr: &ExprRef) -> bool {
+        TRACED_EXPR.lock().unwrap().contains(expr)
+    }
+
+    pub static TRACED_EXPR: LazyLock<Mutex<FxHashSet<ExprRef>>> = LazyLock::new(Mutex::default);
 }
-
-pub fn starting_tracing(expr: &ExprRef) -> bool {
-    TRACED_EXPR.lock().unwrap().contains(expr)
-}
-
-pub static TRACED_EXPR: LazyLock<Mutex<FxHashSet<ExprRef>>> = LazyLock::new(Mutex::default);
 
 /// Returns a value for an expression if it is available.
 pub trait GetExprValue {
@@ -226,10 +232,8 @@ fn eval_expr_internal(
     let mut bv_stack: BitVecStack = SmallVec::with_capacity(4);
     let mut array_stack: ArrayStack = SmallVec::with_capacity(2);
     let mut todo: SmallVec<[(ExprRef, bool); 4]> = SmallVec::with_capacity(4);
-    let tracing = starting_tracing(&expr);
-    if tracing {
-        eprintln!("start tracing: {expr:?}");
-    }
+    #[cfg(feature = "trace")]
+    let tracing = trace::starting_tracing(&expr);
 
     todo.push((expr, false));
     while let Some((e, args_available)) = todo.pop() {
@@ -266,6 +270,7 @@ fn eval_expr_internal(
                 continue;
             }
         }
+        #[cfg(feature = "trace")]
         if tracing {
             dbg!(expr);
         }
