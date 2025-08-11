@@ -76,6 +76,9 @@ where
     }
 }
 
+/// Bit vector with width less than `THIN_BV_MAX_WIDTH` is stored as Rust primitive type.
+/// Otherwise, it is stored as `baa::BitVecValue`
+const THIN_BV_MAX_WIDTH: u32 = 64;
 const CURRENT_STATE_INDEX: usize = 0;
 const NEXT_STATE_INDEX: usize = 1;
 /// Minimum number of expr nodes that will enable dynamic switching between per-expr and batched update mode.
@@ -244,7 +247,7 @@ macro_rules! next_state_buffer_mut {
 
 impl ArrayType {
     fn alloc(&self) -> *mut () {
-        if self.data_width <= 64 {
+        if self.data_width <= THIN_BV_MAX_WIDTH {
             runtime::__alloc_array(self.index_width, 0) as _
         } else {
             // SAFETY: default value comes from a valid BitVecValue on stack
@@ -261,7 +264,7 @@ impl ArrayType {
     /// The caller should guarantee that the array `ptr` points to is allocated by `ArrayType::alloc` and has the correct type
     unsafe fn dealloc(&self, ptr: *mut ()) {
         unsafe {
-            if self.data_width <= 64 {
+            if self.data_width <= THIN_BV_MAX_WIDTH {
                 runtime::__dealloc_array(ptr as *mut i64, self.index_width);
             } else {
                 runtime::__dealloc_array_of_wide_bv(
@@ -276,7 +279,7 @@ impl ArrayType {
     /// The caller should guarantee that the array `ptr` points to is allocated by `ArrayType::alloc` and has the correct type
     unsafe fn clone(&self, ptr: *const ()) -> *mut () {
         unsafe {
-            if self.data_width <= 64 {
+            if self.data_width <= THIN_BV_MAX_WIDTH {
                 runtime::__clone_array(ptr as *const i64, self.index_width) as _
             } else {
                 runtime::__clone_array_of_wide_bv(
@@ -358,11 +361,7 @@ impl<'expr> JITEngine<'expr> {
         for (&state, &offset) in &self.states_to_offset {
             for buffer in &mut self.buffers {
                 match state.get_type(self.ctx) {
-                    expr::Type::Array(array_ty @ ArrayType { index_width, .. }) => {
-                        assert!(
-                            index_width <= 20,
-                            "currently no sparse array support, size of the dense array should be less than or equal to 2^12, but got `{index_width}`"
-                        );
+                    expr::Type::Array(array_ty) => {
                         buffer[offset] = array_ty.alloc() as i64;
                     }
                     expr::Type::BV(width) => {
@@ -379,7 +378,8 @@ impl<'expr> JITEngine<'expr> {
     /// This function directly takes slot offset as parameter instead of `ExprRef` to avoid `states_to_offset` search overhead.
     fn eval_expr_at_slot(&self, offset: usize) {
         let &(ref state, tpe) = &self.mutable_slot_states[offset];
-        let ret_placeholder = if matches!(tpe, expr::Type::BV(width) if width <= 64) {
+        let ret_placeholder = if matches!(tpe, expr::Type::BV(width) if width  <= THIN_BV_MAX_WIDTH)
+        {
             &next_state_buffer!(self).as_slice()[offset] as *const _ as *mut ()
         } else {
             next_state_buffer!(self).as_slice()[offset] as *mut ()
@@ -398,7 +398,7 @@ impl<'expr> JITEngine<'expr> {
     fn eval_non_state_expr(&self, expr: ExprRef) -> i64 {
         match expr.get_type(self.ctx) {
             expr::Type::BV(width) => {
-                if width <= 64 {
+                if width <= THIN_BV_MAX_WIDTH {
                     let mut ret_placeholder: i64 = 0;
                     // SAFETY: ref mut of stack allocated `i64` for thin bitvector
                     unsafe {
@@ -524,7 +524,7 @@ impl<'expr> JITEngine<'expr> {
             let value = src.as_slice()[offset];
             match state.get_type(self.ctx) {
                 expr::Type::BV(width) => {
-                    if width <= 64 {
+                    if width <= THIN_BV_MAX_WIDTH {
                         dst[offset] = value;
                     } else {
                         // SAFETY: `value` coming from state buffer is guaranteed to be valid
@@ -563,11 +563,7 @@ impl<'a> StateSlot<'a> {
                     0..=64 => Self::ThinBitVec(value),
                     _ => Self::WideBitVec(&*(*value as *const BitVecValue)),
                 },
-                expr::Type::Array(ArrayType {
-                    index_width,
-                    data_width,
-                }) => {
-                    assert!(index_width <= 12 && data_width <= 64);
+                expr::Type::Array(ArrayType { index_width, .. }) => {
                     let len = 1 << index_width;
                     Self::Array(std::slice::from_raw_parts(*value as *const i64, len))
                 }
@@ -606,7 +602,7 @@ where
             let value = *self.get_state_ref(expr);
             match expr.get_type(self.ctx) {
                 expr::Type::BV(width) => {
-                    if width > 64 {
+                    if width > THIN_BV_MAX_WIDTH {
                         runtime::__dealloc_bv(value as *mut BitVecValue);
                     }
                 }
@@ -638,7 +634,7 @@ impl Simulator for JITEngine<'_> {
             let init_value = generator.generate(tpe);
             match init_value {
                 baa::Value::BitVec(bv) => {
-                    let bv = if bv.width() <= 64 {
+                    let bv = if bv.width() <= THIN_BV_MAX_WIDTH {
                         bv.to_u64().unwrap() as i64
                     } else {
                         // SAFETY: &bv is a valid pointer to `BitVecValue`
@@ -647,18 +643,9 @@ impl Simulator for JITEngine<'_> {
                     current_state_buffer_mut!(self).try_replace_with_heap_reclaim(state, bv)
                 }
                 baa::Value::Array(array) => {
-                    let expr::Type::Array(expr::ArrayType {
-                        index_width,
-                        data_width,
-                        ..
-                    }) = tpe
-                    else {
+                    let expr::Type::Array(expr::ArrayType { index_width, .. }) = tpe else {
                         unreachable!()
                     };
-                    assert!(
-                        index_width <= 12 && data_width <= 64,
-                        "currently only support dense array with thin bv"
-                    );
                     debug_assert_eq!(1 << index_width, array.num_elements());
                     let buffer: Vec<_> = (0..array.num_elements())
                         .map(|idx| {
@@ -705,7 +692,7 @@ impl Simulator for JITEngine<'_> {
         let expr::Type::BV(width) = expr.get_type(self.ctx) else {
             unreachable!()
         };
-        if width <= 64 {
+        if width <= THIN_BV_MAX_WIDTH {
             let value = value.to_u64().unwrap();
             *current_state_buffer_mut!(self).get_state_mut(expr) = value as i64;
             *next_state_buffer_mut!(self).get_state_mut(expr) = value as i64;
@@ -745,7 +732,7 @@ impl Simulator for JITEngine<'_> {
             ) => {
                 // SAFETY: jit compiler guarantees that `value` points to a valid array with correct type
                 unsafe {
-                    let ret = if index_width <= 64 {
+                    let ret = if index_width <= THIN_BV_MAX_WIDTH {
                         let words =
                             std::slice::from_raw_parts(value as *const baa::Word, 1 << index_width);
                         baa::Value::Array(words.into())
@@ -771,18 +758,20 @@ impl Simulator for JITEngine<'_> {
                     ret
                 }
             }
-            expr::Type::BV(width) => match width {
-                0..=64 => baa::Value::BitVec(BitVecValue::from_u64(value as u64, width)),
-                _ =>
-                // SAFETY: jit compiler guarantees that value is a pointer to wide bv allocated on heap
-                unsafe {
-                    if is_cached_symbol {
-                        baa::Value::BitVec((*(value as *mut BitVecValue)).clone())
-                    } else {
-                        baa::Value::BitVec(*Box::from_raw(value as *mut BitVecValue))
+            expr::Type::BV(width) => {
+                if width <= THIN_BV_MAX_WIDTH {
+                    baa::Value::BitVec(BitVecValue::from_u64(value as u64, width))
+                } else {
+                    // SAFETY: jit compiler guarantees that value is a pointer to wide bv allocated on heap
+                    unsafe {
+                        if is_cached_symbol {
+                            baa::Value::BitVec((*(value as *mut BitVecValue)).clone())
+                        } else {
+                            baa::Value::BitVec(*Box::from_raw(value as *mut BitVecValue))
+                        }
                     }
-                },
-            },
+                }
+            }
         }
     }
 

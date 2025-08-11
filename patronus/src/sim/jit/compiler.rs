@@ -1,7 +1,7 @@
 // Copyright 2025 Cornell University
 // released under BSD 3-Clause License
 // author: Zihan Li <zl2225@cornell.edu>
-use super::{JITResult, StateBufferView, runtime};
+use super::{JITResult, StateBufferView, THIN_BV_MAX_WIDTH, runtime};
 use crate::expr::{self, *};
 use crate::system::*;
 
@@ -90,7 +90,7 @@ impl JITCompiler {
                     let output_buffer_address =
                         codegen_ctx.fn_builder.block_params(codegen_ctx.block_id)[1];
                     let data_type = expr.get_type(expr_ctx);
-                    let dst = if matches!(data_type, expr::Type::BV(width) if width <= 64) {
+                    let dst = if matches!(data_type, expr::Type::BV(width) if width <= THIN_BV_MAX_WIDTH) {
                         codegen_ctx.fn_builder.ins().iadd_imm(
                             output_buffer_address,
                             (param_offset * codegen_ctx.int.bytes()) as i64,
@@ -211,7 +211,7 @@ fn store_compiled_code_ret_at(
     data_type: expr::Type,
     codegen_ctx: &mut CodeGenContext,
 ) {
-    if matches!(data_type, expr::Type::BV(width) if width <= 64) {
+    if matches!(data_type, expr::Type::BV(width) if width <= THIN_BV_MAX_WIDTH) {
         codegen_ctx
             .fn_builder
             .ins()
@@ -369,7 +369,7 @@ impl CodeGenContext<'_, '_, '_> {
             match value.data_type {
                 expr::Type::Array(..) => self.dealloc_array(value),
                 expr::Type::BV(width) => {
-                    if width > 64 {
+                    if width > THIN_BV_MAX_WIDTH {
                         self.dealloc_bv(value)
                     }
                 }
@@ -393,7 +393,7 @@ impl std::ops::Deref for TaggedValue {
 
 impl TaggedValue {
     pub(super) fn requires_bv_delegation(&self) -> bool {
-        matches!(self.data_type, expr::Type::BV(width) if width > 64)
+        matches!(self.data_type, expr::Type::BV(width) if width > THIN_BV_MAX_WIDTH)
     }
 }
 
@@ -418,7 +418,6 @@ impl CodeGenContext<'_, '_, '_> {
     /// Reserves a long lived array cache, whose lifetime is tied to the JITCompiler
     /// It is not registered as per-step heap allocation, therefore can be used across multiple steps to reduce heap transaction
     fn reserve_intermediate_array_cache(&mut self, tpe: ArrayType) -> TaggedValue {
-        assert!(tpe.index_width <= 12 && tpe.data_width <= 64);
         let cache = vec![0_i64; 1 << tpe.index_width].into_boxed_slice();
         let value = self
             .fn_builder
@@ -434,7 +433,7 @@ impl CodeGenContext<'_, '_, '_> {
     /// Reserves a long lived wide bit vector cache, whose lifetime is tied to the JITCompiler
     /// It is not registered as per-step heap allocation, therefore can be used across multiple steps to reduce heap transaction
     pub(super) fn reserve_intermediate_bv_cache(&mut self, width: WidthInt) -> TaggedValue {
-        assert!(width > 64);
+        assert!(width > THIN_BV_MAX_WIDTH);
         let cache = Box::new(BitVecValue::zero(width));
         let value = self
             .fn_builder
@@ -456,7 +455,7 @@ impl CodeGenContext<'_, '_, '_> {
             .fn_builder
             .ins()
             .iconst(self.int, tpe.index_width as i64);
-        let callee = if dst.data_type.get_array_data_width().unwrap() <= 64 {
+        let callee = if dst.data_type.get_array_data_width().unwrap() <= THIN_BV_MAX_WIDTH {
             self.runtime_lib.copy_from_array
         } else {
             self.runtime_lib.copy_from_array_of_wide_bv
@@ -474,11 +473,12 @@ impl CodeGenContext<'_, '_, '_> {
             .fn_builder
             .ins()
             .iconst(self.int, tpe.index_width as i64);
-        let callee = if array_to_dealloc.data_type.get_array_data_width().unwrap() <= 64 {
-            self.runtime_lib.dealloc_array
-        } else {
-            self.runtime_lib.dealloc_array_of_wide_bv
-        };
+        let callee =
+            if array_to_dealloc.data_type.get_array_data_width().unwrap() <= THIN_BV_MAX_WIDTH {
+                self.runtime_lib.dealloc_array
+            } else {
+                self.runtime_lib.dealloc_array_of_wide_bv
+            };
         self.fn_builder
             .ins()
             .call(callee, &[*array_to_dealloc, index_width]);
@@ -493,7 +493,7 @@ impl CodeGenContext<'_, '_, '_> {
             .fn_builder
             .ins()
             .iconst(self.int, tpe.index_width as i64);
-        let callee = if from.data_type.get_array_data_width().unwrap() <= 64 {
+        let callee = if from.data_type.get_array_data_width().unwrap() <= THIN_BV_MAX_WIDTH {
             self.runtime_lib.clone_array
         } else {
             self.runtime_lib.clone_array_of_wide_bv
@@ -512,7 +512,7 @@ impl CodeGenContext<'_, '_, '_> {
             .fn_builder
             .ins()
             .iconst(self.int, tpe.index_width as i64);
-        let callee = if tpe.data_width <= 64 {
+        let callee = if tpe.data_width <= THIN_BV_MAX_WIDTH {
             self.runtime_lib.alloc_array
         } else {
             self.runtime_lib.alloc_array_of_wide_bv
@@ -558,13 +558,6 @@ impl CodeGenContext<'_, '_, '_> {
     }
 
     fn expr_codegen(&mut self, expr: ExprRef, args: &[TaggedValue]) -> TaggedValue {
-        if let expr::Type::Array(expr::ArrayType {
-            index_width,
-            data_width,
-        }) = expr.get_type(self.expr_ctx)
-        {
-            assert!(index_width <= 12 && data_width <= 64);
-        }
         let value = match &self.expr_ctx[expr] {
             Expr::ArraySymbol { .. } => {
                 let src = self.load_input_state(expr);
