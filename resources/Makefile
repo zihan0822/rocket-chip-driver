@@ -19,17 +19,17 @@ endif
 
 PHONY := clean rocket_chip_driver
 
-all: emulator 
+all: emulator riscv
 	
 run: emulator
 	@LD_LIBRARY_PATH=$(RUST_LIB_DIR) ./$<
 
-libfesvr.so:
+riscv:
 	@mkdir -p $(RISCV_DIR)
 	@cd $(RISCV_SIM) && mkdir -p build && cd build && \
 		../configure --prefix=$(RISCV_DIR) --target=$(RISCV_TOOLCHAIN) && make install
 
-emulator: $(CXX_DIR)/emulator.cc rocket_chip_driver libfesvr.so
+emulator: $(CXX_DIR)/emulator.cc rocket_chip_driver
 	@$(CXX) -o $@ $< $(LDFLAGS) $(INCLUDES) $(LIBS) $(LINKER_ARGS)
 
 rocket_chip_driver:

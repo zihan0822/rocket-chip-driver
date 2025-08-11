@@ -1,3 +1,6 @@
 target/
 Cargo.lock
-cpp-src/emulator
+build
+resources/cxx/riscv
+resources/emulator
+designs/**/*.btor
