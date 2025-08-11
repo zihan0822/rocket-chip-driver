@@ -1,4 +1,3 @@
-RUST_PROFILE := release
 RUST_TARGET_DIR := $(realpath -f ../target)
 RUST_LIB_DIR := $(RUST_TARGET_DIR)/$(RUST_PROFILE)
 CXX_DIR := $(shell pwd)/cxx
@@ -19,8 +18,6 @@ endif
 
 PHONY := clean rocket_chip_driver
 
-all: emulator riscv
-	
 run: emulator
 	@LD_LIBRARY_PATH=$(RUST_LIB_DIR) ./$<
 

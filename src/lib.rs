@@ -28,13 +28,13 @@ struct Driver {
 
 declare_module! {
     struct MockTestHarnessModule {
-        #[in<1> = clock, c_type=c_uchar]
+        #[in<1> = "clock", c_type=c_uchar]
         clk,
-        #[in<1> = reset, c_type = c_uchar]
+        #[in<1> = "reset", c_type = c_uchar]
         reset,
-        #[in<32> = io_exit, c_type = c_uint]
+        #[in<32> = "io_exit", c_type = c_uint]
         exit,
-        #[out = io_success, c_type = c_uchar]
+        #[out = "io_success", c_type = c_uchar]
         io_success,
     }
 }
@@ -43,23 +43,23 @@ declare_module! {
     #[in(bundle = debug_module_input_payload_t)]
     #[out(bundle = debug_module_output_payload_t)]
     struct DebugModule {
-        #[in<7> = io_debug_req_bits_addr, bundle_field = req_addr]
+        #[in<7> = "io_debug_req_bits_addr", bundle_field = req_addr]
         in_req_addr,
-        #[in<32> = io_debug_req_bits_data, bundle_field = req_data]
+        #[in<32> = "io_debug_req_bits_data", bundle_field = req_data]
         in_req_data,
-        #[in<2> = io_debug_req_bits_op, bundle_field = req_op]
+        #[in<2> = "io_debug_req_bits_op", bundle_field = req_op]
         in_req_op,
-        #[in<1> = io_debug_resp_ready, bundle_field = resp_ready]
+        #[in<1> = "io_debug_resp_ready", bundle_field = resp_ready]
         in_resp_ready,
-        #[in<1> = io_debug_req_valid, bundle_field = req_valid]
+        #[in<1> = "io_debug_req_valid", bundle_field = req_valid]
         in_req_valid,
-        #[out = io_debug_resp_bits_resp, bundle_field = resp_resp]
+        #[out = "io_debug_resp_bits_resp", bundle_field = resp_resp]
         out_resp_resp,
-        #[out = io_debug_resp_bits_data, bundle_field = resp_data]
+        #[out = "io_debug_resp_bits_data", bundle_field = resp_data]
         out_resp_data,
-        #[out = io_debug_req_ready, bundle_field = req_ready]
+        #[out = "io_debug_req_ready", bundle_field = req_ready]
         out_req_ready,
-        #[out = io_debug_resp_valid, bundle_field = resp_valid]
+        #[out = "io_debug_resp_valid", bundle_field = resp_valid]
         out_resp_valid,
     }
 }
