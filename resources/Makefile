@@ -1,8 +1,9 @@
 RUST_PROFILE := release
 RUST_TARGET_DIR := $(realpath -f ../target)
 RUST_LIB_DIR := $(RUST_TARGET_DIR)/$(RUST_PROFILE)
-RISCV_SIM := riscv-fesvr
-RISCV_DIR:= $(shell pwd)/riscv
+CXX_DIR := $(shell pwd)/cxx
+RISCV_SIM := $(CXX_DIR)/riscv-fesvr
+RISCV_DIR:= $(CXX_DIR)/riscv
 RISCV_TOOLCHAIN := riscv64-unknown-elf
 
 LDFLAGS += -L$(RUST_LIB_DIR) -L$(RISCV_DIR)/lib
@@ -28,7 +29,7 @@ libfesvr.so:
 	@cd $(RISCV_SIM) && mkdir -p build && cd build && \
 		../configure --prefix=$(RISCV_DIR) --target=$(RISCV_TOOLCHAIN) && make install
 
-emulator: emulator.cc rocket_chip_driver libfesvr.so
+emulator: $(CXX_DIR)/emulator.cc rocket_chip_driver libfesvr.so
 	@$(CXX) -o $@ $< $(LDFLAGS) $(INCLUDES) $(LIBS) $(LINKER_ARGS)
 
 rocket_chip_driver:
