@@ -242,6 +242,52 @@ macro_rules! next_state_buffer_mut {
     };
 }
 
+impl ArrayType {
+    fn alloc(&self) -> *mut () {
+        if self.data_width <= 64 {
+            runtime::__alloc_array(self.index_width, 0) as _
+        } else {
+            // SAFETY: default value comes from a valid BitVecValue on stack
+            unsafe {
+                runtime::__alloc_array_of_wide_bv(
+                    self.index_width,
+                    &baa::BitVecValue::zero(self.data_width),
+                ) as _
+            }
+        }
+    }
+
+    /// # Safety
+    /// The caller should guarantee that the array `ptr` points to is allocated by `ArrayType::alloc` and has the correct type
+    unsafe fn dealloc(&self, ptr: *mut ()) {
+        unsafe {
+            if self.data_width <= 64 {
+                runtime::__dealloc_array(ptr as *mut i64, self.index_width);
+            } else {
+                runtime::__dealloc_array_of_wide_bv(
+                    ptr as *mut *mut baa::BitVecValue,
+                    self.index_width,
+                )
+            }
+        }
+    }
+
+    /// # Safety
+    /// The caller should guarantee that the array `ptr` points to is allocated by `ArrayType::alloc` and has the correct type
+    unsafe fn clone(&self, ptr: *const ()) -> *mut () {
+        unsafe {
+            if self.data_width <= 64 {
+                runtime::__clone_array(ptr as *const i64, self.index_width) as _
+            } else {
+                runtime::__clone_array_of_wide_bv(
+                    ptr as *const *const baa::BitVecValue,
+                    self.index_width,
+                ) as _
+            }
+        }
+    }
+}
+
 impl<'expr> JITEngine<'expr> {
     pub fn new(ctx: &'expr expr::Context, sys: &'expr TransitionSystem) -> JITEngine<'expr> {
         let mut states_to_offset: FxHashMap<ExprRef, usize> = FxHashMap::default();
@@ -312,19 +358,12 @@ impl<'expr> JITEngine<'expr> {
         for (&state, &offset) in &self.states_to_offset {
             for buffer in &mut self.buffers {
                 match state.get_type(self.ctx) {
-                    expr::Type::Array(expr::ArrayType {
-                        index_width,
-                        data_width,
-                    }) => {
-                        assert!(
-                            data_width <= 64,
-                            "only support bv with width less than equal to 64, but got `{data_width}`"
-                        );
+                    expr::Type::Array(array_ty @ ArrayType { index_width, .. }) => {
                         assert!(
                             index_width <= 20,
                             "currently no sparse array support, size of the dense array should be less than or equal to 2^12, but got `{index_width}`"
                         );
-                        buffer[offset] = runtime::__alloc_const_array(index_width, 0) as i64;
+                        buffer[offset] = array_ty.alloc() as i64;
                     }
                     expr::Type::BV(width) => {
                         if width > 64 {
@@ -378,10 +417,10 @@ impl<'expr> JITEngine<'expr> {
                     bv as i64
                 }
             }
-            expr::Type::Array(ArrayType { index_width, .. }) => {
+            expr::Type::Array(array_ty) => {
                 unsafe {
                     // SAFETY: heap allocated array
-                    let array = runtime::__alloc_const_array(index_width, 0) as *mut ();
+                    let array = array_ty.alloc();
                     self.eval_expr_with_ret_placeholder(expr, array);
                     array as i64
                 }
@@ -488,13 +527,15 @@ impl<'expr> JITEngine<'expr> {
                     if width <= 64 {
                         dst[offset] = value;
                     } else {
+                        // SAFETY: `value` coming from state buffer is guaranteed to be valid
                         unsafe {
                             dst[offset] = runtime::__clone_bv(value as *const BitVecValue) as i64;
                         }
                     }
                 }
-                expr::Type::Array(ArrayType { index_width, .. }) => unsafe {
-                    dst[offset] = runtime::__clone_array(value as *const i64, index_width) as i64;
+                expr::Type::Array(array_ty) => unsafe {
+                    // SAFETY: `value` coming from state buffer is guaranteed to be valid
+                    dst[offset] = array_ty.clone(value as *const ()) as i64;
                 },
             }
         }
@@ -569,8 +610,8 @@ where
                         runtime::__dealloc_bv(value as *mut BitVecValue);
                     }
                 }
-                expr::Type::Array(expr::ArrayType { index_width, .. }) => {
-                    runtime::__dealloc_array(value as *mut i64, index_width)
+                expr::Type::Array(array_ty) => {
+                    array_ty.dealloc(value as *mut ());
                 }
             }
         }
@@ -696,14 +737,36 @@ impl Simulator for JITEngine<'_> {
             self.eval_non_state_expr(expr)
         };
         match tpe {
-            expr::Type::Array(expr::ArrayType { index_width, .. }) => {
-                // SAFETY: jit compiler guarantees that value points to a boxed slice with len 1 << index_width
+            expr::Type::Array(
+                array_ty @ ArrayType {
+                    index_width,
+                    data_width,
+                },
+            ) => {
+                // SAFETY: jit compiler guarantees that `value` points to a valid array with correct type
                 unsafe {
-                    let words =
-                        std::slice::from_raw_parts(value as *const baa::Word, 1 << index_width);
-                    let ret = baa::Value::Array(words.into());
+                    let ret = if index_width <= 64 {
+                        let words =
+                            std::slice::from_raw_parts(value as *const baa::Word, 1 << index_width);
+                        baa::Value::Array(words.into())
+                    } else {
+                        let mut array = baa::ArrayValue::new_dense(
+                            index_width,
+                            &baa::BitVecValue::zero(data_width),
+                        );
+                        std::slice::from_raw_parts(
+                            value as *const baa::BitVecValue,
+                            1 << index_width,
+                        )
+                        .iter()
+                        .enumerate()
+                        .for_each(|(idx, bv)| {
+                            array.store(&BitVecValue::from_u64(idx as u64, index_width), bv);
+                        });
+                        baa::Value::Array(array)
+                    };
                     if !is_cached_symbol {
-                        runtime::__dealloc_array(value as *mut i64, index_width);
+                        array_ty.dealloc(value as *mut ());
                     }
                     ret
                 }

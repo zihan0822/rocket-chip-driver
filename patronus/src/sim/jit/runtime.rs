@@ -11,9 +11,13 @@ use trampoline::*;
 
 pub(super) struct RuntimeLib {
     pub(super) clone_array: FuncRef,
+    pub(super) clone_array_of_wide_bv: FuncRef,
     pub(super) dealloc_array: FuncRef,
-    pub(super) alloc_const_array: FuncRef,
+    pub(super) dealloc_array_of_wide_bv: FuncRef,
+    pub(super) alloc_array: FuncRef,
+    pub(super) alloc_array_of_wide_bv: FuncRef,
     pub(super) copy_from_array: FuncRef,
+    pub(super) copy_from_array_of_wide_bv: FuncRef,
     pub(super) clone_bv: FuncRef,
     pub(super) dealloc_bv: FuncRef,
     pub(super) copy_from_bv: FuncRef,
@@ -22,18 +26,38 @@ pub(super) struct RuntimeLib {
 inventory::collect!(trampoline::BVOpRegistry);
 
 const CLONE_ARRAY_SYM: &str = "__clone_array";
+const CLONE_ARRAY_OF_WIDE_BV_SYM: &str = "__clone_array_of_wide_bv";
 const DEALLOC_ARRAY_SYM: &str = "__dealloc_array";
-const ALLOC_CONST_ARRAY_SYM: &str = "__alloc_const_array";
+const DEALLOC_ARRAY_OF_WIDE_BV_SYM: &str = "__dealloc_array_of_wide_bv";
+const ALLOC_ARRAY_SYM: &str = "__alloc_array";
+const ALLOC_ARRAY_OF_WIDE_BV_SYM: &str = "__alloc_array_of_wide_bv";
 const COPY_FROM_ARRAY_SYM: &str = "__copy_from_array";
+const COPY_FROM_ARRAY_OF_WIDE_BV_SYM: &str = "__copy_from_array_of_wide_bv";
 const CLONE_BV_SYM: &str = "__clone_bv";
 const DEALLOC_BV_SYM: &str = "__dealloc_bv";
 const COPY_FROM_BV_SYM: &str = "__copy_from_bv";
 
 pub(super) fn load_runtime_lib(builder: &mut JITBuilder) {
     builder.symbol(CLONE_ARRAY_SYM, __clone_array as *const u8);
+    builder.symbol(
+        CLONE_ARRAY_OF_WIDE_BV_SYM,
+        __clone_array_of_wide_bv as *const u8,
+    );
     builder.symbol(DEALLOC_ARRAY_SYM, __dealloc_array as *const u8);
-    builder.symbol(ALLOC_CONST_ARRAY_SYM, __alloc_const_array as *const u8);
+    builder.symbol(
+        DEALLOC_ARRAY_OF_WIDE_BV_SYM,
+        __dealloc_array_of_wide_bv as *const u8,
+    );
+    builder.symbol(ALLOC_ARRAY_SYM, __alloc_array as *const u8);
+    builder.symbol(
+        ALLOC_ARRAY_OF_WIDE_BV_SYM,
+        __alloc_array_of_wide_bv as *const u8,
+    );
     builder.symbol(COPY_FROM_ARRAY_SYM, __copy_from_array as *const u8);
+    builder.symbol(
+        COPY_FROM_ARRAY_OF_WIDE_BV_SYM,
+        __copy_from_array_of_wide_bv as *const u8,
+    );
     builder.symbol(CLONE_BV_SYM, __clone_bv as *const u8);
     builder.symbol(DEALLOC_BV_SYM, __dealloc_bv as *const u8);
     builder.symbol(COPY_FROM_BV_SYM, __copy_from_bv as *const u8);
@@ -56,6 +80,13 @@ pub(super) fn import_runtime_lib_to_func_scope(
         [types::I64, types::I64],
         [types::I64],
     );
+    let clone_array_of_wide_bv = import_extern_function(
+        module,
+        func,
+        CLONE_ARRAY_OF_WIDE_BV_SYM,
+        [types::I64, types::I64],
+        [types::I64],
+    );
     let dealloc_array = import_extern_function(
         module,
         func,
@@ -63,10 +94,24 @@ pub(super) fn import_runtime_lib_to_func_scope(
         [types::I64, types::I64],
         [],
     );
-    let alloc_const_array = import_extern_function(
+    let dealloc_array_of_wide_bv = import_extern_function(
         module,
         func,
-        ALLOC_CONST_ARRAY_SYM,
+        DEALLOC_ARRAY_OF_WIDE_BV_SYM,
+        [types::I64, types::I64],
+        [],
+    );
+    let alloc_array = import_extern_function(
+        module,
+        func,
+        ALLOC_ARRAY_SYM,
+        [types::I64, types::I64],
+        [types::I64],
+    );
+    let alloc_array_of_wide_bv = import_extern_function(
+        module,
+        func,
+        ALLOC_ARRAY_OF_WIDE_BV_SYM,
         [types::I64, types::I64],
         [types::I64],
     );
@@ -77,6 +122,13 @@ pub(super) fn import_runtime_lib_to_func_scope(
         [types::I64, types::I64, types::I64],
         [],
     );
+    let copy_from_array_of_wide_bv = import_extern_function(
+        module,
+        func,
+        COPY_FROM_ARRAY_OF_WIDE_BV_SYM,
+        [types::I64, types::I64, types::I64],
+        [],
+    );
     let clone_bv = import_extern_function(module, func, CLONE_BV_SYM, [types::I64], [types::I64]);
     let dealloc_bv = import_extern_function(module, func, DEALLOC_BV_SYM, [types::I64], []);
     let copy_from_bv =
@@ -84,9 +136,13 @@ pub(super) fn import_runtime_lib_to_func_scope(
 
     RuntimeLib {
         clone_array,
+        clone_array_of_wide_bv,
         dealloc_array,
-        alloc_const_array,
+        dealloc_array_of_wide_bv,
+        alloc_array,
+        alloc_array_of_wide_bv,
         copy_from_array,
+        copy_from_array_of_wide_bv,
         clone_bv,
         dealloc_bv,
         copy_from_bv,
@@ -155,6 +211,19 @@ pub(super) unsafe extern "C" fn __clone_array(src: *const i64, index_width: Widt
     }
 }
 
+pub(super) unsafe extern "C" fn __clone_array_of_wide_bv(
+    src: *const *const baa::BitVecValue,
+    index_width: WidthInt,
+) -> *const *mut baa::BitVecValue {
+    unsafe {
+        let len = 1 << index_width;
+        let mut array = Vec::with_capacity(len);
+        let src = std::slice::from_raw_parts(src, len);
+        array.extend(src.iter().map(|&bv| __clone_bv(bv)));
+        array.leak() as *const [*mut baa::BitVecValue] as *const *mut baa::BitVecValue
+    }
+}
+
 pub(super) unsafe extern "C" fn __copy_from_array(
     dst: *mut i64,
     src: *const i64,
@@ -168,9 +237,35 @@ pub(super) unsafe extern "C" fn __copy_from_array(
     }
 }
 
-pub(super) extern "C" fn __alloc_const_array(index_width: WidthInt, default_data: i64) -> *mut i64 {
+pub(super) unsafe extern "C" fn __copy_from_array_of_wide_bv(
+    dst: *const *mut baa::BitVecValue,
+    src: *const *const baa::BitVecValue,
+    index_width: WidthInt,
+) {
+    unsafe {
+        let len = 1 << index_width;
+        let dst = std::slice::from_raw_parts(dst, len);
+        let src = std::slice::from_raw_parts(src, len);
+        dst.iter()
+            .zip(src.iter())
+            .for_each(|(&dst_bv, &src_bv)| __copy_from_bv(dst_bv, src_bv));
+    }
+}
+
+pub(super) extern "C" fn __alloc_array(index_width: WidthInt, default_data: i64) -> *mut i64 {
     let len = 1 << index_width;
     vec![default_data; len].leak() as *mut [i64] as *mut i64
+}
+
+pub(super) unsafe extern "C" fn __alloc_array_of_wide_bv(
+    index_width: WidthInt,
+    default_data: *const baa::BitVecValue,
+) -> *const *mut baa::BitVecValue {
+    let len = 1 << index_width;
+    unsafe {
+        Vec::from_iter(std::iter::repeat_with(|| __clone_bv(default_data)).take(len)).leak()
+            as *const [*mut baa::BitVecValue] as *const *mut baa::BitVecValue
+    }
 }
 
 pub(super) unsafe extern "C" fn __dealloc_array(src: *mut i64, index_width: WidthInt) {
@@ -178,6 +273,20 @@ pub(super) unsafe extern "C" fn __dealloc_array(src: *mut i64, index_width: Widt
         let len = 1 << index_width;
         let ptr = std::ptr::slice_from_raw_parts_mut(src, len);
         let _ = Box::from_raw(ptr);
+    }
+}
+
+pub(super) unsafe extern "C" fn __dealloc_array_of_wide_bv(
+    src: *mut *mut baa::BitVecValue,
+    index_width: WidthInt,
+) {
+    unsafe {
+        let len = 1 << index_width;
+        let array = std::slice::from_raw_parts_mut(src, len);
+        for &bv in array.iter() {
+            __dealloc_bv(bv);
+        }
+        let _ = Box::from_raw(array);
     }
 }
 

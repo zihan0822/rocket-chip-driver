@@ -456,9 +456,14 @@ impl CodeGenContext<'_, '_, '_> {
             .fn_builder
             .ins()
             .iconst(self.int, tpe.index_width as i64);
+        let callee = if dst.data_type.get_array_data_width().unwrap() <= 64 {
+            self.runtime_lib.copy_from_array
+        } else {
+            self.runtime_lib.copy_from_array_of_wide_bv
+        };
         self.fn_builder
             .ins()
-            .call(self.runtime_lib.copy_from_array, &[*dst, *src, index_width]);
+            .call(callee, &[*dst, *src, index_width]);
     }
 
     fn dealloc_array(&mut self, array_to_dealloc: TaggedValue) {
@@ -469,10 +474,14 @@ impl CodeGenContext<'_, '_, '_> {
             .fn_builder
             .ins()
             .iconst(self.int, tpe.index_width as i64);
-        self.fn_builder.ins().call(
-            self.runtime_lib.dealloc_array,
-            &[*array_to_dealloc, index_width],
-        );
+        let callee = if array_to_dealloc.data_type.get_array_data_width().unwrap() <= 64 {
+            self.runtime_lib.dealloc_array
+        } else {
+            self.runtime_lib.dealloc_array_of_wide_bv
+        };
+        self.fn_builder
+            .ins()
+            .call(callee, &[*array_to_dealloc, index_width]);
     }
 
     #[expect(dead_code)]
@@ -484,10 +493,12 @@ impl CodeGenContext<'_, '_, '_> {
             .fn_builder
             .ins()
             .iconst(self.int, tpe.index_width as i64);
-        let call = self
-            .fn_builder
-            .ins()
-            .call(self.runtime_lib.clone_array, &[*from, index_width]);
+        let callee = if from.data_type.get_array_data_width().unwrap() <= 64 {
+            self.runtime_lib.clone_array
+        } else {
+            self.runtime_lib.clone_array_of_wide_bv
+        };
+        let call = self.fn_builder.ins().call(callee, &[*from, index_width]);
         let ret = TaggedValue {
             value: self.fn_builder.inst_results(call)[0],
             data_type: from.data_type,
@@ -496,15 +507,20 @@ impl CodeGenContext<'_, '_, '_> {
         ret
     }
 
-    fn alloc_const_array(&mut self, default_data: TaggedValue, tpe: ArrayType) -> TaggedValue {
+    fn alloc_array(&mut self, default_data: TaggedValue, tpe: ArrayType) -> TaggedValue {
         let index_width = self
             .fn_builder
             .ins()
             .iconst(self.int, tpe.index_width as i64);
-        let call = self.fn_builder.ins().call(
-            self.runtime_lib.alloc_const_array,
-            &[index_width, *default_data],
-        );
+        let callee = if tpe.data_width <= 64 {
+            self.runtime_lib.alloc_array
+        } else {
+            self.runtime_lib.alloc_array_of_wide_bv
+        };
+        let call = self
+            .fn_builder
+            .ins()
+            .call(callee, &[index_width, *default_data]);
         let ret = TaggedValue {
             value: self.fn_builder.inst_results(call)[0],
             data_type: expr::Type::Array(tpe),
@@ -594,7 +610,7 @@ impl CodeGenContext<'_, '_, '_> {
             Expr::ArrayConstant { .. } => {
                 let tpe = expr.get_array_type(self.expr_ctx).unwrap();
                 // XXX: get rid of the extra alloc
-                let array_const = self.alloc_const_array(args[0], tpe);
+                let array_const = self.alloc_array(args[0], tpe);
                 let cache = self.reserve_intermediate_array_cache(tpe);
                 self.copy_from_array(cache, array_const);
                 return cache;
