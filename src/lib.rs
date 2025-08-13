@@ -3,12 +3,13 @@ mod macros;
 use patronus::expr::*;
 use patronus::sim::*;
 use patronus::system::*;
+use std::cell::{OnceCell, RefCell};
 use std::ffi::{c_char, c_uchar, c_uint};
-use std::sync::{Mutex, OnceLock};
 
-const TRACED_STATES: &[&str] = &[];
-static ROCKET_CHIP_SIMULATOR: OnceLock<Mutex<Driver>> = OnceLock::new();
-
+pub const TRACED_STATES: &[&str] = &[];
+thread_local! {
+    static ROCKET_CHIP_SIMULATOR: OnceCell<RefCell<Driver>> = const { OnceCell::new() };
+}
 type SimBackend<'ctx> = Interpreter<'ctx>;
 
 /// HACK: self-referential struct
@@ -81,6 +82,34 @@ pub struct debug_module_output_payload_t {
     pub resp_valid: c_uchar,
 }
 
+fn with_driver_ref<F, R>(user: F) -> R
+where
+    for<'a> F: FnOnce(&'a Driver) -> R,
+{
+    ROCKET_CHIP_SIMULATOR.with(|stub| {
+        user(
+            &stub
+                .get()
+                .expect("`boostrap_driver` has never been called")
+                .borrow(),
+        )
+    })
+}
+
+fn with_driver_mut<F, R>(user: F) -> R
+where
+    for<'a> F: FnOnce(&'a mut Driver) -> R,
+{
+    ROCKET_CHIP_SIMULATOR.with(|stub| {
+        user(
+            &mut stub
+                .get()
+                .expect("`boostrap_driver` has never been called")
+                .borrow_mut(),
+        )
+    })
+}
+
 /// Returns whether bootstrap is successful.
 /// This function should only be called once from cpp side.
 ///
@@ -94,44 +123,46 @@ pub unsafe extern "C" fn bootstrap_driver(btor_path: *const c_char) -> bool {
             .expect("invalid input c string literal")
     })
     .expect("fail to load btor2 file");
-    ROCKET_CHIP_SIMULATOR
-        .set(Mutex::new(Driver::init(ctx, sys)))
-        .is_ok()
+    ROCKET_CHIP_SIMULATOR.with(|stub| stub.set(RefCell::new(Driver::init(ctx, sys))).is_ok())
 }
 
 /// Panics if `bootstrap_simulator` has never been called.
 #[unsafe(no_mangle)]
 pub extern "C" fn step_driver() {
-    rocket_chip_simulator!().step();
+    with_driver_mut(|driver| driver.step());
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn set_driver_debug_module_input(request: debug_module_input_payload_t) {
-    rocket_chip_simulator!().with_mut(|driver| driver.debug_module.set_input(driver.sim, request))
+    with_driver_mut(|driver| {
+        driver.with_mut(|fields| fields.debug_module.set_input(fields.sim, request))
+    })
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn get_driver_debug_module_output() -> debug_module_output_payload_t {
-    rocket_chip_simulator!().with(|driver| driver.debug_module.get_output(driver.sim))
+    with_driver_ref(|driver| driver.with(|fields| fields.debug_module.get_output(fields.sim)))
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn set_driver_reset(signal: c_uchar) {
-    rocket_chip_simulator!().with_mut(|driver| {
-        driver.test_harness_module.set_reset(driver.sim, signal);
+    with_driver_mut(|driver| {
+        driver.with_mut(|fields| fields.test_harness_module.set_reset(fields.sim, signal))
     })
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn set_driver_exit(signal: c_uint) {
-    rocket_chip_simulator!().with_mut(|driver| {
-        driver.test_harness_module.set_exit(driver.sim, signal);
+    with_driver_mut(|driver| {
+        driver.with_mut(|fields| fields.test_harness_module.set_exit(fields.sim, signal))
     })
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn get_driver_io_success() -> c_uchar {
-    rocket_chip_simulator!().with(|driver| driver.test_harness_module.get_io_success(driver.sim))
+    with_driver_ref(|driver| {
+        driver.with(|fields| fields.test_harness_module.get_io_success(fields.sim))
+    })
 }
 
 impl Driver {

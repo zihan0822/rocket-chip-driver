@@ -133,14 +133,3 @@ macro_rules! declare_module {
         }
     }
 }
-
-#[macro_export]
-macro_rules! rocket_chip_simulator {
-    () => {
-        $crate::ROCKET_CHIP_SIMULATOR
-            .get()
-            .expect("`bootstrap` has never been called")
-            .lock()
-            .unwrap()
-    };
-}
