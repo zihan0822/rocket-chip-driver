@@ -106,16 +106,24 @@ impl<'a> Simulator for Interpreter<'a> {
     }
 
     fn step(&mut self) {
-        // calculate all next states
+        // assign next value to store
+        #[cfg(not(feature = "trace"))]
+        let next_states = self
+            .sys
+            .states
+            .iter()
+            .map(|s| s.next.map(|n| eval_expr(self.ctx, &self.data, n)))
+            .collect::<Vec<_>>();
+
+        #[cfg(feature = "trace")]
         let next_states = self
             .sys
             .states
             .iter()
             .enumerate()
             .map(|(i, s)| {
-                #[cfg(feature = "trace")]
-                if let crate::expr::Expr::BVSymbol { name, .. } = self.ctx[s.symbol] {
-                    eprintln!(
+                if let Expr::BVSymbol { name, .. } = self.ctx[s.symbol] {
+                    println!(
                         "[{i}/{}] eval state: {}",
                         self.sys.states.len(),
                         &self.ctx[name]
@@ -124,12 +132,11 @@ impl<'a> Simulator for Interpreter<'a> {
                 s.next.map(|n| eval_expr(self.ctx, &self.data, n))
             })
             .collect::<Vec<_>>();
-        // assign next value to store
+
         for (state, next_value) in self.sys.states.iter().zip(next_states.into_iter()) {
             if let Some(value) = next_value {
                 self.data.update(state.symbol, value);
             }
-            eprintln!("finish one state");
         }
 
         // increment step cout

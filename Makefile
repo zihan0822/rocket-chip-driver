@@ -1,4 +1,5 @@
 RUST_PROFILE := release
+RUST_DRIVER_FEATURES = interpreter,trace
 DESIGNS_DIR := $(wildcard designs/*)
 DESIGN_VERILOG:= TestHarness.sv
 TOP_MODULE := TestHarness
@@ -14,7 +15,7 @@ all: btor emulator
 btor: $(BTOR_TARGET)
 
 emulator:
-	@make -C resources RUST_PROFILE=$(RUST_PROFILE) emulator 
+	@make -C resources RUST_PROFILE=$(RUST_PROFILE) RUST_DRIVER_FEATURES=$(RUST_DRIVER_FEATURES) emulator 
 
 %.btor: $(YOSYS_SCRIPT) $(VERILOG_RESOURCES) %.sv
 	@VERILOG_FILES="$(VERILOG_RESOURCES) $*.sv" \

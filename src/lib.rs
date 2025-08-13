@@ -10,7 +10,14 @@ pub const TRACED_STATES: &[&str] = &[];
 thread_local! {
     static ROCKET_CHIP_SIMULATOR: OnceCell<RefCell<Driver>> = const { OnceCell::new() };
 }
-type SimBackend<'ctx> = Interpreter<'ctx>;
+
+cfg_if::cfg_if! {
+    if #[cfg(feature = "interpreter")] {
+        type SimBackend<'ctx> = Interpreter<'ctx>;
+    } else {
+        type SimBackend<'ctx> = JITEngine<'ctx>;
+    }
+}
 
 /// HACK: self-referential struct
 /// Currently `patronus::Interpreter` borrows `Context` and `TransitionSystem`  
@@ -175,7 +182,10 @@ impl Driver {
             sim_builder: |ctx, sys| {
                 let mut sim = SimBackend::new(ctx, sys);
                 sim.init(InitKind::Zero);
-                sim.register_traced_states(TRACED_STATES);
+                #[cfg(feature = "trace")]
+                {
+                    sim.register_traced_states(TRACED_STATES);
+                }
                 sim
             },
             signal: (

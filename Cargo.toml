@@ -26,10 +26,17 @@ patronus = {path = "patronus"}
 thiserror = "2.0.6"
 
 [dependencies]
-patronus = { workspace = true, features = ["trace"] }
+patronus.workspace = true
 baa.workspace = true
 ouroboros = "0.18.5"
 paste = "1.0.15"
+cfg-if = "1.0.1"
+
+[features]
+default = ["interpreter"]
+interpreter = []
+trace = ["patronus/trace"] 
+jit = []
 
 
 [build-dependencies]

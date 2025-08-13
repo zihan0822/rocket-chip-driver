@@ -16,6 +16,10 @@ else
 	CARGO_FLAGS :=
 endif
 
+ifneq ($(RUST_DRIVER_FEATURES),)
+	CARGO_FLAGS += --no-default-features --features $(RUST_DRIVER_FEATURES)
+endif
+
 PHONY := clean rocket_chip_driver
 
 run: emulator
