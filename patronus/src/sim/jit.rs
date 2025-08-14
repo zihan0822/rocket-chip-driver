@@ -643,16 +643,23 @@ impl Simulator for JITEngine<'_> {
                     current_state_buffer_mut!(self).try_replace_with_heap_reclaim(state, bv)
                 }
                 baa::Value::Array(array) => {
-                    let expr::Type::Array(expr::ArrayType { index_width, .. }) = tpe else {
+                    let expr::Type::Array(expr::ArrayType {
+                        index_width,
+                        data_width,
+                    }) = tpe
+                    else {
                         unreachable!()
                     };
                     debug_assert_eq!(1 << index_width, array.num_elements());
                     let buffer: Vec<_> = (0..array.num_elements())
                         .map(|idx| {
-                            array
-                                .select(&BitVecValue::from_u64(idx as u64, index_width))
-                                .to_u64()
-                                .unwrap() as i64
+                            let src_element =
+                                array.select(&BitVecValue::from_u64(idx as u64, index_width));
+                            if data_width <= THIN_BV_MAX_WIDTH {
+                                src_element.to_u64().unwrap() as i64
+                            } else {
+                                Box::leak(Box::new(src_element)) as *mut baa::BitVecValue as i64
+                            }
                         })
                         .collect();
                     let ptr = buffer.leak() as *mut [i64] as *mut i64 as i64;
