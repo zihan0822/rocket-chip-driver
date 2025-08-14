@@ -40,7 +40,7 @@ impl EvalBatchedExprWithUpdate {
     }
 }
 
-impl std::default::Default for JITCompiler {
+impl Default for JITCompiler {
     fn default() -> Self {
         Self::new()
     }

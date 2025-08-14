@@ -13,7 +13,7 @@ fn main() {
         language: cbindgen::Language::Cxx,
         namespace: Some("ffi".to_string()),
         include_guard: Some(format!("_{}_H", bind_crate_name.to_uppercase())),
-        ..std::default::Default::default()
+        ..Default::default()
     };
     cbindgen::generate_with_config(&workspace_root, config)
         .unwrap()
