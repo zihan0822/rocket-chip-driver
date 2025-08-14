@@ -618,11 +618,11 @@ impl CodeGenContext<'_, '_, '_> {
 
     fn dispatch_bv_operation_codegen(&mut self, expr: ExprRef, args: &[TaggedValue]) -> Value {
         let width = expr.get_bv_type(self.expr_ctx).unwrap();
-        let vtable: Box<dyn BVCodeGenVTable> = match width {
-            0..=64 => Box::new(super::bv_codegen::BVWord(width)),
-            _ => Box::new(super::bv_codegen::BVIndirect(width)),
+        let vtable: &dyn BVCodeGenVTable = match width {
+            0..=64 => &super::bv_codegen::BVWord(width),
+            _ => &super::bv_codegen::BVIndirect(width),
         };
-        match self.expr_ctx[expr].clone() {
+        match self.expr_ctx[expr] {
             Expr::BVSymbol { .. } => vtable.symbol(expr, self),
             Expr::BVLiteral(value) => vtable.literal(value.get(self.expr_ctx), self),
             // unary
