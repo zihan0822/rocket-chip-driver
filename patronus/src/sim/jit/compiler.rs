@@ -395,6 +395,20 @@ impl TaggedValue {
     pub(super) fn requires_bv_delegation(&self) -> bool {
         matches!(self.data_type, expr::Type::BV(width) if width > THIN_BV_MAX_WIDTH)
     }
+
+    pub(super) fn expect_array_type(&self) -> ArrayType {
+        match self.data_type {
+            expr::Type::Array(tpe) => tpe,
+            _ => panic!("expect array type"),
+        }
+    }
+
+    pub(super) fn expect_bv_type(&self) -> WidthInt {
+        match self.data_type {
+            expr::Type::BV(tpe) => tpe,
+            _ => panic!("expect bitvec type"),
+        }
+    }
 }
 
 impl CodeGenContext<'_, '_, '_> {
@@ -447,15 +461,13 @@ impl CodeGenContext<'_, '_, '_> {
     }
 
     fn copy_from_array(&mut self, dst: TaggedValue, src: TaggedValue) {
-        let expr::Type::Array(tpe) = dst.data_type else {
-            unreachable!()
-        };
+        let ArrayType {
+            index_width,
+            data_width,
+        } = dst.expect_array_type();
         assert_eq!(src.data_type, dst.data_type);
-        let index_width = self
-            .fn_builder
-            .ins()
-            .iconst(self.int, tpe.index_width as i64);
-        let callee = if dst.data_type.get_array_data_width().unwrap() <= THIN_BV_MAX_WIDTH {
+        let index_width = self.fn_builder.ins().iconst(self.int, index_width as i64);
+        let callee = if data_width <= THIN_BV_MAX_WIDTH {
             self.runtime_lib.copy_from_array
         } else {
             self.runtime_lib.copy_from_array_of_wide_bv
@@ -466,19 +478,16 @@ impl CodeGenContext<'_, '_, '_> {
     }
 
     fn dealloc_array(&mut self, array_to_dealloc: TaggedValue) {
-        let expr::Type::Array(tpe) = array_to_dealloc.data_type else {
-            unreachable!()
+        let ArrayType {
+            index_width,
+            data_width,
+        } = array_to_dealloc.expect_array_type();
+        let index_width = self.fn_builder.ins().iconst(self.int, index_width as i64);
+        let callee = if data_width <= THIN_BV_MAX_WIDTH {
+            self.runtime_lib.dealloc_array
+        } else {
+            self.runtime_lib.dealloc_array_of_wide_bv
         };
-        let index_width = self
-            .fn_builder
-            .ins()
-            .iconst(self.int, tpe.index_width as i64);
-        let callee =
-            if array_to_dealloc.data_type.get_array_data_width().unwrap() <= THIN_BV_MAX_WIDTH {
-                self.runtime_lib.dealloc_array
-            } else {
-                self.runtime_lib.dealloc_array_of_wide_bv
-            };
         self.fn_builder
             .ins()
             .call(callee, &[*array_to_dealloc, index_width]);
@@ -486,14 +495,12 @@ impl CodeGenContext<'_, '_, '_> {
 
     #[expect(dead_code)]
     fn clone_array(&mut self, from: TaggedValue) -> TaggedValue {
-        let expr::Type::Array(tpe) = from.data_type else {
-            unreachable!()
-        };
-        let index_width = self
-            .fn_builder
-            .ins()
-            .iconst(self.int, tpe.index_width as i64);
-        let callee = if from.data_type.get_array_data_width().unwrap() <= THIN_BV_MAX_WIDTH {
+        let ArrayType {
+            index_width,
+            data_width,
+        } = from.expect_array_type();
+        let index_width = self.fn_builder.ins().iconst(self.int, index_width as i64);
+        let callee = if data_width <= THIN_BV_MAX_WIDTH {
             self.runtime_lib.clone_array
         } else {
             self.runtime_lib.clone_array_of_wide_bv

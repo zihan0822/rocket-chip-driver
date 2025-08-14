@@ -144,10 +144,10 @@ impl BVCodeGenVTable for BVWord {
     }
 
     fn concat(&self, hi: TaggedValue, lo: TaggedValue, ctx: &mut CodeGenContext) -> Value {
-        let expr::Type::BV(lo_width) = lo.data_type else {
-            unreachable!()
-        };
-        let hi = ctx.fn_builder.ins().ishl_imm(*hi, lo_width as i64);
+        let hi = ctx
+            .fn_builder
+            .ins()
+            .ishl_imm(*hi, lo.expect_bv_type() as i64);
         ctx.fn_builder.ins().bor(hi, *lo)
     }
 
@@ -270,10 +270,10 @@ impl BVCodeGenVTable for BVIndirect {
 
     fn shift_right(&self, arg0: TaggedValue, arg1: TaggedValue, ctx: &mut CodeGenContext) -> Value {
         let dst = ctx.reserve_intermediate_bv_cache(self.0);
-        let expr::Type::BV(width) = arg1.data_type else {
-            unreachable!()
-        };
-        let width = ctx.fn_builder.ins().iconst(ctx.int, width as i64);
+        let width = ctx
+            .fn_builder
+            .ins()
+            .iconst(ctx.int, arg1.expect_bv_type() as i64);
         invoke_bv_extern_function(
             ctx.runtime_lib.bv_ops["shift_right"],
             &[*dst, *arg0, *arg1, width],
@@ -289,10 +289,10 @@ impl BVCodeGenVTable for BVIndirect {
         ctx: &mut CodeGenContext,
     ) -> Value {
         let dst = ctx.reserve_intermediate_bv_cache(self.0);
-        let expr::Type::BV(width) = arg1.data_type else {
-            unreachable!()
-        };
-        let width = ctx.fn_builder.ins().iconst(ctx.int, width as i64);
+        let width = ctx
+            .fn_builder
+            .ins()
+            .iconst(ctx.int, arg1.expect_bv_type() as i64);
         invoke_bv_extern_function(
             ctx.runtime_lib.bv_ops["arithmetic_shift_right"],
             &[*dst, *arg0, *arg1, width],
@@ -303,10 +303,10 @@ impl BVCodeGenVTable for BVIndirect {
 
     fn shift_left(&self, arg0: TaggedValue, arg1: TaggedValue, ctx: &mut CodeGenContext) -> Value {
         let dst = ctx.reserve_intermediate_bv_cache(self.0);
-        let expr::Type::BV(width) = arg1.data_type else {
-            unreachable!()
-        };
-        let width = ctx.fn_builder.ins().iconst(ctx.int, width as i64);
+        let width = ctx
+            .fn_builder
+            .ins()
+            .iconst(ctx.int, arg1.expect_bv_type() as i64);
         invoke_bv_extern_function(
             ctx.runtime_lib.bv_ops["shift_left"],
             &[*dst, *arg0, *arg1, width],
@@ -333,10 +333,7 @@ impl BVCodeGenVTable for BVIndirect {
 
     fn concat(&self, hi: TaggedValue, lo: TaggedValue, ctx: &mut CodeGenContext) -> Value {
         let dst = ctx.reserve_intermediate_bv_cache(self.0);
-        let (expr::Type::BV(hi_width), expr::Type::BV(lo_width)) = (hi.data_type, lo.data_type)
-        else {
-            unreachable!()
-        };
+        let (hi_width, lo_width) = (hi.expect_bv_type(), lo.expect_bv_type());
         let hi_width = ctx.fn_builder.ins().iconst(ctx.int, hi_width as i64);
         let lo_width = ctx.fn_builder.ins().iconst(ctx.int, lo_width as i64);
         invoke_bv_extern_function(
