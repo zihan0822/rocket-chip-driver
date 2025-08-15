@@ -18,7 +18,40 @@ use rustc_hash::{FxHashMap, FxHashSet};
 pub(super) struct JITCompiler {
     module: JITModule,
     pub(super) bv_data: Vec<Box<BitVecValue>>,
-    pub(super) array_data: Vec<Box<[i64]>>,
+    array_data: Vec<Box<[i64]>>,
+    array_with_wide_bv_data: Vec<ArrayWithWideBV>,
+}
+
+struct ArrayWithWideBV(Box<[*mut BitVecValue]>);
+
+impl ArrayWithWideBV {
+    fn new(tpe: ArrayType) -> Self {
+        let ArrayType {
+            index_width,
+            data_width,
+        } = tpe;
+        assert!(data_width > THIN_BV_MAX_WIDTH);
+        let data: Vec<*mut BitVecValue> =
+            std::iter::repeat_with(|| Box::leak(Box::new(BitVecValue::zero(data_width))) as _)
+                .take(1 << index_width)
+                .collect();
+        Self(data.into_boxed_slice())
+    }
+
+    fn as_ptr(&self) -> *const *mut BitVecValue {
+        self.0.as_ptr()
+    }
+}
+
+impl std::ops::Drop for ArrayWithWideBV {
+    fn drop(&mut self) {
+        for &value in self.0.iter() {
+            // SAFETY: `value` is leaked from Box in `ArrayWithWideBV::new`
+            unsafe {
+                let _ = Box::from_raw(value);
+            }
+        }
+    }
 }
 
 pub(super) struct EvalSingleExprWithUpdate(extern "C" fn(*const i64, *mut i64));
@@ -56,6 +89,7 @@ impl JITCompiler {
             module,
             bv_data: vec![],
             array_data: vec![],
+            array_with_wide_bv_data: vec![],
         }
     }
 
@@ -409,6 +443,13 @@ impl TaggedValue {
             _ => panic!("expect bitvec type"),
         }
     }
+
+    fn tag_bv(value: Value, width: WidthInt) -> Self {
+        Self {
+            value,
+            data_type: expr::Type::BV(width),
+        }
+    }
 }
 
 impl CodeGenContext<'_, '_, '_> {
@@ -432,12 +473,21 @@ impl CodeGenContext<'_, '_, '_> {
     /// Reserves a long lived array cache, whose lifetime is tied to the JITCompiler
     /// It is not registered as per-step heap allocation, therefore can be used across multiple steps to reduce heap transaction
     fn reserve_intermediate_array_cache(&mut self, tpe: ArrayType) -> TaggedValue {
-        let cache = vec![0_i64; 1 << tpe.index_width].into_boxed_slice();
-        let value = self
-            .fn_builder
-            .ins()
-            .iconst(self.int, cache.as_ptr() as i64);
-        self.compiler.array_data.push(cache);
+        let ArrayType {
+            index_width,
+            data_width,
+        } = tpe;
+        let ptr;
+        if data_width <= THIN_BV_MAX_WIDTH {
+            let cache = vec![0_i64; 1 << index_width].into_boxed_slice();
+            ptr = cache.as_ptr() as i64;
+            self.compiler.array_data.push(cache);
+        } else {
+            let cache = ArrayWithWideBV::new(tpe);
+            ptr = cache.as_ptr() as i64;
+            self.compiler.array_with_wide_bv_data.push(cache);
+        };
+        let value = self.fn_builder.ins().iconst(self.int, ptr);
         TaggedValue {
             value,
             data_type: expr::Type::Array(tpe),
@@ -577,35 +627,58 @@ impl CodeGenContext<'_, '_, '_> {
                 self.fn_builder.ins().select(*args[0], *args[1], *args[2])
             }
             Expr::ArrayStore { .. } => {
+                let data_width = args[0].expect_array_type().data_width;
                 let (base, index, data) = (*args[0], *args[1], *args[2]);
                 let offset = self
                     .fn_builder
                     .ins()
                     .imul_imm(index, self.int.bytes() as i64);
                 let address = self.fn_builder.ins().iadd(base, offset);
-                self.fn_builder.ins().store(
-                    // upheld by the unsafeness of CompiledEvalFn::call
-                    ir::MemFlags::trusted(),
-                    data,
-                    address,
-                    0,
-                );
+                if data_width > THIN_BV_MAX_WIDTH {
+                    let dst_bv = self.fn_builder.ins().load(
+                        self.int,
+                        // upheld by the unsafeness of CompiledEvalFn::call
+                        ir::MemFlags::trusted(),
+                        address,
+                        0,
+                    );
+                    self.copy_from_bv(
+                        TaggedValue::tag_bv(dst_bv, data_width),
+                        TaggedValue::tag_bv(data, data_width),
+                    );
+                } else {
+                    self.fn_builder.ins().store(
+                        // upheld by the unsafeness of CompiledEvalFn::call
+                        ir::MemFlags::trusted(),
+                        data,
+                        address,
+                        0,
+                    );
+                }
                 base
             }
             Expr::BVArrayRead { .. } => {
+                let data_width = args[0].expect_array_type().data_width;
                 let (base, index) = (*args[0], *args[1]);
                 let offset = self
                     .fn_builder
                     .ins()
                     .imul_imm(index, self.int.bytes() as i64);
                 let address = self.fn_builder.ins().iadd(base, offset);
-                self.fn_builder.ins().load(
+                let element = self.fn_builder.ins().load(
                     self.int,
                     // upheld by the unsafeness of CompiledEvalFn::call
                     ir::MemFlags::trusted(),
                     address,
                     0,
-                )
+                );
+                if data_width > THIN_BV_MAX_WIDTH {
+                    // maintains the invariance that wide bv never moves out of its container array
+                    let dst = self.reserve_intermediate_bv_cache(data_width);
+                    self.copy_from_bv(dst, TaggedValue::tag_bv(element, data_width));
+                    return dst;
+                }
+                element
             }
             Expr::ArrayConstant { .. } => {
                 let tpe = expr.get_array_type(self.expr_ctx).unwrap();
