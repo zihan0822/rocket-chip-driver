@@ -14,6 +14,7 @@ use cranelift::module::ModuleError;
 use fixedbitset::FixedBitSet;
 use rustc_hash::FxHashMap;
 use std::cell::RefCell;
+use std::sync::LazyLock;
 
 type JITResult<T> = Result<T, JITError>;
 
@@ -81,12 +82,15 @@ where
 const THIN_BV_MAX_WIDTH: u32 = 64;
 const CURRENT_STATE_INDEX: usize = 0;
 const NEXT_STATE_INDEX: usize = 1;
+/// Minimum dirty percentage of output states that will trigger batched update mode
+const BATCHED_UPDATE_THRESHOLD: f64 = 0.6;
+/// Only when this environment variable is set and the threshold condition is met, dynamic mode switch will be turned on.
+static DYNAMIC_MODE_SWITCH: LazyLock<bool> =
+    LazyLock::new(|| std::env::var("DYNAMIC_MODE_SWITCH").is_ok_and(|enable| enable.eq("1")));
 /// Minimum number of expr nodes that will enable dynamic switching between per-expr and batched update mode.
 /// If the number of expr nodes is less than or equal to this, JIT will always use batched update mode.
 /// TODO: better heuristics than simple expr nodes count
 const DYNAMIC_MODE_SWITCH_THRESHOLD: usize = 1500;
-/// Minimum dirty percentage of output states that will trigger batched update mode
-const BATCHED_UPDATE_THRESHOLD: f64 = 0.6;
 
 enum DirtyUpdatePolicy {
     Sparse,
@@ -311,7 +315,8 @@ impl<'expr> JITEngine<'expr> {
         let mut init_states = FixedBitSet::with_capacity(mutable_slot_states.len());
         init_states.insert_range(..);
         let dirty_registry = DirtyStateRegistry::new(init_states, mutable_slot_states.len());
-        let dynamic_update_mode_switching_enabled = ctx.exprs.len() > DYNAMIC_MODE_SWITCH_THRESHOLD;
+        let dynamic_update_mode_switching_enabled =
+            *DYNAMIC_MODE_SWITCH && ctx.exprs.len() > DYNAMIC_MODE_SWITCH_THRESHOLD;
 
         let mut engine = Self {
             backend: RefCell::default(),
@@ -327,7 +332,9 @@ impl<'expr> JITEngine<'expr> {
             snapshots: Vec::default(),
         };
         engine.bootstrap_state_buffers();
-        engine.find_leaf_states_upstream_dep();
+        if dynamic_update_mode_switching_enabled {
+            engine.find_leaf_states_upstream_dep();
+        }
         engine
     }
 
