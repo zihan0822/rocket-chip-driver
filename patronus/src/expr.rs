@@ -4,6 +4,8 @@
 mod context;
 mod eval;
 mod foreach;
+#[cfg(feature = "visualize")]
+pub mod graphviz;
 mod meta;
 mod nodes;
 mod parse;
@@ -16,6 +18,10 @@ mod types;
 pub use context::{Builder, Context, ExprRef, StringRef};
 #[cfg(feature = "trace")]
 pub(crate) use eval::trace::register_traced_expr;
+
+#[cfg(feature = "visualize")]
+pub use graphviz::{ComputeGraphDrawer, ComputeGraphDrawerBuilder};
+
 pub use eval::{SymbolValueStore, eval_array_expr, eval_bv_expr, eval_expr};
 pub use foreach::ForEachChild;
 pub use meta::{
