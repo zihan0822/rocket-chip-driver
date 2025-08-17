@@ -1,7 +1,7 @@
 // Copyright 2025 Cornell University
 // released under BSD 3-Clause License
 // author: Zihan Li <zl2225@cornell.edu>
-use super::{JITResult, StateBufferView, THIN_BV_MAX_WIDTH, runtime};
+use super::{runtime, JITResult, StateBufferView, THIN_BV_MAX_WIDTH};
 use crate::expr::{self, *};
 use crate::system::*;
 
@@ -614,14 +614,26 @@ impl CodeGenContext<'_, '_, '_> {
             .call(self.runtime_lib.copy_from_bv, &[*dst, *src]);
     }
 
+    fn reserve_cloned_intermediate_cache(&mut self, src: TaggedValue) -> TaggedValue {
+        match src.data_type {
+            expr::Type::Array(tpe) => {
+                let dst = self.reserve_intermediate_array_cache(tpe);
+                self.copy_from_array(dst, src);
+                dst
+            }
+            expr::Type::BV(tpe) => {
+                let dst = self.reserve_intermediate_bv_cache(tpe);
+                self.copy_from_bv(dst, src);
+                dst
+            }
+        }
+    }
+
     fn expr_codegen(&mut self, expr: ExprRef, args: &[TaggedValue]) -> TaggedValue {
         let value = match &self.expr_ctx[expr] {
             Expr::ArraySymbol { .. } => {
                 let src = self.load_input_state(expr);
-                let sym = self
-                    .reserve_intermediate_array_cache(expr.get_array_type(self.expr_ctx).unwrap());
-                self.copy_from_array(sym, src);
-                return sym;
+                return self.reserve_cloned_intermediate_cache(src);
             }
             Expr::BVIte { .. } | Expr::ArrayIte { .. } => {
                 self.fn_builder.ins().select(*args[0], *args[1], *args[2])
@@ -674,9 +686,9 @@ impl CodeGenContext<'_, '_, '_> {
                 );
                 if data_width > THIN_BV_MAX_WIDTH {
                     // maintains the invariance that wide bv never moves out of its container array
-                    let dst = self.reserve_intermediate_bv_cache(data_width);
-                    self.copy_from_bv(dst, TaggedValue::tag_bv(element, data_width));
-                    return dst;
+                    return self.reserve_cloned_intermediate_cache(TaggedValue::tag_bv(
+                        element, data_width,
+                    ));
                 }
                 element
             }
@@ -684,9 +696,7 @@ impl CodeGenContext<'_, '_, '_> {
                 let tpe = expr.get_array_type(self.expr_ctx).unwrap();
                 // XXX: get rid of the extra alloc
                 let array_const = self.alloc_array(args[0], tpe);
-                let cache = self.reserve_intermediate_array_cache(tpe);
-                self.copy_from_array(cache, array_const);
-                return cache;
+                return self.reserve_cloned_intermediate_cache(array_const);
             }
             _ => self.dispatch_bv_operation_codegen(expr, args),
         };
