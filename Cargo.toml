@@ -7,7 +7,7 @@ crate-type = ["cdylib"]
 
 [workspace]
 resolver = "2"
-members = ["patronus"]
+members = ["patronus", "tools/*"]
 
 [workspace.package]
 edition = "2024"
@@ -22,7 +22,7 @@ baa = { git = "https://github.com/cucapra/baa", rev = "89ecd2", features = ["ran
 regex = "1.11.1"
 boolean_expression = "0.4.4"
 clap =  { version = "4.x", features = ["derive"] }
-patronus = {path = "patronus"}
+patronus = { path = "patronus", features = ["visualize"] }
 thiserror = "2.0.6"
 
 [dependencies]

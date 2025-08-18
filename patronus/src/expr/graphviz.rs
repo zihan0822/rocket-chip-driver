@@ -84,7 +84,7 @@ impl ComputeGraphDrawer<'_> {
 }
 
 impl Type {
-    fn type_kind_literal(&self) -> String {
+    pub fn type_kind_literal(&self) -> String {
         match self {
             Type::BV(width) => format!("bitvec [{width}]"),
             Type::Array(ArrayType {
@@ -96,7 +96,7 @@ impl Type {
 }
 
 impl Expr {
-    fn expr_kind_literal(&self) -> &'static str {
+    pub fn expr_kind_literal(&self) -> &'static str {
         match self {
             Expr::BVSymbol { .. } => "sym",
             Expr::BVLiteral { .. } => "const",

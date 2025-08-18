@@ -1,0 +1,12 @@
+[package]
+name = "graphviz"
+version = "0.1.0"
+description = "A btor expr visualization tool"
+edition = "2024"
+
+[dependencies]
+patronus.workspace = true
+clap.workspace = true
+regex.workspace = true
+rayon = "1.11.0"
+anyhow = "1.0.99"
