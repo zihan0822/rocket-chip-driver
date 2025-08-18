@@ -33,7 +33,7 @@ struct ProbeArgs {
     min_num_nodes: usize,
 
     /// Only consider expr nodes that have at most `max_num_nodes` child nodes
-    #[arg(long, default_value_t = 1000)]
+    #[arg(long, default_value_t = usize::MAX)]
     max_num_nodes: usize,
 
     /// A comma separated list to specify operations of interest
@@ -194,7 +194,7 @@ impl ProbeArgs {
             None
         };
         Ok(ValidatedProbeArgs {
-            num_nodes_range: self.min_num_nodes..(self.max_num_nodes + 1),
+            num_nodes_range: self.min_num_nodes..=self.max_num_nodes,
             op_of_interest,
             output_directory: self.output,
             target_format,
@@ -237,7 +237,7 @@ impl RegexCondition {
 }
 
 struct ValidatedProbeArgs {
-    num_nodes_range: std::ops::Range<usize>,
+    num_nodes_range: std::ops::RangeInclusive<usize>,
     op_of_interest: Option<HashSet<String>>,
     output_directory: String,
     target_format: Option<String>,
@@ -262,7 +262,7 @@ impl ValidatedProbeArgs {
         let mut num_children = 0usize;
         expr::traversal::top_down(ctx, expr, |ctx, current| {
             num_children += ctx[current].num_children();
-            if num_children >= self.num_nodes_range.end {
+            if num_children >= *self.num_nodes_range.end() {
                 expr::traversal::TraversalCmd::Stop
             } else {
                 expr::traversal::TraversalCmd::Continue
