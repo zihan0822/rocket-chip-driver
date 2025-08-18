@@ -50,7 +50,11 @@ struct ProbeArgs {
     format: Option<String>,
 
     /// Regular expression used for filtering state name
-    #[arg(short, long)]
+    /// Supported syntax: ([input|output]/)+{regex_pattern}
+    ///     - Input: Only check for name of input, i.e leaf expression node
+    ///     - Output: Only check for name of output, i.e root expression node
+    ///     - All (default): Input + Ouput
+    #[arg(short, long, verbatim_doc_comment)]
     regex: Option<String>,
 }
 
@@ -184,12 +188,50 @@ impl ProbeArgs {
         } else {
             None
         };
+        let regex = if let Some(pat) = self.regex {
+            Some(RegexCondition::parse(&pat)?)
+        } else {
+            None
+        };
         Ok(ValidatedProbeArgs {
             num_nodes_range: self.min_num_nodes..(self.max_num_nodes + 1),
             op_of_interest,
             output_directory: self.output,
             target_format,
-            regex: self.regex.and_then(|pat| regex::Regex::new(&pat).ok()),
+            regex,
+        })
+    }
+}
+
+struct RegexCondition {
+    search_space: RegexSearchSpace,
+    pat: regex::Regex,
+}
+
+enum RegexSearchSpace {
+    Input,
+    Output,
+    All,
+}
+
+impl RegexCondition {
+    /// Parse regex spec string.
+    fn parse(s: &str) -> anyhow::Result<Self> {
+        let (search_space, pat) = if let Some((prefix, pat)) = s.split_once('/') {
+            let search_space = match prefix {
+                "input" => RegexSearchSpace::Input,
+                "output" => RegexSearchSpace::Output,
+                _ => bail!(
+                    "invalid regex pattern prefix `{prefix}`, please select from: `input`, `output`"
+                ),
+            };
+            (search_space, pat)
+        } else {
+            (RegexSearchSpace::All, s)
+        };
+        Ok(Self {
+            search_space,
+            pat: regex::Regex::new(pat)?,
         })
     }
 }
@@ -199,25 +241,24 @@ struct ValidatedProbeArgs {
     op_of_interest: Option<HashSet<String>>,
     output_directory: String,
     target_format: Option<String>,
-    regex: Option<regex::Regex>,
+    regex: Option<RegexCondition>,
 }
 
 type Filter<'a> = dyn Fn(&expr::Context, ExprRef) -> bool + 'a;
 impl ValidatedProbeArgs {
     pub fn to_filter<'a>(&'a self) -> Box<Filter<'a>> {
-        let filter =
-            move |ctx: &expr::Context, expr: ExprRef| {
-                self.op_of_interest.as_ref().is_none_or(|op_of_interest| {
-                    op_of_interest.contains(ctx[expr].expr_kind_literal())
-                }) && self.regex.as_ref().is_none_or(|pat| {
-                    ctx.get_symbol_name(expr)
-                        .is_some_and(|name| pat.is_match(name))
-                }) && self.satisfy_num_nodes_condition(ctx, expr)
-            };
+        let filter = move |ctx: &expr::Context, expr: ExprRef| {
+            self.op_of_interest
+                .as_ref()
+                .is_none_or(|op_of_interest| op_of_interest.contains(ctx[expr].expr_kind_literal()))
+                && self.check_root_expr_regex_condition(ctx, expr)
+                && self.check_num_nodes_condition(ctx, expr)
+                && self.check_subtree_regex_condition(ctx, expr)
+        };
         Box::new(filter)
     }
 
-    fn satisfy_num_nodes_condition(&self, ctx: &expr::Context, expr: ExprRef) -> bool {
+    fn check_num_nodes_condition(&self, ctx: &expr::Context, expr: ExprRef) -> bool {
         let mut num_children = 0usize;
         expr::traversal::top_down(ctx, expr, |ctx, current| {
             num_children += ctx[current].num_children();
@@ -227,6 +268,28 @@ impl ValidatedProbeArgs {
                 expr::traversal::TraversalCmd::Continue
             }
         });
-        self.num_nodes_range.contains(&num_children)
+        self.num_nodes_range.contains(&(num_children + 1))
+    }
+
+    fn check_root_expr_regex_condition(&self, ctx: &expr::Context, expr: ExprRef) -> bool {
+        let Some(RegexCondition {
+            ref search_space,
+            ref pat,
+        }) = self.regex
+        else {
+            return true;
+        };
+        if let Some(root_expr_name) = ctx.get_symbol_name(expr) {
+            if matches!(search_space, RegexSearchSpace::Output) && !pat.is_match(root_expr_name) {
+                return false;
+            }
+        }
+        true
+    }
+
+    /// Traverse the entire expression subtree and check name regex condtion along the way.
+    /// This can be an expensive operation, so we check it last
+    fn check_subtree_regex_condition(&self, _ctx: &expr::Context, _expr: ExprRef) -> bool {
+        true
     }
 }
