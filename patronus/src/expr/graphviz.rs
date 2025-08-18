@@ -1,5 +1,7 @@
+use crate::expr::traversal::{self, TraversalCmd};
 use crate::expr::*;
 use dot_writer::{Attributes, DotWriter, Node, NodeId};
+use rustc_hash::FxHashMap;
 use std::fmt::Write;
 
 pub struct ComputeGraphDrawerBuilder<'ctx> {
@@ -8,6 +10,9 @@ pub struct ComputeGraphDrawerBuilder<'ctx> {
     node_data_type: bool,
     /// Whether to display symbol name if there is one
     symbol_name: bool,
+    /// Maxinum depth the root expression node will expanded
+    /// Graph will be early-terminated if `max_depth` is reached
+    max_depth: Option<usize>,
 }
 
 impl<'ctx> ComputeGraphDrawerBuilder<'ctx> {
@@ -16,6 +21,7 @@ impl<'ctx> ComputeGraphDrawerBuilder<'ctx> {
             ctx,
             node_data_type: true,
             symbol_name: false,
+            max_depth: None,
         }
     }
 
@@ -29,11 +35,17 @@ impl<'ctx> ComputeGraphDrawerBuilder<'ctx> {
         self
     }
 
+    pub fn max_depth(mut self, depth: usize) -> Self {
+        self.max_depth = Some(depth);
+        self
+    }
+
     pub fn finish(self) -> ComputeGraphDrawer<'ctx> {
         ComputeGraphDrawer {
             ctx: self.ctx,
             node_data_type: self.node_data_type,
             symbol_name: self.symbol_name,
+            max_depth: self.max_depth,
         }
     }
 }
@@ -42,6 +54,7 @@ pub struct ComputeGraphDrawer<'ctx> {
     ctx: &'ctx Context,
     node_data_type: bool,
     symbol_name: bool,
+    max_depth: Option<usize>,
 }
 
 impl ComputeGraphDrawer<'_> {
@@ -50,14 +63,41 @@ impl ComputeGraphDrawer<'_> {
             writer.set_pretty_print(false);
             let mut graph = writer.digraph();
 
-            crate::expr::traversal::bottom_up(self.ctx, expr, |_, current, children| {
-                let current_id = self.decorate_expr_node(graph.node_auto(), current);
-                for child_id in children.iter() {
-                    graph.edge(child_id, &current_id);
+            let root_id = self.decorate_expr_node(graph.node_auto(), expr);
+            let mut frontier = FxHashMap::from_iter([(expr, (1, root_id))]);
+
+            traversal::top_down(self.ctx, expr, |ctx, current_expr| {
+                let (current_depth, current_id) = frontier[&current_expr].clone();
+                let early_return = self
+                    .max_depth
+                    .is_some_and(|max_depth| current_depth >= max_depth);
+                let mut child_node_ids = vec![];
+
+                ctx[current_expr].for_each_child(|&child_expr| {
+                    let id = if early_return {
+                        self.decorate_dummy_node(graph.node_auto())
+                    } else {
+                        self.decorate_expr_node(graph.node_auto(), child_expr)
+                    };
+                    frontier.insert(child_expr, (current_depth + 1, id.clone()));
+                    child_node_ids.push(id);
+                });
+
+                for child_id in &child_node_ids {
+                    graph.edge(&current_id, child_id);
                 }
-                current_id
+                if early_return {
+                    TraversalCmd::Stop
+                } else {
+                    TraversalCmd::Continue
+                }
             });
         })
+    }
+
+    fn decorate_dummy_node(&self, mut node: Node) -> NodeId {
+        node.set_label("...");
+        node.id()
     }
 
     fn decorate_expr_node(&self, mut node: Node, expr: ExprRef) -> NodeId {

@@ -17,6 +17,10 @@ struct GraphvizArgs {
     #[arg(short, long)]
     query: Option<String>,
 
+    /// Maxinum depth a root expression node will be expanded
+    #[arg(short, long)]
+    max_depth: Option<usize>,
+
     #[command(subcommand)]
     command: Option<Command>,
 }
@@ -69,10 +73,14 @@ fn graphviz() -> anyhow::Result<()> {
     let args = GraphvizArgs::parse();
     let (ctx, sys) =
         patronus::btor2::parse_file(&args.file).context("unable to parse input btor file")?;
-    let mut drawer = expr::graphviz::ComputeGraphDrawerBuilder::new(&ctx)
+    let mut builder = expr::graphviz::ComputeGraphDrawerBuilder::new(&ctx)
         .with_data_type()
-        .with_symbol_name()
-        .finish();
+        .with_symbol_name();
+
+    if let Some(max_depth) = &args.max_depth {
+        builder = builder.max_depth(*max_depth);
+    }
+    let mut drawer = builder.finish();
 
     if let Some(query) = args.query.as_ref() {
         let found_expr = sys
