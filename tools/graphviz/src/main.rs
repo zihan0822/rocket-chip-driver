@@ -103,9 +103,9 @@ fn graphviz() -> anyhow::Result<()> {
             let validated_args = args.try_into_validated_args()?;
             let filter = validated_args.to_filter();
             let mut unnamed_idx = 0;
-            let dot_graphs: Vec<_> = all_root_expr_candidates(&sys)
-                .filter_map(|expr| {
-                    if filter(&ctx, expr) {
+            let dot_graphs: Vec<_> = all_root_expr_candidates(&ctx, &sys)
+                .filter_map(|(expr, name)| {
+                    if filter(&ctx, expr, name) {
                         let symbol_name = ctx.get_symbol_name(expr).map_or_else(
                             || {
                                 let name = format!("unnamed_{unnamed_idx}");
@@ -160,11 +160,17 @@ fn graphviz() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn all_root_expr_candidates<'a>(sys: &'a TransitionSystem) -> impl Iterator<Item = ExprRef> + 'a {
+fn all_root_expr_candidates<'a>(
+    ctx: &'a expr::Context,
+    sys: &'a TransitionSystem,
+) -> impl Iterator<Item = (ExprRef, StringRef)> + 'a {
     sys.outputs
         .iter()
-        .map(|out| out.expr)
-        .chain(sys.states.iter().filter_map(|s| s.next))
+        .map(|out| (out.expr, out.name))
+        .chain(sys.states.iter().filter_map(|s| {
+            s.next
+                .map(|next| (next, ctx[s.symbol].get_symbol_name_ref().unwrap()))
+        }))
 }
 
 impl ProbeArgs {
@@ -252,14 +258,14 @@ struct ValidatedProbeArgs {
     regex: Option<RegexCondition>,
 }
 
-type Filter<'a> = dyn Fn(&expr::Context, ExprRef) -> bool + 'a;
+type Filter<'a> = dyn Fn(&expr::Context, ExprRef, StringRef) -> bool + 'a;
 impl ValidatedProbeArgs {
     pub fn to_filter<'a>(&'a self) -> Box<Filter<'a>> {
-        let filter = move |ctx: &expr::Context, expr: ExprRef| {
+        let filter = move |ctx: &expr::Context, expr: ExprRef, name: StringRef| {
             self.op_of_interest
                 .as_ref()
                 .is_none_or(|op_of_interest| op_of_interest.contains(ctx[expr].expr_kind_literal()))
-                && self.check_root_expr_regex_condition(ctx, expr)
+                && self.check_root_expr_regex_condition(ctx, name)
                 && self.check_num_nodes_condition(ctx, expr)
                 && self.check_subtree_regex_condition(ctx, expr)
         };
@@ -279,25 +285,26 @@ impl ValidatedProbeArgs {
         self.num_nodes_range.contains(&(num_children + 1))
     }
 
-    fn check_root_expr_regex_condition(&self, ctx: &expr::Context, expr: ExprRef) -> bool {
-        let Some(RegexCondition {
-            ref search_space,
-            ref pat,
+    fn check_root_expr_regex_condition(&self, ctx: &expr::Context, name: StringRef) -> bool {
+        if let Some(RegexCondition {
+            ref search_space, ..
         }) = self.regex
-        else {
-            return true;
-        };
-        if let Some(root_expr_name) = ctx.get_symbol_name(expr) {
-            if matches!(search_space, RegexSearchSpace::Output) && !pat.is_match(root_expr_name) {
-                return false;
-            }
+        {
+            !matches!(search_space, RegexSearchSpace::Output) || self.check_regex_pat(ctx, name)
+        } else {
+            true
         }
-        true
     }
 
     /// Traverse the entire expression subtree and check name regex condtion along the way.
     /// This can be an expensive operation, so we check it last
     fn check_subtree_regex_condition(&self, _ctx: &expr::Context, _expr: ExprRef) -> bool {
         true
+    }
+
+    fn check_regex_pat(&self, ctx: &expr::Context, name: StringRef) -> bool {
+        self.regex
+            .as_ref()
+            .is_none_or(|regex| regex.pat.is_match(ctx[name].as_str()))
     }
 }
