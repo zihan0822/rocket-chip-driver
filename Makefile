@@ -1,5 +1,5 @@
 RUST_PROFILE := release
-RUST_DRIVER_FEATURES = interpreter,trace
+RUST_DRIVER_FEATURES = jit
 DESIGNS_DIR := $(wildcard designs/*)
 DESIGN_VERILOG:= TestHarness.sv
 TOP_MODULE := TestHarness
