@@ -1,15 +1,20 @@
 // See LICENSE for license details.
 
+#include "config.h"
 #include "htif.h"
 #include "rfb.h"
 #include "elfloader.h"
-#include "encoding.h"
+#include "../riscv/platform.h"
+#include "byteorder.h"
+#include "../riscv/trap.h"
+#include "../riscv/common.h"
 #include <algorithm>
 #include <assert.h>
 #include <vector>
 #include <queue>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <iomanip>
 #include <stdio.h>
 #include <unistd.h>
@@ -41,7 +46,7 @@ static void handle_signal(int sig)
 
 htif_t::htif_t()
   : mem(this), entry(DRAM_BASE), sig_addr(0), sig_len(0),
-    tohost_addr(0), fromhost_addr(0), exitcode(0), stopped(false),
+    tohost_addr(0), fromhost_addr(0), stopped(false),
     syscall_proxy(this)
 {
   signal(SIGINT, &handle_signal);
@@ -51,6 +56,8 @@ htif_t::htif_t()
 
 htif_t::htif_t(int argc, char** argv) : htif_t()
 {
+  //Set line size as 16 by default.
+  line_size = 16;
   parse_arguments(argc, argv);
   register_devices();
 }
@@ -58,13 +65,14 @@ htif_t::htif_t(int argc, char** argv) : htif_t()
 htif_t::htif_t(const std::vector<std::string>& args) : htif_t()
 {
   int argc = args.size() + 1;
-  char * argv[argc];
+  std::vector<char*>argv(argc);
   argv[0] = (char *) "htif";
   for (unsigned int i = 0; i < args.size(); i++) {
     argv[i+1] = (char *) args[i].c_str();
   }
-
-  parse_arguments(argc, argv);
+  //Set line size as 16 by default.
+  line_size = 16;
+  parse_arguments(argc, &argv[0]);
   register_devices();
 }
 
@@ -76,27 +84,50 @@ htif_t::~htif_t()
 
 void htif_t::start()
 {
-  if (!targs.empty() && targs[0] != "none")
-      load_program();
-
-  reset();
+  if (!targs.empty()) {
+    if (targs[0] != "none") {
+      try {
+        load_program();
+      } catch (const incompat_xlen & err) {
+        fprintf(stderr, "Error: cannot execute %d-bit program on RV%d hart\n", err.actual_xlen, err.expected_xlen);
+        exit(1);
+      }
+      reset();
+    } else {
+      auto empty_symbols = std::map<std::string, uint64_t>();
+      load_symbols(empty_symbols);
+    }
+  }
 }
 
-void htif_t::load_program()
+static void bad_address(const std::string& situation, reg_t addr)
+{
+  std::cerr << "Access exception occurred while " << situation << ":\n";
+  std::cerr << "Memory address 0x" << std::hex << addr << " is invalid\n";
+  exit(-1);
+}
+
+std::map<std::string, uint64_t> htif_t::load_payload(const std::string& payload, reg_t* entry, reg_t load_offset)
 {
   std::string path;
-  if (access(targs[0].c_str(), F_OK) == 0)
-    path = targs[0];
-  else if (targs[0].find('/') == std::string::npos)
+  if (access(payload.c_str(), F_OK) == 0)
+    path = payload;
+  else if (payload.find('/') == std::string::npos)
   {
-    std::string test_path = PREFIX TARGET_DIR + targs[0];
+    std::string test_path = PREFIX TARGET_DIR + payload;
     if (access(test_path.c_str(), F_OK) == 0)
       path = test_path;
+    else
+      throw std::runtime_error(
+        "could not open " + payload + "; searched paths:\n" +
+        "\t. (current directory)\n" +
+        "\t" + PREFIX TARGET_DIR + " (based on configured --prefix and --with-target)"
+      );
   }
 
   if (path.empty())
     throw std::runtime_error(
-        "could not open " + targs[0] +
+        "could not open " + payload +
         " (did you misspell it? If VCS, did you forget +permissive/+permissive-off?)");
 
   // temporarily construct a memory interface that skips writing bytes
@@ -115,7 +146,35 @@ void htif_t::load_program()
     htif_t* htif;
   } preload_aware_memif(this);
 
-  std::map<std::string, uint64_t> symbols = load_elf(path.c_str(), &preload_aware_memif, &entry);
+  try {
+    return load_elf(path.c_str(), &preload_aware_memif, entry, load_offset, expected_xlen);
+  } catch (mem_trap_t& t) {
+    bad_address("loading payload " + payload, t.get_tval());
+    abort();
+  }
+}
+
+void htif_t::load_symbols(std::map<std::string, uint64_t>& symbols)
+{
+  class nop_memif_t : public memif_t {
+   public:
+    nop_memif_t(htif_t* htif) : memif_t(htif) {}
+    void read(addr_t UNUSED addr, size_t UNUSED len, void UNUSED *bytes) override {}
+    void write(addr_t UNUSED taddr, size_t UNUSED len, const void UNUSED *src) override {}
+  } nop_memif(this);
+
+  reg_t nop_entry;
+  for (auto &s : symbol_elfs) {
+    std::map<std::string, uint64_t> other_symbols = load_elf(s.c_str(), &nop_memif, &nop_entry,
+                                                             expected_xlen);
+    symbols.merge(other_symbols);
+  }
+
+  // detect torture tests so we can print the memory signature at the end
+  if (symbols.count("begin_signature") && symbols.count("end_signature")) {
+    sig_addr = symbols["begin_signature"];
+    sig_len = symbols["end_signature"] - sig_addr;
+  }
 
   if (symbols.count("tohost") && symbols.count("fromhost")) {
     tohost_addr = symbols["tohost"];
@@ -124,12 +183,43 @@ void htif_t::load_program()
     fprintf(stderr, "warning: tohost and fromhost symbols not in ELF; can't communicate with target\n");
   }
 
-  // detect torture tests so we can print the memory signature at the end
-  if (symbols.count("begin_signature") && symbols.count("end_signature"))
-  {
-    sig_addr = symbols["begin_signature"];
-    sig_len = symbols["end_signature"] - sig_addr;
+  for (auto i : symbols) {
+    auto it = addr2symbol.find(i.second);
+    if ( it == addr2symbol.end())
+      addr2symbol[i.second] = i.first;
   }
+}
+
+void htif_t::load_program()
+{
+  std::map<std::string, uint64_t> symbols = load_payload(targs[0], &entry, load_offset);
+
+  load_symbols(symbols);
+
+  for (auto payload : payloads) {
+    reg_t dummy_entry;
+    load_payload(payload, &dummy_entry, 0);
+  }
+
+  return;
+}
+
+const char* htif_t::get_symbol(uint64_t addr)
+{
+  auto it = addr2symbol.find(addr);
+
+  if(it == addr2symbol.end())
+      return nullptr;
+
+  return it->second.c_str();
+}
+
+bool htif_t::should_exit() const {
+  return signal_exit || exitcode.has_value();
+}
+
+void htif_t::htif_exit(int exit_code) {
+  exitcode = exit_code;
 }
 
 void htif_t::stop()
@@ -137,18 +227,19 @@ void htif_t::stop()
   if (!sig_file.empty() && sig_len) // print final torture test signature
   {
     std::vector<uint8_t> buf(sig_len);
-    mem.read(sig_addr, sig_len, &buf[0]);
+    mem.read(sig_addr, sig_len, buf.data());
 
     std::ofstream sigs(sig_file);
     assert(sigs && "can't open signature file!");
     sigs << std::setfill('0') << std::hex;
 
-    const addr_t incr = 16;
-    assert(sig_len % incr == 0);
-    for (addr_t i = 0; i < sig_len; i += incr)
+    for (addr_t i = 0; i < sig_len; i += line_size)
     {
-      for (addr_t j = incr; j > 0; j--)
-        sigs << std::setw(2) << (uint16_t)buf[i+j-1];
+      for (addr_t j = line_size; j > 0; j--)
+          if (i+j <= sig_len)
+            sigs << std::setw(2) << (uint16_t)buf[i+j-1];
+          else
+            sigs << std::setw(2) << (uint16_t)0;
       sigs << '\n';
     }
 
@@ -160,11 +251,10 @@ void htif_t::stop()
 
 void htif_t::clear_chunk(addr_t taddr, size_t len)
 {
-  char zeros[chunk_max_size()];
-  memset(zeros, 0, chunk_max_size());
+  std::vector<uint8_t> zeros(chunk_max_size(), 0);
 
   for (size_t pos = 0; pos < len; pos += chunk_max_size())
-    write_chunk(taddr + pos, std::min(len - pos, chunk_max_size()), zeros);
+    write_chunk(taddr + pos, std::min(len - pos, chunk_max_size()), &zeros[0]);
 }
 
 int htif_t::run()
@@ -177,25 +267,43 @@ int htif_t::run()
     std::bind(enq_func, &fromhost_queue, std::placeholders::_1);
 
   if (tohost_addr == 0) {
-    while (true)
+    while (!should_exit())
       idle();
   }
 
-  while (!signal_exit && exitcode == 0)
+  while (!should_exit())
   {
-    if (auto tohost = mem.read_uint64(tohost_addr)) {
-      mem.write_uint64(tohost_addr, 0);
-      command_t cmd(mem, tohost, fromhost_callback);
-      device_list.handle_command(cmd);
-    } else {
-      idle();
+    uint64_t tohost;
+
+    try {
+      if ((tohost = from_target(mem.read_uint64(tohost_addr))) != 0)
+        mem.write_uint64(tohost_addr, target_endian<uint64_t>::zero);
+    } catch (mem_trap_t& t) {
+      bad_address("accessing tohost", t.get_tval());
     }
 
-    device_list.tick();
+    try {
+      if (tohost != 0) {
+        command_t cmd(mem, tohost, fromhost_callback);
+        device_list.handle_command(cmd);
+      } else {
+        idle();
+      }
 
-    if (!fromhost_queue.empty() && mem.read_uint64(fromhost_addr) == 0) {
-      mem.write_uint64(fromhost_addr, fromhost_queue.front());
-      fromhost_queue.pop();
+      device_list.tick();
+    } catch (mem_trap_t& t) {
+      std::stringstream tohost_hex;
+      tohost_hex << std::hex << tohost;
+      bad_address("host was accessing memory on behalf of target (tohost = 0x" + tohost_hex.str() + ")", t.get_tval());
+    }
+
+    try {
+      if (!fromhost_queue.empty() && !mem.read_uint64(fromhost_addr)) {
+        mem.write_uint64(fromhost_addr, to_target(fromhost_queue.front()));
+        fromhost_queue.pop();
+      }
+    } catch (mem_trap_t& t) {
+      bad_address("accessing fromhost", t.get_tval());
     }
   }
 
@@ -211,7 +319,7 @@ bool htif_t::done()
 
 int htif_t::exit_code()
 {
-  return exitcode >> 1;
+  return exitcode.value_or(0) >> 1;
 }
 
 void htif_t::parse_arguments(int argc, char ** argv)
@@ -226,7 +334,7 @@ void htif_t::parse_arguments(int argc, char ** argv)
  retry:
     switch (c) {
       case 'h': usage(argv[0]);
-        throw std::invalid_argument("User quered htif_t help text");
+        throw std::invalid_argument("User queried htif_t help text");
       case HTIF_LONG_OPTIONS_OPTIND:
         if (optarg) dynamic_devices.push_back(new rfb_t(atoi(optarg)));
         else        dynamic_devices.push_back(new rfb_t);
@@ -242,13 +350,29 @@ void htif_t::parse_arguments(int argc, char ** argv)
       case HTIF_LONG_OPTIONS_OPTIND + 3:
         syscall_proxy.set_chroot(optarg);
         break;
+      case HTIF_LONG_OPTIONS_OPTIND + 4:
+        payloads.push_back(optarg);
+        break;
+      case HTIF_LONG_OPTIONS_OPTIND + 5:
+        line_size = atoi(optarg);
+        break;
+      case HTIF_LONG_OPTIONS_OPTIND + 6:
+        targs.push_back(optarg);
+        break;
+      case HTIF_LONG_OPTIONS_OPTIND + 7:
+        symbol_elfs.push_back(optarg);
+        break;
       case '?':
         if (!opterr)
           break;
         throw std::invalid_argument("Unknown argument (did you mean to enable +permissive parsing?)");
       case 1: {
         std::string arg = optarg;
-        if (arg == "+rfb") {
+        if (arg == "+h" || arg == "+help") {
+          c = 'h';
+          optarg = nullptr;
+        }
+        else if (arg == "+rfb") {
           c = HTIF_LONG_OPTIONS_OPTIND;
           optarg = nullptr;
         }
@@ -267,6 +391,22 @@ void htif_t::parse_arguments(int argc, char ** argv)
         else if (arg.find("+chroot=") == 0) {
           c = HTIF_LONG_OPTIONS_OPTIND + 3;
           optarg = optarg + 8;
+        }
+        else if (arg.find("+payload=") == 0) {
+          c = HTIF_LONG_OPTIONS_OPTIND + 4;
+          optarg = optarg + 9;
+        }
+        else if (arg.find("+signature-granularity=") == 0) {
+          c = HTIF_LONG_OPTIONS_OPTIND + 5;
+          optarg = optarg + 23;
+        }
+	else if (arg.find("+target-argument=") == 0) {
+	  c = HTIF_LONG_OPTIONS_OPTIND + 6;
+	  optarg = optarg + 17;
+	}
+        else if (arg.find("+symbol-elf=") == 0) {
+          c = HTIF_LONG_OPTIONS_OPTIND + 7;
+          optarg = optarg + 12;
         }
         else if (arg.find("+permissive-off") == 0) {
           if (opterr)

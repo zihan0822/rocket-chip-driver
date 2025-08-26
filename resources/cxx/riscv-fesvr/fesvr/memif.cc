@@ -12,10 +12,10 @@ void memif_t::read(addr_t addr, size_t len, void* bytes)
   if (len && (addr & (align-1)))
   {
     size_t this_len = std::min(len, align - size_t(addr & (align-1)));
-    uint8_t chunk[align];
+    std::vector<uint8_t> chunk(align);
 
-    cmemif->read_chunk(addr & ~(align-1), align, chunk);
-    memcpy(bytes, chunk + (addr & (align-1)), this_len);
+    cmemif->read_chunk(addr & ~(align-1), align, &chunk[0]);
+    memcpy(bytes, &chunk[addr & (align-1)], this_len);
 
     bytes = (char*)bytes + this_len;
     addr += this_len;
@@ -26,10 +26,10 @@ void memif_t::read(addr_t addr, size_t len, void* bytes)
   {
     size_t this_len = len & (align-1);
     size_t start = len - this_len;
-    uint8_t chunk[align];
+    std::vector<uint8_t> chunk(align);
 
-    cmemif->read_chunk(addr + start, align, chunk);
-    memcpy((char*)bytes + start, chunk, this_len);
+    cmemif->read_chunk(addr + start, align, &chunk[0]);
+    memcpy((char*)bytes + start, &chunk[0], this_len);
 
     len -= this_len;
   }
@@ -45,11 +45,11 @@ void memif_t::write(addr_t addr, size_t len, const void* bytes)
   if (len && (addr & (align-1)))
   {
     size_t this_len = std::min(len, align - size_t(addr & (align-1)));
-    uint8_t chunk[align];
+    std::vector<uint8_t> chunk(align);
 
-    cmemif->read_chunk(addr & ~(align-1), align, chunk);
-    memcpy(chunk + (addr & (align-1)), bytes, this_len);
-    cmemif->write_chunk(addr & ~(align-1), align, chunk);
+    cmemif->read_chunk(addr & ~(align-1), align, &chunk[0]);
+    memcpy(&chunk[addr & (align-1)], bytes, this_len);
+    cmemif->write_chunk(addr & ~(align-1), align, &chunk[0]);
 
     bytes = (char*)bytes + this_len;
     addr += this_len;
@@ -60,11 +60,11 @@ void memif_t::write(addr_t addr, size_t len, const void* bytes)
   {
     size_t this_len = len & (align-1);
     size_t start = len - this_len;
-    uint8_t chunk[align];
+    std::vector<uint8_t> chunk(align);
 
-    cmemif->read_chunk(addr + start, align, chunk);
-    memcpy(chunk, (char*)bytes + start, this_len);
-    cmemif->write_chunk(addr + start, align, chunk);
+    cmemif->read_chunk(addr + start, align, &chunk[0]);
+    memcpy(&chunk[0], (char*)bytes + start, this_len);
+    cmemif->write_chunk(addr + start, align, &chunk[0]);
 
     len -= this_len;
   }
@@ -94,90 +94,90 @@ void memif_t::write(addr_t addr, size_t len, const void* bytes)
     throw std::runtime_error("misaligned address"); \
   this->write(addr, sizeof(val), &val)
 
-uint8_t memif_t::read_uint8(addr_t addr)
+target_endian<uint8_t> memif_t::read_uint8(addr_t addr)
 {
-  uint8_t val;
+  target_endian<uint8_t> val;
   MEMIF_READ_FUNC;
 }
 
-int8_t memif_t::read_int8(addr_t addr)
+target_endian<int8_t> memif_t::read_int8(addr_t addr)
 {
-  int8_t val;
+  target_endian<int8_t> val;
   MEMIF_READ_FUNC;
 }
 
-void memif_t::write_uint8(addr_t addr, uint8_t val)
+void memif_t::write_uint8(addr_t addr, target_endian<uint8_t> val)
 {
   MEMIF_WRITE_FUNC;
 }
 
-void memif_t::write_int8(addr_t addr, int8_t val)
+void memif_t::write_int8(addr_t addr, target_endian<int8_t> val)
 {
   MEMIF_WRITE_FUNC;
 }
 
-uint16_t memif_t::read_uint16(addr_t addr)
+target_endian<uint16_t> memif_t::read_uint16(addr_t addr)
 {
-  uint16_t val;
+  target_endian<uint16_t> val;
   MEMIF_READ_FUNC;
 }
 
-int16_t memif_t::read_int16(addr_t addr)
+target_endian<int16_t> memif_t::read_int16(addr_t addr)
 {
-  int16_t val;
+  target_endian<int16_t> val;
   MEMIF_READ_FUNC;
 }
 
-void memif_t::write_uint16(addr_t addr, uint16_t val)
+void memif_t::write_uint16(addr_t addr, target_endian<uint16_t> val)
 {
   MEMIF_WRITE_FUNC;
 }
 
-void memif_t::write_int16(addr_t addr, int16_t val)
+void memif_t::write_int16(addr_t addr, target_endian<int16_t> val)
 {
   MEMIF_WRITE_FUNC;
 }
 
-uint32_t memif_t::read_uint32(addr_t addr)
+target_endian<uint32_t> memif_t::read_uint32(addr_t addr)
 {
-  uint32_t val;
+  target_endian<uint32_t> val;
   MEMIF_READ_FUNC;
 }
 
-int32_t memif_t::read_int32(addr_t addr)
+target_endian<int32_t> memif_t::read_int32(addr_t addr)
 {
-  int32_t val;
+  target_endian<int32_t> val;
   MEMIF_READ_FUNC;
 }
 
-void memif_t::write_uint32(addr_t addr, uint32_t val)
+void memif_t::write_uint32(addr_t addr, target_endian<uint32_t> val)
 {
   MEMIF_WRITE_FUNC;
 }
 
-void memif_t::write_int32(addr_t addr, int32_t val)
+void memif_t::write_int32(addr_t addr, target_endian<int32_t> val)
 {
   MEMIF_WRITE_FUNC;
 }
 
-uint64_t memif_t::read_uint64(addr_t addr)
+target_endian<uint64_t> memif_t::read_uint64(addr_t addr)
 {
-  uint64_t val;
+  target_endian<uint64_t> val;
   MEMIF_READ_FUNC;
 }
 
-int64_t memif_t::read_int64(addr_t addr)
+target_endian<int64_t> memif_t::read_int64(addr_t addr)
 {
-  int64_t val;
+  target_endian<int64_t> val;
   MEMIF_READ_FUNC;
 }
 
-void memif_t::write_uint64(addr_t addr, uint64_t val)
+void memif_t::write_uint64(addr_t addr, target_endian<uint64_t> val)
 {
   MEMIF_WRITE_FUNC;
 }
 
-void memif_t::write_int64(addr_t addr, int64_t val)
+void memif_t::write_int64(addr_t addr, target_endian<int64_t> val)
 {
   MEMIF_WRITE_FUNC;
 }

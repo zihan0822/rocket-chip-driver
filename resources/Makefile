@@ -6,7 +6,7 @@ RISCV_DIR:= $(CXX_DIR)/riscv
 RISCV_TOOLCHAIN := riscv64-unknown-elf
 
 LDFLAGS += -L$(RUST_LIB_DIR) -L$(RISCV_DIR)/lib
-INCLUDES += -I$(RUST_TARGET_DIR) -I$(RISCV_DIR)/include
+INCLUDES += -I$(RUST_TARGET_DIR) -I$(RISCV_DIR)/include -I$(RISCV_SIM)
 LINKER_ARGS := -Wl,-rpath,$(RUST_LIB_DIR) -Wl,-rpath,$(RISCV_DIR)/lib
 LIBS += -lrocket_chip_driver -lfesvr -lpthread
 

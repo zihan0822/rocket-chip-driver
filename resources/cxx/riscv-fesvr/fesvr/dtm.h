@@ -22,7 +22,7 @@ class dtm_t : public htif_t
     uint32_t op;
     uint32_t data;
   };
-  
+
   struct resp {
     uint32_t resp;
     uint32_t data;
@@ -38,7 +38,7 @@ class dtm_t : public htif_t
     resp  resp_bits
   );
 
-
+  
   bool req_valid() { return req_wait; }
   req req_bits() { return req_buf; }
   bool resp_ready() { return true; }
@@ -55,6 +55,12 @@ class dtm_t : public htif_t
 
   void producer_thread();
 
+  void switch_to_host() {
+    // update the target with the current context
+    target = context_t::current();
+    host.switch_to();
+  }
+
  protected:
   virtual void read_chunk(addr_t taddr, size_t len, void* dst) override;
   virtual void write_chunk(addr_t taddr, size_t len, const void* src) override;
@@ -63,6 +69,20 @@ class dtm_t : public htif_t
   virtual size_t chunk_max_size() override;
   virtual void reset() override;
   virtual void idle() override;
+
+  uint32_t run_abstract_command(uint32_t command, const uint32_t program[], size_t program_n,
+                                uint32_t data[], size_t data_n);
+
+  void die(uint32_t cmderr);
+  void halt(int);
+  int enumerate_harts();
+  void select_hart(int);
+  void resume(int);
+  uint32_t get_data_base() { return data_base; };
+
+  void switch_to_target() {
+    target->switch_to();
+  }
 
  private:
   context_t host;
@@ -76,14 +96,6 @@ class dtm_t : public htif_t
   resp resp_buf;
   bool running;
 
-  uint32_t run_abstract_command(uint32_t command, const uint32_t program[], size_t program_n,
-                                uint32_t data[], size_t data_n);
-
-  void die(uint32_t cmderr);
-  void halt(int);
-  int enumerate_harts();
-  void select_hart(int);
-  void resume(int);
   uint64_t save_reg(unsigned regno);
   void restore_reg(unsigned regno, uint64_t val);
   
@@ -97,13 +109,11 @@ class dtm_t : public htif_t
 
   static const int max_idle_cycles = 10000;
 
-  size_t ram_words;
-  size_t data_words;
   int num_harts;
   int current_hart;
   
   uint32_t get_xlen();
-  uint32_t do_command(req r);
+  uint32_t do_command(dtm_t::req r);
 
   void parse_args(const std::vector<std::string>& args);
   void register_devices();

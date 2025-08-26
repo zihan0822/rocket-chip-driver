@@ -69,7 +69,7 @@ AC_HEADER_STDC
 #-------------------------------------------------------------------------
 
 AC_SUBST([CFLAGS],  ["-Wall -O2"])
-AC_SUBST([CXXFLAGS],["-Wall -O2 -std=c++11"])
+AC_SUBST([CXXFLAGS],["-Wall -O2 -std=c++17"])
 
 if test "x$target_alias" != x; then
   CFLAGS="$CFLAGS -DTARGET_ARCH=\\\"$target_alias\\\""

@@ -3888,7 +3888,7 @@ fi
 
 CFLAGS="-Wall -O2"
 
-CXXFLAGS="-Wall -O2 -std=c++11"
+CXXFLAGS="-Wall -O2 -std=c++17"
 
 
 if test "x$target_alias" != x; then
