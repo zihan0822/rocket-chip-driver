@@ -28,8 +28,6 @@ struct Driver {
     #[borrows(ctx, sys)]
     #[covariant]
     sim: SimBackend<'this>,
-    /// cached high and low baa value
-    signal: (baa::BitVecValue, baa::BitVecValue),
     test_harness_module: MockTestHarnessModule,
     debug_module: DebugModule,
 }
@@ -37,7 +35,7 @@ struct Driver {
 declare_module! {
     struct MockTestHarnessModule {
         #[in<1> = "clock", c_type=c_uchar]
-        clk,
+        clock,
         #[in<1> = "reset", c_type = c_uchar]
         reset,
         #[in<32> = "io_exit", c_type = c_uint]
@@ -159,6 +157,13 @@ pub extern "C" fn set_driver_reset(signal: c_uchar) {
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn set_driver_clock(signal: c_uchar) {
+    with_driver_mut(|driver| {
+        driver.with_mut(|fields| fields.test_harness_module.set_clock(fields.sim, signal))
+    })
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn set_driver_exit(signal: c_uint) {
     with_driver_mut(|driver| {
         driver.with_mut(|fields| fields.test_harness_module.set_exit(fields.sim, signal))
@@ -188,10 +193,6 @@ impl Driver {
                 }
                 sim
             },
-            signal: (
-                baa::BitVecValue::from_u64(1, 1),
-                baa::BitVecValue::from_u64(0, 1),
-            ),
             test_harness_module,
             debug_module,
         }
@@ -199,11 +200,6 @@ impl Driver {
     }
 
     fn step(&mut self) {
-        self.with_mut(|driver| {
-            let clk: ExprRef = driver.test_harness_module.clk;
-            driver.sim.set(clk, (&driver.signal.0).into());
-            driver.sim.step();
-            driver.sim.set(clk, (&driver.signal.1).into());
-        })
+        self.with_mut(|driver| driver.sim.step());
     }
 }

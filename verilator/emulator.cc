@@ -1,13 +1,13 @@
 #include <fesvr/dtm.h>
 #include <iostream>
-#include <cinttypes>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <getopt.h>
-#include <rocket_chip_driver.h>
+
+#include "VTestHarness.h"
 
 // TODO: add in support for JTAG remote bit bang
 // TODO: add in support for VM_TRACE and VCD output
@@ -37,30 +37,7 @@ void handle_sigterm(int sig) {
   dtm->stop();
 }
 
-void tick_dtm(bool done_reset) {
-  if (done_reset) {
-    ffi::debug_module_output_payload_t debug_output = ffi::get_driver_debug_module_output();
-    dtm_t::resp resp_bits;
-    resp_bits.resp = debug_output.resp_resp;
-    resp_bits.data = debug_output.resp_data;
-
-    dtm->tick((uint32_t) debug_output.req_ready,
-              (uint32_t) debug_output.resp_valid,
-              resp_bits);
-    ffi::debug_module_input_payload_t debug_input = {
-      dtm->req_bits().addr,
-      dtm->req_bits().op,
-      dtm->req_bits().data,
-      dtm->resp_ready(),
-      dtm->req_valid()
-    };
-    ffi::set_driver_debug_module_input(debug_input);
-    ffi::set_driver_exit((uint32_t) (dtm->done() ? (dtm->exit_code() << 1 | 1) : 0));
-  } else {
-    ffi::debug_module_input_payload_t debug_input = { 0 };
-    ffi::set_driver_debug_module_input(debug_input);
-    ffi::set_driver_exit(0);
-  }
+void tick_dtm(VTestHarness *tile, bool done_reset) {
 }
 
 static void usage(const char * program_name) {
@@ -205,14 +182,6 @@ int main(int argc, char** argv) {
   }
 
 done_processing:
-  const char* btor_file_path;
-  if (optind == argc) {
-    std::cerr << "No chip btor spec found\n";
-    return 1;
-  } else {
-    btor_file_path = argv[optind++];
-  }
-  ffi::bootstrap_driver(btor_file_path);
   if (optind == argc) {
     std::cerr << "No binary specified for emulator\n";
     usage(argv[0]);
@@ -229,6 +198,8 @@ done_processing:
   srand(random_seed);
   srand48(random_seed);
 
+  VTestHarness *tile = new VTestHarness;
+
   dtm = new dtm_t(htif_argc, htif_argv);
 
   signal(SIGTERM, handle_sigterm);
@@ -242,23 +213,15 @@ done_processing:
 
   // Rocket-chip requires synchronous reset to be asserted for several cycles.
   int sync_reset_cycles = 10;
-
+  std::cout << "simulator begin ticking\n";
   while (trace_count < max_cycles) {
-    bool io_success = ffi::get_driver_io_success() != 0;
-    if (done_reset && (dtm->done() || io_success))
-      break;
-    if (done_reset && dtm->done())
-      break;
-    uint8_t reset = trace_count < async_reset_cycles + sync_reset_cycles;
-    ffi::set_driver_reset(reset);
-    done_reset = !reset;
-    ffi::set_driver_clock(0);
-    ffi::step_driver();
+    // if (done_reset && (dtm->done() || tile->io_success))
+    //   break;
+    // tile->reset = UInt<1>(trace_count < async_reset_cycles + sync_reset_cycles);
+    // done_reset = !tile->reset;
     // tile->eval(true, verbose, done_reset);
-    ffi::set_driver_clock(1);
-    ffi::step_driver();
-    tick_dtm(done_reset);
-    trace_count++;
+    // tick_dtm(tile, done_reset);
+    // trace_count++;
   }
 
   if (dtm->exit_code()) {
@@ -274,7 +237,7 @@ done_processing:
   }
 
   if (dtm) delete dtm;
+  if (tile) delete tile;
   if (htif_argv) free(htif_argv);
   return ret;
 }
-
