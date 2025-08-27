@@ -3,6 +3,7 @@
 // author: Zihan Li <zl2225@cornell.edu>
 mod bv_codegen;
 mod compiler;
+mod expr_graph;
 mod runtime;
 
 use super::*;
