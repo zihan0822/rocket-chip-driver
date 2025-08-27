@@ -1,5 +1,6 @@
 use crate::expr::{traversal, *};
 use rustc_hash::{FxHashMap, FxHashSet};
+use std::cmp::Ordering;
 use std::collections::{BinaryHeap, VecDeque};
 use std::rc::Rc;
 
@@ -38,10 +39,14 @@ impl BottomUpExprGraph {
         }
     }
 
+    /// Returns the default walker.
+    /// There is no guarantee on the traversal order when multiple candidates are present.
     pub(crate) fn walker(&self) -> BottomUpExprGraphWalker<'_> {
         BottomUpExprGraphWalker::new(self)
     }
 
+    /// Returns a walker with custom candidate priority comparator.
+    /// The internal representation is of candidates is a min-heap. Smaller value returned from `compare` will be prioritized.
     pub(crate) fn walker_with_sorted_fringe<F>(
         &self,
         compare: F,
@@ -119,32 +124,29 @@ where
 
 impl<F> std::cmp::Ord for WeightedExprNode<F>
 where
-    F: Fn(&ExprRef, &ExprRef) -> std::cmp::Ordering,
+    F: Fn(&ExprRef, &ExprRef) -> Ordering,
 {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
         (self.compare)(&self.expr, &other.expr).reverse()
     }
 }
 
 impl<F> std::cmp::PartialOrd for WeightedExprNode<F>
 where
-    F: Fn(&ExprRef, &ExprRef) -> std::cmp::Ordering,
+    F: Fn(&ExprRef, &ExprRef) -> Ordering,
 {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some((self.compare)(&self.expr, &other.expr).reverse())
     }
 }
 
 impl<F> std::cmp::PartialEq for WeightedExprNode<F>
 where
-    F: Fn(&ExprRef, &ExprRef) -> std::cmp::Ordering,
+    F: Fn(&ExprRef, &ExprRef) -> Ordering,
 {
     fn eq(&self, other: &Self) -> bool {
         (self.compare)(&self.expr, &other.expr).is_eq()
     }
 }
 
-impl<F> std::cmp::Eq for WeightedExprNode<F> where
-    F: Fn(&ExprRef, &ExprRef) -> std::cmp::Ordering
-{
-}
+impl<F> std::cmp::Eq for WeightedExprNode<F> where F: Fn(&ExprRef, &ExprRef) -> Ordering {}

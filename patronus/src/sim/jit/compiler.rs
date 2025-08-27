@@ -310,21 +310,21 @@ impl CodeGenContext<'_, '_, '_> {
         for e in bottom_up_expr_graph.walker() {
             let expr = &self.expr_ctx[e];
             expr.for_each_child(|child| {
-                let mut child_res = evaluated[child];
-                if let Expr::ArrayStore { array, .. } = expr {
-                    if array_references[array] > 1 {
-                        let cow = self.reserve_intermediate_array_cache(
-                            expr.get_array_type(self.expr_ctx).unwrap(),
-                        );
-                        self.copy_from_array(cow, evaluated[array]);
-                        child_res = cow;
-                    }
+                if child.get_type(self.expr_ctx).is_array() {
+                    *array_references.get_mut(&child).unwrap() -= 1;
                 }
-                // if child.get_type(self.expr_ctx).is_array() {
-                //     *array_references.get_mut(&child).unwrap() -= 1;
-                // }
-                arguments.push(child_res);
+                arguments.push(evaluated[child]);
             });
+            if let Expr::ArrayStore { array, .. } = expr {
+                if array_references[array] > 0 {
+                    let cow = self.reserve_intermediate_array_cache(
+                        expr.get_array_type(self.expr_ctx).unwrap(),
+                    );
+                    self.copy_from_array(cow, evaluated[array]);
+                    // first argument of `ArrayStore` operation is the src array
+                    arguments[0] = cow;
+                }
+            }
             evaluated.insert(e, self.expr_codegen(e, &arguments));
             arguments.drain(..);
         }
