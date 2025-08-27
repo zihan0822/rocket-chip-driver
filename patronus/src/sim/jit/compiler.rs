@@ -1,6 +1,7 @@
 // Copyright 2025 Cornell University
 // released under BSD 3-Clause License
 // author: Zihan Li <zl2225@cornell.edu>
+use super::expr_graph::*;
 use super::{JITResult, StateBufferView, THIN_BV_MAX_WIDTH, runtime};
 use crate::expr::{self, *};
 use crate::system::*;
@@ -280,33 +281,6 @@ pub(super) struct CodeGenContext<'expr, 'ctx, 'engine> {
     pub(super) int: cranelift::prelude::Type,
 }
 
-#[derive(Debug)]
-struct ExprNode {
-    num_references: i64,
-}
-
-#[derive(Debug, Clone, Copy)]
-enum ExprNodeState {
-    Root(bool),
-    Intermediate(bool),
-}
-
-impl ExprNodeState {
-    fn args_available(&self) -> bool {
-        match self {
-            Self::Root(available) => *available,
-            Self::Intermediate(available) => *available,
-        }
-    }
-
-    fn mark_as_args_available(self) -> Self {
-        match self {
-            Self::Root(..) => Self::Root(true),
-            Self::Intermediate(..) => Self::Intermediate(true),
-        }
-    }
-}
-
 impl CodeGenContext<'_, '_, '_> {
     fn codegen<F: FnOnce(Vec<Value>, Self)>(mut self, epilogue: F) {
         let ret = self.mock_interpret();
@@ -314,82 +288,56 @@ impl CodeGenContext<'_, '_, '_> {
     }
 
     fn mock_interpret(&mut self) -> Vec<Value> {
-        let mut value_stack: Vec<TaggedValue> = Vec::new();
-        let mut cached: FxHashMap<ExprRef, TaggedValue> = FxHashMap::default();
+        let mut evaluated: FxHashMap<ExprRef, TaggedValue> = FxHashMap::default();
+        let bottom_up_expr_graph =
+            BottomUpExprGraph::from_top_down_graph(self.expr_ctx, &self.expr_batch);
 
-        let expr_nodes: FxHashMap<ExprRef, ExprNode> = self.expr_graph_topo();
-        let mut todo: Vec<(ExprRef, ExprNodeState)> = self
-            .expr_batch
+        // Computes the number of direct depedents of each array related expr node.
+        // This allows us to determine whether we could steal heap allocated resources from operand expression.
+        let mut array_references: FxHashMap<ExprRef, usize> = bottom_up_expr_graph
+            .node_dependents
             .iter()
-            .rev()
-            .map(|&expr| (expr, ExprNodeState::Root(false)))
+            .filter_map(|(&expr, dependents)| {
+                if expr.get_type(self.expr_ctx).is_array() {
+                    Some((expr, dependents.len()))
+                } else {
+                    None
+                }
+            })
             .collect();
 
-        while let Some((e, state)) = todo.pop() {
-            if let Some(&ret) = cached.get(&e) {
-                value_stack.push(ret);
-                continue;
-            }
-
-            let expr = &self.expr_ctx[e];
-            if state.args_available() {
-                let num_children = expr.num_children();
-                if let Expr::ArrayStore { array, .. } = expr {
-                    if expr_nodes[array].num_references > 1 {
-                        let cow = self.reserve_intermediate_array_cache(
-                            expr.get_array_type(self.expr_ctx).unwrap(),
-                        );
-                        self.copy_from_array(cow, cached[array]);
-                        let stack_size = value_stack.len();
-                        // first argument of `ArrayStore` operation is the src array
-                        value_stack[stack_size - num_children..][0] = cow;
-                    }
-                }
-
-                let ret = self.expr_codegen(e, &value_stack[value_stack.len() - num_children..]);
-                value_stack.truncate(value_stack.len() - num_children);
-                cached.insert(e, ret);
-                value_stack.push(ret);
+        let mut arguments = Vec::with_capacity(4);
+        // Postpone `ArrayStore` as much as possible to reduce unnecessary clone of potentially huge array
+        let walker = bottom_up_expr_graph.walker_with_sorted_fringe(|&a, _| {
+            if matches!(self.expr_ctx[a], Expr::ArrayStore { .. }) {
+                std::cmp::Ordering::Greater
             } else {
-                todo.push((e, state.mark_as_args_available()));
-                let mut children = vec![];
-                expr.collect_children(&mut children);
-                todo.extend(
-                    children
-                        .into_iter()
-                        .map(|child| (child, ExprNodeState::Intermediate(false)))
-                        .rev(),
-                );
-                continue;
+                std::cmp::Ordering::Less
             }
+        });
+        for e in walker {
+            let expr = &self.expr_ctx[e];
+            expr.for_each_child(|child| {
+                if child.get_type(self.expr_ctx).is_array() {
+                    *array_references.get_mut(child).unwrap() -= 1;
+                }
+                arguments.push(evaluated[child]);
+            });
+            if let Expr::ArrayStore { array, .. } = expr {
+                if array_references[array] > 0 {
+                    let cow = self.reserve_intermediate_array_cache(
+                        expr.get_array_type(self.expr_ctx).unwrap(),
+                    );
+                    self.copy_from_array(cow, evaluated[array]);
+                    // first argument of `ArrayStore` operation is the src array
+                    arguments[0] = cow;
+                }
+            }
+            evaluated.insert(e, self.expr_codegen(e, &arguments));
+            arguments.drain(..);
         }
-
-        // We have maintained the invariance that for every heap allocated value on the final value stack,
-        // there is a long lived cache associated with it. Therefore, it is safe to reclaim all heap allocated object that has lifetime
-        // tied to the eval function call here (before epilogue).
         self.reclaim_short_lived_heap_resources();
-        value_stack.into_iter().map(|ret| *ret).collect()
-    }
-
-    /// Compute important expr graph statistics for better codegen
-    ///
-    /// Currently returns the number of upperstream references for each sub-expr.
-    /// This allows us to determine whether we could steal heap allocated resources from sub-expr
-    fn expr_graph_topo(&self) -> FxHashMap<ExprRef, ExprNode> {
-        let mut expr_references: FxHashMap<ExprRef, ExprNode> = FxHashMap::default();
-        let mut todo = self.expr_batch.clone();
-        while let Some(next) = todo.pop() {
-            let visited = expr_references
-                .entry(next)
-                .and_modify(|node| node.num_references += 1)
-                .or_insert(ExprNode { num_references: 1 })
-                .num_references
-                > 1;
-            if !visited {
-                self.expr_ctx[next].for_each_child(|&c| todo.push(c));
-            }
-        }
-        expr_references
+        self.expr_batch.iter().map(|e| *evaluated[e]).collect()
     }
 
     /// Heap allocations registered with this function are considered to be short lived as opposed to long lived cache.
