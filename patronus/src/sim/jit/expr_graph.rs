@@ -1,5 +1,5 @@
 use crate::expr::{traversal, *};
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, VecDeque};
 use std::rc::Rc;
@@ -15,24 +15,18 @@ impl BottomUpExprGraph {
         let mut bottom_up_roots = vec![];
         let mut node_dependents: FxHashMap<ExprRef, Vec<ExprRef>> =
             top_down_roots.iter().map(|&root| (root, vec![])).collect();
-        let mut visited = FxHashSet::default();
 
-        for &root in top_down_roots {
-            traversal::top_down(ctx, root, |ctx, current| {
-                if !visited.insert(current) {
-                    return traversal::TraversalCmd::Stop;
-                }
-                let mut has_children = false;
-                ctx[current].for_each_child(|&child| {
-                    has_children = true;
-                    node_dependents.entry(child).or_default().push(current);
-                });
-                if !has_children {
-                    bottom_up_roots.push(current);
-                }
-                traversal::TraversalCmd::Continue
+        traversal::top_down_without_reentry(ctx, top_down_roots, |ctx, current| {
+            let mut has_children = false;
+            ctx[current].for_each_child(|&child| {
+                has_children = true;
+                node_dependents.entry(child).or_default().push(current);
             });
-        }
+            if !has_children {
+                bottom_up_roots.push(current);
+            }
+            traversal::TraversalCmd::Continue
+        });
         Self {
             roots: bottom_up_roots,
             node_dependents,
@@ -142,14 +136,15 @@ where
 {
     type Item = ExprRef;
     fn next(&mut self) -> Option<Self::Item> {
-        self.todo.extend(
-            self.in_degree
-                .extract_if(|_, &mut degree| degree == 0)
-                .map(|(expr, _)| WeightedExprNode {
-                    expr,
-                    compare: Rc::clone(&self.fringe_compare),
-                }),
-        );
+        self.todo
+            .extend(
+                self.in_degree
+                    .extract_if(|_, &mut degree| degree == 0)
+                    .map(|(expr, _)| WeightedExprNode {
+                        expr,
+                        compare: Rc::clone(&self.fringe_compare),
+                    }),
+            );
         let next = self.todo.pop()?;
         for dependent in &self.graph.node_dependents[&next.expr] {
             *self.in_degree.get_mut(dependent).unwrap() -= 1;
