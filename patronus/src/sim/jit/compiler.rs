@@ -292,14 +292,14 @@ impl CodeGenContext<'_, '_, '_> {
         let bottom_up_expr_graph =
             BottomUpExprGraph::from_top_down_graph(self.expr_ctx, &self.expr_batch);
 
-        // Computes the number of direct depedents of each array related expr node.
+        // Track direct depedents of each array related expr node.
         // This allows us to determine whether we could steal heap allocated resources from operand expression.
-        let mut array_references: FxHashMap<ExprRef, usize> = bottom_up_expr_graph
+        let mut array_references: FxHashMap<ExprRef, FxHashSet<ExprRef>> = bottom_up_expr_graph
             .node_dependents
             .iter()
             .filter_map(|(&expr, dependents)| {
                 if expr.get_type(self.expr_ctx).is_array() {
-                    Some((expr, dependents.len()))
+                    Some((expr, FxHashSet::from_iter(dependents.iter().copied())))
                 } else {
                     None
                 }
@@ -319,12 +319,19 @@ impl CodeGenContext<'_, '_, '_> {
             let expr = &self.expr_ctx[e];
             expr.for_each_child(|child| {
                 if child.get_type(self.expr_ctx).is_array() {
-                    *array_references.get_mut(child).unwrap() -= 1;
+                    array_references.get_mut(child).unwrap().remove(&e);
                 }
                 arguments.push(evaluated[child]);
             });
             if let Expr::ArrayStore { array, .. } = expr {
-                if array_references[array] > 0 {
+                if array_references[array].iter().any(|&other| {
+                    if let Expr::ArrayIte { tru, fals, .. } = self.expr_ctx[other] {
+                        if tru == e || fals == e {
+                            return false;
+                        }
+                    }
+                    !at_disjoint_branch(self.expr_ctx, &bottom_up_expr_graph, e, other)
+                }) {
                     let cow = self.reserve_intermediate_array_cache(
                         expr.get_array_type(self.expr_ctx).unwrap(),
                     );

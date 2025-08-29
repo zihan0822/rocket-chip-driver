@@ -1,5 +1,5 @@
 use crate::expr::{traversal, *};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, VecDeque};
 use std::rc::Rc;
@@ -52,6 +52,22 @@ impl BottomUpExprGraph {
         BiasedBottomUpExprGraphWalker::new(self, compare)
     }
 
+    /// Returns an iterator of parent expr.
+    /// Empty iterator will be returned if `expr` is not part of the graph.
+    pub(crate) fn parent_expr_iter(&self, expr: ExprRef) -> impl Iterator<Item = ExprRef> {
+        ParentExprIter {
+            graph: self,
+            todo: VecDeque::from_iter(
+                self.node_dependents
+                    .get(&expr)
+                    .into_iter()
+                    .flatten()
+                    .copied(),
+            ),
+            visited: FxHashSet::default(),
+        }
+    }
+
     fn node_in_degree(&self) -> FxHashMap<ExprRef, usize> {
         let mut in_degree: FxHashMap<ExprRef, usize> =
             self.roots.iter().map(|&expr| (expr, 0)).collect();
@@ -63,6 +79,12 @@ impl BottomUpExprGraph {
             *in_degree.entry(dependent).or_default() += 1;
         }
         in_degree
+    }
+
+    fn is_root_expr(&self, expr: ExprRef) -> bool {
+        self.node_dependents
+            .get(&expr)
+            .is_some_and(|dependents| dependents.is_empty())
     }
 }
 
@@ -181,3 +203,90 @@ where
 }
 
 impl<F> std::cmp::Eq for WeightedExprNode<F> where F: Fn(&ExprRef, &ExprRef) -> Ordering {}
+
+pub(crate) struct ParentExprIter<'a> {
+    graph: &'a BottomUpExprGraph,
+    todo: VecDeque<ExprRef>,
+    visited: FxHashSet<ExprRef>,
+}
+
+impl Iterator for ParentExprIter<'_> {
+    type Item = ExprRef;
+    fn next(&mut self) -> Option<Self::Item> {
+        let next = self.todo.pop_front()?;
+        self.todo.extend(
+            self.graph.node_dependents[&next]
+                .iter()
+                .filter(|&&parent| self.visited.insert(parent)),
+        );
+        Some(next)
+    }
+}
+
+/// Checks whether `a` and `b` are at disjoint branch of a shared `Ite` node.
+/// Returns `false` if `a` and `b` do not share any `Ite` parent node or they are at the same branch of the closest `Ite` parent.
+pub(crate) fn at_disjoint_branch(
+    ctx: &Context,
+    graph: &BottomUpExprGraph,
+    mut a: ExprRef,
+    mut b: ExprRef,
+) -> bool {
+    let a_parents: FxHashSet<_> = graph.parent_expr_iter(a).collect();
+    let b_parents: FxHashSet<_> = graph.parent_expr_iter(b).collect();
+    let mut is_ancestor = false;
+    if b_parents.contains(&a) {
+        is_ancestor = true;
+    } else if a_parents.contains(&b) {
+        is_ancestor = true;
+        std::mem::swap(&mut a, &mut b);
+    }
+
+    if is_ancestor {
+        return false;
+    }
+    a_parents
+        .intersection(&b_parents)
+        .filter(|&&parent| graph.is_root_expr(parent))
+        .all(|&root| {
+            find_lowest_common_ite(ctx, root, a, b)
+                .is_some_and(|(_, operand_a, operand_b)| operand_a != operand_b)
+        })
+}
+
+/// Find the lowest common ite ancestor for the given pair of exprs in linear time.
+/// The number of `Ite` node is usually small in an expression graph, O(n) algorithm currently works fine.
+/// Returns a tuple of: shared ite parent node and top arm expression a, b belongs to.
+/// `a` and `b` should not have ancestor relationship.
+fn find_lowest_common_ite(
+    ctx: &Context,
+    root: ExprRef,
+    a: ExprRef,
+    b: ExprRef,
+) -> Option<(ExprRef, ExprRef, ExprRef)> {
+    let bottom_up_expr_graph = BottomUpExprGraph::from_top_down_graph(ctx, &[root]);
+    let parent_ites_a =
+        find_parent_ites_with_top_arm_expr(ctx, bottom_up_expr_graph.parent_expr_iter(a), a);
+    let parent_ites_b: FxHashMap<_, _> =
+        find_parent_ites_with_top_arm_expr(ctx, bottom_up_expr_graph.parent_expr_iter(b), b)
+            .collect();
+    for (ite_a, arm_a) in parent_ites_a {
+        if let Some(&arm_b) = parent_ites_b.get(&ite_a) {
+            return Some((ite_a, arm_a, arm_b));
+        }
+    }
+    None
+}
+
+fn find_parent_ites_with_top_arm_expr(
+    ctx: &Context,
+    parent_iter: impl Iterator<Item = ExprRef>,
+    start: ExprRef,
+) -> impl Iterator<Item = (ExprRef, ExprRef)> {
+    parent_iter
+        .scan(start, |top, parent| {
+            let next = (*top, parent);
+            *top = parent;
+            Some(next)
+        })
+        .filter(|&(_, parent)| matches!(ctx[parent], Expr::ArrayIte { .. }))
+}
