@@ -266,14 +266,10 @@ fn store_compiled_code_ret_at(
             .store(ir::MemFlags::trusted(), src, dst, 0);
         return;
     }
-    let dst = TaggedValue {
-        value: dst,
-        data_type,
-    };
-    let src = TaggedValue {
-        value: src,
-        data_type,
-    };
+    let (dst, src) = (
+        TaggedValue::tag(dst, data_type),
+        TaggedValue::tag(src, data_type),
+    );
     match data_type {
         expr::Type::BV(..) => {
             codegen_ctx.copy_from_bv(dst, src);
@@ -528,10 +524,11 @@ impl TaggedValue {
     }
 
     fn tag_bv(value: Value, width: WidthInt) -> Self {
-        Self {
-            value,
-            data_type: expr::Type::BV(width),
-        }
+        Self::tag(value, expr::Type::BV(width))
+    }
+
+    fn tag_array(value: Value, tpe: ArrayType) -> Self {
+        Self::tag(value, expr::Type::Array(tpe))
     }
 }
 
@@ -547,10 +544,7 @@ impl CodeGenContext<'_, '_, '_> {
             input_buffer_address,
             (param_offset * self.int.bytes()) as i32,
         );
-        TaggedValue {
-            value,
-            data_type: expr.get_type(self.expr_ctx),
-        }
+        TaggedValue::tag(value, expr.get_type(self.expr_ctx))
     }
 
     /// Reserves a long lived array cache, whose lifetime is tied to the JITCompiler
@@ -612,10 +606,7 @@ impl CodeGenContext<'_, '_, '_> {
             self.runtime_lib.clone_array_of_wide_bv
         };
         let call = self.fn_builder.ins().call(callee, &[*from, index_width]);
-        let ret = TaggedValue {
-            value: self.fn_builder.inst_results(call)[0],
-            data_type: from.data_type,
-        };
+        let ret = TaggedValue::tag(self.fn_builder.inst_results(call)[0], from.data_type);
         self.register_short_lived_heap_allocation(ret);
         ret
     }
@@ -634,10 +625,7 @@ impl CodeGenContext<'_, '_, '_> {
             .fn_builder
             .ins()
             .call(callee, &[index_width, *default_data]);
-        let ret = TaggedValue {
-            value: self.fn_builder.inst_results(call)[0],
-            data_type: expr::Type::Array(tpe),
-        };
+        let ret = TaggedValue::tag_array(self.fn_builder.inst_results(call)[0], tpe);
         self.register_short_lived_heap_allocation(ret);
         ret
     }
@@ -655,10 +643,7 @@ impl CodeGenContext<'_, '_, '_> {
             .fn_builder
             .ins()
             .call(self.runtime_lib.clone_bv, &[*src]);
-        let ret = TaggedValue {
-            value: self.fn_builder.inst_results(call)[0],
-            data_type: src.data_type,
-        };
+        let ret = TaggedValue::tag(self.fn_builder.inst_results(call)[0], src.data_type);
         self.register_short_lived_heap_allocation(ret);
         ret
     }
@@ -756,10 +741,7 @@ impl CodeGenContext<'_, '_, '_> {
             }
             _ => self.dispatch_bv_operation_codegen(expr, args),
         };
-        TaggedValue {
-            value,
-            data_type: expr.get_type(self.expr_ctx),
-        }
+        TaggedValue::tag(value, expr.get_type(self.expr_ctx))
     }
 
     fn dispatch_bv_operation_codegen(&mut self, expr: ExprRef, args: &[TaggedValue]) -> Value {
