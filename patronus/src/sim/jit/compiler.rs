@@ -2,11 +2,13 @@
 // released under BSD 3-Clause License
 // author: Zihan Li <zl2225@cornell.edu>
 use super::expr_graph::*;
+use super::heap::*;
 use super::{JITResult, StateBufferView, THIN_BV_MAX_WIDTH, runtime};
 use crate::expr::{self, *};
 use crate::system::*;
 
 use baa::{BitVecValue, BitVecValueRef};
+use cranelift::codegen::cursor::{Cursor, FuncCursor};
 use cranelift::codegen::ir;
 use cranelift::jit::{JITBuilder, JITModule};
 use cranelift::module::Module;
@@ -15,42 +17,42 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 /// we need a vec_box here because the address of those elements are implicitly
 /// referenced by the compiled code. we need to make sure they are pinned on heap
-#[expect(clippy::vec_box)]
 pub(super) struct JITCompiler {
     module: JITModule,
-    pub(super) bv_data: Vec<Box<BitVecValue>>,
-    array_data: Vec<Box<[i64]>>,
-    array_with_wide_bv_data: Vec<ArrayWithWideBV>,
+    pub(super) sealed_heap_resources: Vec<ManagedHeapResource>,
+    pub(super) active_heap_resource: ManagedHeapResource,
+    pub(super) constant: ManagedHeapResource,
 }
 
-struct ArrayWithWideBV(Box<[*mut BitVecValue]>);
+#[derive(Default)]
+pub(super) struct ManagedHeapResource {
+    pub(super) bv_data: HeapResourceCache<BitVecValue>,
+    array_data: SlicedHeapResourceCache<i64>,
+    array_with_wide_bv_data: SlicedHeapResourceCache<LeakedBitVecPtr>,
+}
 
-impl ArrayWithWideBV {
-    fn new(tpe: ArrayType) -> Self {
-        let ArrayType {
-            index_width,
-            data_width,
-        } = tpe;
-        assert!(data_width > THIN_BV_MAX_WIDTH);
-        let data: Vec<*mut BitVecValue> =
-            std::iter::repeat_with(|| Box::leak(Box::new(BitVecValue::zero(data_width))) as _)
-                .take(1 << index_width)
-                .collect();
-        Self(data.into_boxed_slice())
-    }
-
-    fn as_ptr(&self) -> *const *mut BitVecValue {
-        self.0.as_ptr()
+impl ManagedHeapResource {
+    fn seal(&mut self) {
+        self.bv_data.seal();
+        self.array_data.seal();
+        self.array_with_wide_bv_data.seal();
     }
 }
 
-impl std::ops::Drop for ArrayWithWideBV {
+#[repr(transparent)]
+struct LeakedBitVecPtr(*mut BitVecValue);
+
+impl LeakedBitVecPtr {
+    fn new(data: BitVecValue) -> Self {
+        Self(Box::into_raw(Box::new(data)))
+    }
+}
+
+impl std::ops::Drop for LeakedBitVecPtr {
     fn drop(&mut self) {
-        for &value in self.0.iter() {
-            // SAFETY: `value` is leaked from Box in `ArrayWithWideBV::new`
-            unsafe {
-                let _ = Box::from_raw(value);
-            }
+        // SAFETY: `value` is leaked from Box in `Self::new`
+        unsafe {
+            let _ = Box::from_raw(self.0);
         }
     }
 }
@@ -88,10 +90,20 @@ impl JITCompiler {
         let module = JITModule::new(builder);
         Self {
             module,
-            bv_data: vec![],
-            array_data: vec![],
-            array_with_wide_bv_data: vec![],
+            sealed_heap_resources: vec![],
+            active_heap_resource: Default::default(),
+            constant: Default::default(),
         }
+    }
+
+    fn seal_active_heap_resource(&mut self) {
+        self.active_heap_resource.seal();
+        self.sealed_heap_resources
+            .push(std::mem::take(&mut self.active_heap_resource));
+    }
+
+    fn last_pinned_heap_resource(&self) -> Option<&ManagedHeapResource> {
+        self.sealed_heap_resources.last()
     }
 
     pub(super) fn compile_transition_sys(
@@ -223,6 +235,7 @@ impl JITCompiler {
             short_lived_heap_allocation: FxHashSet::default(),
             compiler: self,
             int: types::I64,
+            long_live_cache_read_holes: vec![],
         };
 
         codegen_ctx.codegen(codegen_epilogue);
@@ -279,11 +292,15 @@ pub(super) struct CodeGenContext<'expr, 'ctx, 'engine> {
     short_lived_heap_allocation: FxHashSet<TaggedValue>,
     pub(super) compiler: &'ctx mut JITCompiler,
     pub(super) int: cranelift::prelude::Type,
+    /// Points to the dummy instruction that will be replaced with a read instruction from long lived heap resources buffer.
+    /// These replacement operations are done after codegen, when the number of long lived cache are determined.
+    long_live_cache_read_holes: Vec<(Value, expr::Type)>,
 }
 
 impl CodeGenContext<'_, '_, '_> {
     fn codegen<F: FnOnce(Vec<Value>, Self)>(mut self, epilogue: F) {
         let ret = self.mock_interpret();
+        self.finalize_long_lived_heap_resources();
         epilogue(ret, self);
     }
 
@@ -365,6 +382,113 @@ impl CodeGenContext<'_, '_, '_> {
             }
         }
     }
+
+    /// Register a hole for read instruction that reads the heap resource from the pinned buffer.
+    /// This hole will be filled after `mock_interpret` is completed.
+    ///
+    /// We maintain the invariance that for every long lived heap resource there is a slot that contains the raw heap pointer
+    /// to that during the entire lifetime of compiler. And that slot address won't change.
+    fn phantom_register_long_lived_heap_resources(&mut self, tpe: expr::Type) -> TaggedValue {
+        let phantom_src_addr = self.fn_builder.ins().iconst(self.int, 0);
+        let ret =
+            self.fn_builder
+                .ins()
+                .load(types::I64, ir::MemFlags::trusted(), phantom_src_addr, 0);
+        self.long_live_cache_read_holes
+            .push((phantom_src_addr, tpe));
+        TaggedValue::tag(ret, tpe)
+    }
+
+    /// Allocates all registered long-lived heap resources and pins them in a continuous buffer on heap.
+    /// Each heap resource will be associated with a pinned slot on heap that has lifetime tied to the JIT compiler.
+    /// This extra level of indirection allows us to "swap" heap pointer with external pointer when necessary to reduce
+    /// unnecessary heap allocation or data copy.
+    fn finalize_long_lived_heap_resources(&mut self) {
+        let mut bv_holes: Vec<Value> = vec![];
+        let mut array_holes: Vec<Value> = vec![];
+        let mut array_with_wide_bv_holes: Vec<Value> = vec![];
+        for &(value, tpe) in &self.long_live_cache_read_holes {
+            match tpe {
+                expr::Type::BV(width) => {
+                    debug_assert!(width > THIN_BV_MAX_WIDTH);
+                    self.compiler
+                        .active_heap_resource
+                        .bv_data
+                        .push(Box::new(BitVecValue::zero(width)));
+                    bv_holes.push(value);
+                }
+                expr::Type::Array(ArrayType {
+                    index_width,
+                    data_width,
+                }) => {
+                    let index_width = index_width as usize;
+                    if data_width <= THIN_BV_MAX_WIDTH {
+                        let boxed_slice = vec![0i64; 1 << index_width].into_boxed_slice();
+                        self.compiler
+                            .active_heap_resource
+                            .array_data
+                            .push(boxed_slice);
+                        array_holes.push(value);
+                    } else {
+                        let data: Vec<_> = std::iter::repeat_with(|| {
+                            LeakedBitVecPtr::new(BitVecValue::zero(data_width))
+                        })
+                        .take(1 << index_width)
+                        .collect();
+                        self.compiler
+                            .active_heap_resource
+                            .array_with_wide_bv_data
+                            .push(data.into_boxed_slice());
+                        array_with_wide_bv_holes.push(value);
+                    }
+                }
+            }
+        }
+        self.compiler.seal_active_heap_resource();
+        let last_pinned = self.compiler.last_pinned_heap_resource().unwrap();
+        for (holes, pinned_start_address) in [
+            (bv_holes, last_pinned.bv_data.pinned_start_address()),
+            (array_holes, last_pinned.array_data.pinned_start_address()),
+            (
+                array_with_wide_bv_holes,
+                last_pinned.array_with_wide_bv_data.pinned_start_address(),
+            ),
+        ] {
+            self.finalize_pinned_heap_resources(holes, pinned_start_address)
+        }
+    }
+
+    fn finalize_pinned_heap_resources(
+        &mut self,
+        dummy_inst_values: impl IntoIterator<Item = Value>,
+        pinned_start_address: *const i64,
+    ) {
+        for (offset, value) in dummy_inst_values.into_iter().enumerate() {
+            self.fill_heap_cache_read_hole(
+                value,
+                (pinned_start_address as usize) + offset * size_of::<i64>(),
+            )
+        }
+    }
+
+    /// Removes the dummy instruction hole and fills it with the actual slot address.
+    /// Since the slot address is guaranteed to be pinned during the lifetime of compiler, it's sound for us to directly
+    /// hardcode the raw address.
+    fn fill_heap_cache_read_hole(&mut self, dummy_inst_value: Value, src_addr: usize) {
+        let ir::dfg::ValueDef::Result(dummy_inst, _) =
+            self.fn_builder.func.dfg.value_def(dummy_inst_value)
+        else {
+            unreachable!()
+        };
+        let mut cursor = FuncCursor::new(self.fn_builder.func);
+        cursor.goto_inst(dummy_inst);
+        cursor.remove_inst();
+        let read_src = cursor.ins().iconst(self.int, src_addr as i64);
+        self.fn_builder
+            .func
+            .dfg
+            .change_to_alias(dummy_inst_value, read_src);
+    }
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
@@ -399,6 +523,10 @@ impl TaggedValue {
         }
     }
 
+    fn tag(value: Value, data_type: expr::Type) -> Self {
+        Self { value, data_type }
+    }
+
     fn tag_bv(value: Value, width: WidthInt) -> Self {
         Self {
             value,
@@ -428,41 +556,14 @@ impl CodeGenContext<'_, '_, '_> {
     /// Reserves a long lived array cache, whose lifetime is tied to the JITCompiler
     /// It is not registered as per-step heap allocation, therefore can be used across multiple steps to reduce heap transaction
     fn reserve_intermediate_array_cache(&mut self, tpe: ArrayType) -> TaggedValue {
-        let ArrayType {
-            index_width,
-            data_width,
-        } = tpe;
-        let ptr;
-        if data_width <= THIN_BV_MAX_WIDTH {
-            let cache = vec![0_i64; 1 << index_width].into_boxed_slice();
-            ptr = cache.as_ptr() as i64;
-            self.compiler.array_data.push(cache);
-        } else {
-            let cache = ArrayWithWideBV::new(tpe);
-            ptr = cache.as_ptr() as i64;
-            self.compiler.array_with_wide_bv_data.push(cache);
-        };
-        let value = self.fn_builder.ins().iconst(self.int, ptr);
-        TaggedValue {
-            value,
-            data_type: expr::Type::Array(tpe),
-        }
+        self.phantom_register_long_lived_heap_resources(expr::Type::Array(tpe))
     }
 
     /// Reserves a long lived wide bit vector cache, whose lifetime is tied to the JITCompiler
     /// It is not registered as per-step heap allocation, therefore can be used across multiple steps to reduce heap transaction
     pub(super) fn reserve_intermediate_bv_cache(&mut self, width: WidthInt) -> TaggedValue {
         assert!(width > THIN_BV_MAX_WIDTH);
-        let cache = Box::new(BitVecValue::zero(width));
-        let value = self
-            .fn_builder
-            .ins()
-            .iconst(self.int, (&*cache) as *const BitVecValue as i64);
-        self.compiler.bv_data.push(cache);
-        TaggedValue {
-            value,
-            data_type: expr::Type::BV(width),
-        }
+        self.phantom_register_long_lived_heap_resources(expr::Type::BV(width))
     }
 
     fn copy_from_array(&mut self, dst: TaggedValue, src: TaggedValue) {

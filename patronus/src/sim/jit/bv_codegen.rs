@@ -190,7 +190,7 @@ impl BVCodeGenVTable for BVIndirect {
     fn literal(&self, value: BitVecValueRef, ctx: &mut CodeGenContext) -> Value {
         let owned_bv_literal: Box<BitVecValue> = Box::new(value.into());
         let ptr = owned_bv_literal.as_ref() as *const BitVecValue;
-        ctx.compiler.bv_data.push(owned_bv_literal);
+        ctx.compiler.constant.bv_data.push(owned_bv_literal);
         let src = TaggedValue {
             value: ctx.fn_builder.ins().iconst(ctx.int, ptr as i64),
             data_type: expr::Type::BV(self.0),

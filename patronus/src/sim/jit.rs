@@ -4,6 +4,7 @@
 mod bv_codegen;
 mod compiler;
 mod expr_graph;
+mod heap;
 mod runtime;
 
 use super::*;
