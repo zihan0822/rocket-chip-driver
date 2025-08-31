@@ -179,107 +179,121 @@ fn invoke_bv_extern_function(
     ctx.fn_builder.inst_results(call).first().copied()
 }
 
+impl BVIndirect {
+    fn with_dst(
+        &self,
+        ctx: &mut CodeGenContext,
+        op: impl FnOnce(TaggedValue, &mut CodeGenContext),
+    ) -> Value {
+        let dst_slot = ctx.reserve_intermediate_bv_cache(self.0);
+        let dst = ctx.resource_ptr_at_slot(dst_slot);
+        op(dst, ctx);
+        *dst_slot
+    }
+}
+
 impl BVCodeGenVTable for BVIndirect {
     fn symbol(&self, arg: ExprRef, ctx: &mut CodeGenContext) -> Value {
-        let value = ctx.load_input_state(arg);
-        let dst = ctx.reserve_intermediate_bv_cache(self.0);
-        ctx.copy_from_bv(dst, value);
-        *dst
+        self.with_dst(ctx, |dst, ctx| {
+            let value = ctx.load_input_state(arg);
+            ctx.copy_from_bv(dst, value);
+        })
     }
 
     fn literal(&self, value: BitVecValueRef, ctx: &mut CodeGenContext) -> Value {
-        let owned_bv_literal: Box<BitVecValue> = Box::new(value.into());
-        let ptr = owned_bv_literal.as_ref() as *const BitVecValue;
-        ctx.compiler.constant.bv_data.push(owned_bv_literal);
-        let src = TaggedValue {
-            value: ctx.fn_builder.ins().iconst(ctx.int, ptr as i64),
-            data_type: expr::Type::BV(self.0),
-        };
-        let dst = ctx.reserve_intermediate_bv_cache(self.0);
-        ctx.copy_from_bv(dst, src);
-        *dst
+        self.with_dst(ctx, |dst, ctx| {
+            let owned_bv_literal: Box<BitVecValue> = Box::new(value.into());
+            let ptr = owned_bv_literal.as_ref() as *const BitVecValue;
+            ctx.compiler.constant.bv_data.push(owned_bv_literal);
+            let src = TaggedValue {
+                value: ctx.fn_builder.ins().iconst(ctx.int, ptr as i64),
+                data_type: expr::Type::BV(self.0),
+            };
+            ctx.copy_from_bv(dst, src);
+        })
     }
 
     fn add(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value {
-        let dst = ctx.reserve_intermediate_bv_cache(self.0);
-        invoke_bv_extern_function(ctx.runtime_lib.bv_ops["add"], &[*dst, *lhs, *rhs], ctx);
-        *dst
+        self.with_dst(ctx, |dst, ctx| {
+            invoke_bv_extern_function(ctx.runtime_lib.bv_ops["add"], &[*dst, *lhs, *rhs], ctx);
+        })
     }
 
     fn sub(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value {
-        let dst = ctx.reserve_intermediate_bv_cache(self.0);
-        invoke_bv_extern_function(ctx.runtime_lib.bv_ops["sub"], &[*dst, *lhs, *rhs], ctx);
-        *dst
+        self.with_dst(ctx, |dst, ctx| {
+            invoke_bv_extern_function(ctx.runtime_lib.bv_ops["sub"], &[*dst, *lhs, *rhs], ctx);
+        })
     }
     fn mul(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value {
-        let dst = ctx.reserve_intermediate_bv_cache(self.0);
-        invoke_bv_extern_function(ctx.runtime_lib.bv_ops["mul"], &[*dst, *lhs, *rhs], ctx);
-        *dst
+        self.with_dst(ctx, |dst, ctx| {
+            invoke_bv_extern_function(ctx.runtime_lib.bv_ops["mul"], &[*dst, *lhs, *rhs], ctx);
+        })
     }
 
     fn and(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value {
-        let dst = ctx.reserve_intermediate_bv_cache(self.0);
-        invoke_bv_extern_function(ctx.runtime_lib.bv_ops["and"], &[*dst, *lhs, *rhs], ctx);
-        *dst
+        self.with_dst(ctx, |dst, ctx| {
+            invoke_bv_extern_function(ctx.runtime_lib.bv_ops["and"], &[*dst, *lhs, *rhs], ctx);
+        })
     }
     fn or(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value {
-        let dst = ctx.reserve_intermediate_bv_cache(self.0);
-        invoke_bv_extern_function(ctx.runtime_lib.bv_ops["or"], &[*dst, *lhs, *rhs], ctx);
-        *dst
+        self.with_dst(ctx, |dst, ctx| {
+            invoke_bv_extern_function(ctx.runtime_lib.bv_ops["or"], &[*dst, *lhs, *rhs], ctx);
+        })
     }
     fn xor(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value {
-        let dst = ctx.reserve_intermediate_bv_cache(self.0);
-        invoke_bv_extern_function(ctx.runtime_lib.bv_ops["xor"], &[*dst, *lhs, *rhs], ctx);
-        *dst
+        self.with_dst(ctx, |dst, ctx| {
+            invoke_bv_extern_function(ctx.runtime_lib.bv_ops["xor"], &[*dst, *lhs, *rhs], ctx);
+        })
     }
+
     fn not(&self, arg: TaggedValue, ctx: &mut CodeGenContext) -> Value {
-        let dst = ctx.reserve_intermediate_bv_cache(self.0);
-        invoke_bv_extern_function(ctx.runtime_lib.bv_ops["not"], &[*dst, *arg], ctx);
-        *dst
+        self.with_dst(ctx, |dst, ctx| {
+            invoke_bv_extern_function(ctx.runtime_lib.bv_ops["not"], &[*dst, *arg], ctx);
+        })
     }
 
     fn negate(&self, arg: TaggedValue, ctx: &mut CodeGenContext) -> Value {
-        let dst = ctx.reserve_intermediate_bv_cache(self.0);
-        invoke_bv_extern_function(ctx.runtime_lib.bv_ops["negate"], &[*dst, *arg], ctx);
-        *dst
+        self.with_dst(ctx, |dst, ctx| {
+            invoke_bv_extern_function(ctx.runtime_lib.bv_ops["negate"], &[*dst, *arg], ctx);
+        })
     }
 
     fn zero_extend(&self, arg: TaggedValue, by: WidthInt, ctx: &mut CodeGenContext) -> Value {
-        let dst = ctx.reserve_intermediate_bv_cache(self.0);
-        let original_width = ctx.fn_builder.ins().iconst(ctx.int, (self.0 - by) as i64);
-        let by = ctx.fn_builder.ins().iconst(ctx.int, by as i64);
-        invoke_bv_extern_function(
-            ctx.runtime_lib.bv_ops["zero_extend"],
-            &[*dst, *arg, original_width, by],
-            ctx,
-        );
-        *dst
+        self.with_dst(ctx, |dst, ctx| {
+            let original_width = ctx.fn_builder.ins().iconst(ctx.int, (self.0 - by) as i64);
+            let by = ctx.fn_builder.ins().iconst(ctx.int, by as i64);
+            invoke_bv_extern_function(
+                ctx.runtime_lib.bv_ops["zero_extend"],
+                &[*dst, *arg, original_width, by],
+                ctx,
+            );
+        })
     }
 
     fn sign_extend(&self, arg: TaggedValue, by: WidthInt, ctx: &mut CodeGenContext) -> Value {
-        let dst = ctx.reserve_intermediate_bv_cache(self.0);
-        let original_width = ctx.fn_builder.ins().iconst(ctx.int, (self.0 - by) as i64);
-        let by = ctx.fn_builder.ins().iconst(ctx.int, by as i64);
-        invoke_bv_extern_function(
-            ctx.runtime_lib.bv_ops["sign_extend"],
-            &[*dst, *arg, original_width, by],
-            ctx,
-        );
-        *dst
+        self.with_dst(ctx, |dst, ctx| {
+            let original_width = ctx.fn_builder.ins().iconst(ctx.int, (self.0 - by) as i64);
+            let by = ctx.fn_builder.ins().iconst(ctx.int, by as i64);
+            invoke_bv_extern_function(
+                ctx.runtime_lib.bv_ops["sign_extend"],
+                &[*dst, *arg, original_width, by],
+                ctx,
+            );
+        })
     }
 
     fn shift_right(&self, arg0: TaggedValue, arg1: TaggedValue, ctx: &mut CodeGenContext) -> Value {
-        let dst = ctx.reserve_intermediate_bv_cache(self.0);
-        let width = ctx
-            .fn_builder
-            .ins()
-            .iconst(ctx.int, arg1.expect_bv_type() as i64);
-        invoke_bv_extern_function(
-            ctx.runtime_lib.bv_ops["shift_right"],
-            &[*dst, *arg0, *arg1, width],
-            ctx,
-        );
-        *dst
+        self.with_dst(ctx, |dst, ctx| {
+            let width = ctx
+                .fn_builder
+                .ins()
+                .iconst(ctx.int, arg1.expect_bv_type() as i64);
+            invoke_bv_extern_function(
+                ctx.runtime_lib.bv_ops["shift_right"],
+                &[*dst, *arg0, *arg1, width],
+                ctx,
+            );
+        })
     }
 
     fn arithmetic_shift_right(
@@ -288,31 +302,31 @@ impl BVCodeGenVTable for BVIndirect {
         arg1: TaggedValue,
         ctx: &mut CodeGenContext,
     ) -> Value {
-        let dst = ctx.reserve_intermediate_bv_cache(self.0);
-        let width = ctx
-            .fn_builder
-            .ins()
-            .iconst(ctx.int, arg1.expect_bv_type() as i64);
-        invoke_bv_extern_function(
-            ctx.runtime_lib.bv_ops["arithmetic_shift_right"],
-            &[*dst, *arg0, *arg1, width],
-            ctx,
-        );
-        *dst
+        self.with_dst(ctx, |dst, ctx| {
+            let width = ctx
+                .fn_builder
+                .ins()
+                .iconst(ctx.int, arg1.expect_bv_type() as i64);
+            invoke_bv_extern_function(
+                ctx.runtime_lib.bv_ops["arithmetic_shift_right"],
+                &[*dst, *arg0, *arg1, width],
+                ctx,
+            );
+        })
     }
 
     fn shift_left(&self, arg0: TaggedValue, arg1: TaggedValue, ctx: &mut CodeGenContext) -> Value {
-        let dst = ctx.reserve_intermediate_bv_cache(self.0);
-        let width = ctx
-            .fn_builder
-            .ins()
-            .iconst(ctx.int, arg1.expect_bv_type() as i64);
-        invoke_bv_extern_function(
-            ctx.runtime_lib.bv_ops["shift_left"],
-            &[*dst, *arg0, *arg1, width],
-            ctx,
-        );
-        *dst
+        self.with_dst(ctx, |dst, ctx| {
+            let width = ctx
+                .fn_builder
+                .ins()
+                .iconst(ctx.int, arg1.expect_bv_type() as i64);
+            invoke_bv_extern_function(
+                ctx.runtime_lib.bv_ops["shift_left"],
+                &[*dst, *arg0, *arg1, width],
+                ctx,
+            );
+        })
     }
 
     fn equal(&self, _lhs: TaggedValue, _rhs: TaggedValue, _ctx: &mut CodeGenContext) -> Value {
@@ -332,16 +346,16 @@ impl BVCodeGenVTable for BVIndirect {
     }
 
     fn concat(&self, hi: TaggedValue, lo: TaggedValue, ctx: &mut CodeGenContext) -> Value {
-        let dst = ctx.reserve_intermediate_bv_cache(self.0);
-        let (hi_width, lo_width) = (hi.expect_bv_type(), lo.expect_bv_type());
-        let hi_width = ctx.fn_builder.ins().iconst(ctx.int, hi_width as i64);
-        let lo_width = ctx.fn_builder.ins().iconst(ctx.int, lo_width as i64);
-        invoke_bv_extern_function(
-            ctx.runtime_lib.bv_ops["concat"],
-            &[*dst, *hi, *lo, hi_width, lo_width],
-            ctx,
-        );
-        *dst
+        self.with_dst(ctx, |dst, ctx| {
+            let (hi_width, lo_width) = (hi.expect_bv_type(), lo.expect_bv_type());
+            let hi_width = ctx.fn_builder.ins().iconst(ctx.int, hi_width as i64);
+            let lo_width = ctx.fn_builder.ins().iconst(ctx.int, lo_width as i64);
+            invoke_bv_extern_function(
+                ctx.runtime_lib.bv_ops["concat"],
+                &[*dst, *hi, *lo, hi_width, lo_width],
+                ctx,
+            );
+        })
     }
 
     fn slice(
@@ -351,14 +365,14 @@ impl BVCodeGenVTable for BVIndirect {
         lo: WidthInt,
         ctx: &mut CodeGenContext,
     ) -> Value {
-        let dst = ctx.reserve_intermediate_bv_cache(self.0);
-        let hi = ctx.fn_builder.ins().iconst(ctx.int, hi as i64);
-        let lo = ctx.fn_builder.ins().iconst(ctx.int, lo as i64);
-        invoke_bv_extern_function(
-            ctx.runtime_lib.bv_ops["slice_with_output_buffer"],
-            &[*dst, *value, hi, lo],
-            ctx,
-        );
-        *dst
+        self.with_dst(ctx, |dst, ctx| {
+            let hi = ctx.fn_builder.ins().iconst(ctx.int, hi as i64);
+            let lo = ctx.fn_builder.ins().iconst(ctx.int, lo as i64);
+            invoke_bv_extern_function(
+                ctx.runtime_lib.bv_ops["slice_with_output_buffer"],
+                &[*dst, *value, hi, lo],
+                ctx,
+            );
+        })
     }
 }

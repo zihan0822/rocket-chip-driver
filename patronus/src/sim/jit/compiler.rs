@@ -15,8 +15,6 @@ use cranelift::module::Module;
 use cranelift::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
 
-/// we need a vec_box here because the address of those elements are implicitly
-/// referenced by the compiled code. we need to make sure they are pinned on heap
 pub(super) struct JITCompiler {
     module: JITModule,
     pub(super) sealed_heap_resources: Vec<ManagedHeapResource>,
@@ -254,8 +252,8 @@ impl JITCompiler {
 
 /// `dst` is a pointer to object with type aligned with `src`.
 fn store_compiled_code_ret_at(
-    dst: cranelift::prelude::Value,
-    src: cranelift::prelude::Value,
+    dst: Value,
+    src: Value,
     data_type: expr::Type,
     codegen_ctx: &mut CodeGenContext,
 ) {
@@ -266,10 +264,11 @@ fn store_compiled_code_ret_at(
             .store(ir::MemFlags::trusted(), src, dst, 0);
         return;
     }
-    let (dst, src) = (
-        TaggedValue::tag(dst, data_type),
-        TaggedValue::tag(src, data_type),
-    );
+    let src = codegen_ctx.resource_ptr_at_slot(TaggedValue::tag(src, data_type));
+    let dst = TaggedValue {
+        value: dst,
+        data_type,
+    };
     match data_type {
         expr::Type::BV(..) => {
             codegen_ctx.copy_from_bv(dst, src);
@@ -345,12 +344,14 @@ impl CodeGenContext<'_, '_, '_> {
                     }
                     !at_disjoint_branch(self.expr_ctx, &bottom_up_expr_graph, e, other)
                 }) {
-                    let cow = self.reserve_intermediate_array_cache(
+                    let cow_slot = self.reserve_intermediate_array_cache(
                         expr.get_array_type(self.expr_ctx).unwrap(),
                     );
-                    self.copy_from_array(cow, evaluated[array]);
+                    let cow = self.resource_ptr_at_slot(cow_slot);
+                    let src = self.resource_ptr_at_slot(evaluated[array]);
+                    self.copy_from_array(cow, src);
                     // first argument of `ArrayStore` operation is the src array
-                    arguments[0] = cow;
+                    arguments[0] = cow_slot;
                 }
             }
             evaluated.insert(e, self.expr_codegen(e, &arguments));
@@ -379,24 +380,18 @@ impl CodeGenContext<'_, '_, '_> {
         }
     }
 
-    /// Register a hole for read instruction that reads the heap resource from the pinned buffer.
-    /// This hole will be filled after `mock_interpret` is completed.
+    /// Register a hole that will be filled with pinned slot address of the resource after `mock_interpret` is done.
     ///
     /// We maintain the invariance that for every long lived heap resource there is a slot that contains the raw heap pointer
     /// to that during the entire lifetime of compiler. And that slot address won't change.
     fn phantom_register_long_lived_heap_resources(&mut self, tpe: expr::Type) -> TaggedValue {
         let phantom_src_addr = self.fn_builder.ins().iconst(self.int, 0);
-        let ret =
-            self.fn_builder
-                .ins()
-                .load(types::I64, ir::MemFlags::trusted(), phantom_src_addr, 0);
         self.long_live_cache_read_holes
             .push((phantom_src_addr, tpe));
-        TaggedValue::tag(ret, tpe)
+        TaggedValue::tag(phantom_src_addr, tpe)
     }
 
     /// Allocates all registered long-lived heap resources and pins them in a continuous buffer on heap.
-    /// Each heap resource will be associated with a pinned slot on heap that has lifetime tied to the JIT compiler.
     /// This extra level of indirection allows us to "swap" heap pointer with external pointer when necessary to reduce
     /// unnecessary heap allocation or data copy.
     fn finalize_long_lived_heap_resources(&mut self) {
@@ -469,7 +464,7 @@ impl CodeGenContext<'_, '_, '_> {
 
     /// Removes the dummy instruction hole and fills it with the actual slot address.
     /// Since the slot address is guaranteed to be pinned during the lifetime of compiler, it's sound for us to directly
-    /// hardcode the raw address.
+    /// hardcode the raw address with `iconst` inst.
     fn fill_heap_cache_read_hole(&mut self, dummy_inst_value: Value, src_addr: usize) {
         let ir::dfg::ValueDef::Result(dummy_inst, _) =
             self.fn_builder.func.dfg.value_def(dummy_inst_value)
@@ -519,15 +514,15 @@ impl TaggedValue {
         }
     }
 
-    fn tag(value: Value, data_type: expr::Type) -> Self {
+    pub(super) fn tag(value: Value, data_type: expr::Type) -> Self {
         Self { value, data_type }
     }
 
-    fn tag_bv(value: Value, width: WidthInt) -> Self {
+    pub(super) fn tag_bv(value: Value, width: WidthInt) -> Self {
         Self::tag(value, expr::Type::BV(width))
     }
 
-    fn tag_array(value: Value, tpe: ArrayType) -> Self {
+    pub(super) fn tag_array(value: Value, tpe: ArrayType) -> Self {
         Self::tag(value, expr::Type::Array(tpe))
     }
 }
@@ -558,6 +553,14 @@ impl CodeGenContext<'_, '_, '_> {
     pub(super) fn reserve_intermediate_bv_cache(&mut self, width: WidthInt) -> TaggedValue {
         assert!(width > THIN_BV_MAX_WIDTH);
         self.phantom_register_long_lived_heap_resources(expr::Type::BV(width))
+    }
+
+    pub(super) fn resource_ptr_at_slot(&mut self, slot_address: TaggedValue) -> TaggedValue {
+        let ret = self
+            .fn_builder
+            .ins()
+            .load(types::I64, ir::MemFlags::trusted(), *slot_address, 0);
+        TaggedValue::tag(ret, slot_address.data_type)
     }
 
     fn copy_from_array(&mut self, dst: TaggedValue, src: TaggedValue) {
@@ -658,14 +661,16 @@ impl CodeGenContext<'_, '_, '_> {
     fn reserve_cloned_intermediate_cache(&mut self, src: TaggedValue) -> TaggedValue {
         match src.data_type {
             expr::Type::Array(tpe) => {
-                let dst = self.reserve_intermediate_array_cache(tpe);
+                let slot = self.reserve_intermediate_array_cache(tpe);
+                let dst = self.resource_ptr_at_slot(slot);
                 self.copy_from_array(dst, src);
-                dst
+                slot
             }
             expr::Type::BV(tpe) => {
-                let dst = self.reserve_intermediate_bv_cache(tpe);
+                let slot = self.reserve_intermediate_bv_cache(tpe);
+                let dst = self.resource_ptr_at_slot(slot);
                 self.copy_from_bv(dst, src);
-                dst
+                slot
             }
         }
     }
@@ -680,13 +685,15 @@ impl CodeGenContext<'_, '_, '_> {
                 self.fn_builder.ins().select(*args[0], *args[1], *args[2])
             }
             Expr::ArrayStore { .. } => {
-                let data_width = args[0].expect_array_type().data_width;
-                let (base, index, data) = (*args[0], *args[1], *args[2]);
+                let array_type = args[0].expect_array_type();
+                let data_width = array_type.data_width;
+                let (slot, index, data) = (args[0], *args[1], args[2]);
+                let base = self.resource_ptr_at_slot(slot);
                 let offset = self
                     .fn_builder
                     .ins()
                     .imul_imm(index, self.int.bytes() as i64);
-                let address = self.fn_builder.ins().iadd(base, offset);
+                let address = self.fn_builder.ins().iadd(*base, offset);
                 if data_width > THIN_BV_MAX_WIDTH {
                     let dst_bv = self.fn_builder.ins().load(
                         self.int,
@@ -695,29 +702,28 @@ impl CodeGenContext<'_, '_, '_> {
                         address,
                         0,
                     );
-                    self.copy_from_bv(
-                        TaggedValue::tag_bv(dst_bv, data_width),
-                        TaggedValue::tag_bv(data, data_width),
-                    );
+                    let data = self.resource_ptr_at_slot(data);
+                    self.copy_from_bv(TaggedValue::tag_bv(dst_bv, data_width), data);
                 } else {
                     self.fn_builder.ins().store(
                         // upheld by the unsafeness of CompiledEvalFn::call
                         ir::MemFlags::trusted(),
-                        data,
+                        *data,
                         address,
                         0,
                     );
                 }
-                base
+                return slot;
             }
             Expr::BVArrayRead { .. } => {
                 let data_width = args[0].expect_array_type().data_width;
-                let (base, index) = (*args[0], *args[1]);
+                let (slot, index) = (args[0], *args[1]);
+                let base = self.resource_ptr_at_slot(slot);
                 let offset = self
                     .fn_builder
                     .ins()
                     .imul_imm(index, self.int.bytes() as i64);
-                let address = self.fn_builder.ins().iadd(base, offset);
+                let address = self.fn_builder.ins().iadd(*base, offset);
                 let element = self.fn_builder.ins().load(
                     self.int,
                     // upheld by the unsafeness of CompiledEvalFn::call
@@ -750,6 +756,17 @@ impl CodeGenContext<'_, '_, '_> {
             0..=64 => &super::bv_codegen::BVWord(width),
             _ => &super::bv_codegen::BVIndirect(width),
         };
+        let args: Vec<_> = args
+            .iter()
+            .map(|&arg| {
+                if arg.requires_bv_delegation() {
+                    self.resource_ptr_at_slot(arg)
+                } else {
+                    arg
+                }
+            })
+            .collect();
+
         match self.expr_ctx[expr] {
             Expr::BVSymbol { .. } => vtable.symbol(expr, self),
             Expr::BVLiteral(value) => vtable.literal(value.get(self.expr_ctx), self),
