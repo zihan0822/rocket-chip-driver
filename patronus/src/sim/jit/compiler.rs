@@ -135,21 +135,16 @@ impl JITCompiler {
                     let output_buffer_address =
                         codegen_ctx.fn_builder.block_params(codegen_ctx.block_id)[1];
                     let data_type = expr.get_type(expr_ctx);
-                    let dst = if matches!(data_type, expr::Type::BV(width) if width <= THIN_BV_MAX_WIDTH) {
-                        codegen_ctx.fn_builder.ins().iadd_imm(
-                            output_buffer_address,
-                            (param_offset * codegen_ctx.int.bytes()) as i64,
-                        )
-                    } else {
-                        codegen_ctx.fn_builder.ins().load(
-                            types::I64,
-                            // buffer is allocated by Rust, therefore trusted
-                            ir::MemFlags::trusted(),
-                            output_buffer_address,
-                            (param_offset * codegen_ctx.int.bytes()) as i32,
-                        )
-                    };
-                    store_compiled_code_ret_at(dst, ret, data_type, &mut codegen_ctx);
+                    let dst_slot = codegen_ctx.fn_builder.ins().iadd_imm(
+                        output_buffer_address,
+                        (param_offset * codegen_ctx.int.bytes()) as i64,
+                    );
+                    try_swap_compiled_code_ret_with_slot(
+                        dst_slot,
+                        ret,
+                        data_type,
+                        &mut codegen_ctx,
+                    );
                 }
                 codegen_ctx.fn_builder.ins().return_(&[]);
                 codegen_ctx.fn_builder.finalize();
@@ -185,7 +180,7 @@ impl JITCompiler {
                 debug_assert_eq!(ret.len(), 1);
                 let data_type = root_expr.get_type(expr_ctx);
                 let dst = codegen_ctx.fn_builder.block_params(codegen_ctx.block_id)[1];
-                store_compiled_code_ret_at(dst, ret[0], data_type, &mut codegen_ctx);
+                copy_compiled_code_ret_at(dst, ret[0], data_type, &mut codegen_ctx);
                 codegen_ctx.fn_builder.ins().return_(&[]);
                 codegen_ctx.fn_builder.finalize();
             },
@@ -251,7 +246,7 @@ impl JITCompiler {
 }
 
 /// `dst` is a pointer to object with type aligned with `src`.
-fn store_compiled_code_ret_at(
+fn copy_compiled_code_ret_at(
     dst: Value,
     src: Value,
     data_type: expr::Type,
@@ -275,6 +270,42 @@ fn store_compiled_code_ret_at(
         }
         expr::Type::Array(..) => codegen_ctx.copy_from_array(dst, src),
     }
+}
+
+fn try_swap_compiled_code_ret_with_slot(
+    dst_slot: Value,
+    src: Value,
+    data_type: expr::Type,
+    codegen_ctx: &mut CodeGenContext,
+) {
+    if matches!(data_type, expr::Type::BV(width) if width <= THIN_BV_MAX_WIDTH) {
+        codegen_ctx
+            .fn_builder
+            .ins()
+            .store(ir::MemFlags::trusted(), src, dst_slot, 0);
+        return;
+    }
+    // `src` is interpreted as slot address of long lived heap resources
+    swap_ptr_at_slot(codegen_ctx, dst_slot, src);
+}
+
+fn swap_ptr_at_slot(codegen_ctx: &mut CodeGenContext, slot_a: Value, slot_b: Value) {
+    let ptr_a = codegen_ctx
+        .fn_builder
+        .ins()
+        .load(codegen_ctx.int, MemFlags::trusted(), slot_a, 0);
+    let ptr_b = codegen_ctx
+        .fn_builder
+        .ins()
+        .load(codegen_ctx.int, MemFlags::trusted(), slot_b, 0);
+    codegen_ctx
+        .fn_builder
+        .ins()
+        .store(MemFlags::trusted(), ptr_b, slot_a, 0);
+    codegen_ctx
+        .fn_builder
+        .ins()
+        .store(MemFlags::trusted(), ptr_a, slot_b, 0);
 }
 
 pub(super) struct CodeGenContext<'expr, 'ctx, 'engine> {
