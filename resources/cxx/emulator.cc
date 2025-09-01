@@ -247,30 +247,32 @@ done_processing:
     bool io_success = ffi::get_driver_io_success() != 0;
     if (done_reset && (dtm->done() || io_success))
       break;
-    if (done_reset && dtm->done())
-      break;
-    uint8_t reset = trace_count < async_reset_cycles + sync_reset_cycles;
+    uint8_t reset = trace_count < async_reset_cycles*2 ? trace_count % 2 :
+      trace_count < async_reset_cycles*2 + sync_reset_cycles;
     ffi::set_driver_reset(reset);
     done_reset = !reset;
     ffi::set_driver_clock(0);
     ffi::step_driver();
-    // tile->eval(true, verbose, done_reset);
-    ffi::set_driver_clock(1);
+    uint8_t clock = trace_count >= async_reset_cycles*2;
+    ffi::set_driver_clock(clock);
     ffi::step_driver();
     tick_dtm(done_reset);
     trace_count++;
   }
 
-  if (dtm->exit_code()) {
-    fprintf(stderr, "*** FAILED *** via dtm (code = %d, seed %d) after %" PRIu64 " cycles\n", dtm->exit_code(), random_seed, trace_count);
+  if (dtm->exit_code())
+  {
+    fprintf(stderr, "*** FAILED *** via dtm (code = %d, seed %d) after %ld cycles\n", dtm->exit_code(), random_seed, trace_count);
     ret = dtm->exit_code();
   }
-  else if (trace_count == max_cycles) {
-    fprintf(stderr, "*** FAILED *** via trace_count (timeout, seed %d) after %" PRIu64 " cycles\n", random_seed, trace_count);
+  else if (trace_count == max_cycles)
+  {
+    fprintf(stderr, "*** FAILED *** via trace_count (timeout, seed %d) after %ld cycles\n", random_seed, trace_count);
     ret = 2;
   }
-  else if (verbose || print_cycles) {
-    fprintf(stderr, "Completed after %" PRIu64 " cycles\n", trace_count);
+  else if (verbose || print_cycles)
+  {
+    fprintf(stderr, "*** PASSED *** Completed after %ld cycles\n", trace_count);
   }
 
   if (dtm) delete dtm;
