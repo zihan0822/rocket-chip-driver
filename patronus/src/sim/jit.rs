@@ -14,7 +14,7 @@ use baa::*;
 use compiler::*;
 use cranelift::module::ModuleError;
 use fixedbitset::FixedBitSet;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use std::cell::RefCell;
 use std::sync::LazyLock;
 
@@ -341,25 +341,38 @@ impl<'expr> JITEngine<'expr> {
     }
 
     fn find_leaf_states_upstream_dep(&mut self) {
-        let mut todo = Vec::from_iter(
-            self.sys
-                .states
-                .iter()
-                .filter_map(|state| state.next.map(|next| (state.clone(), next))),
-        );
-        while let Some((root, next)) = todo.pop() {
-            let expr = &self.ctx[next];
+        let mut todo = vec![];
+        let mut visited: FxHashMap<ExprRef, FxHashSet<&State>> = FxHashMap::default();
+        for state in &self.sys.states {
+            if let Some(next) = state.next {
+                self.ctx[next].for_each_child(|&child| todo.push((next, child)));
+                visited.insert(next, FxHashSet::from_iter([state]));
+            }
+        }
+        while let Some((parent, next)) = todo.pop() {
+            if visited
+                .get(&next)
+                .is_some_and(|propagated_roots| visited[&parent].is_subset(propagated_roots))
+            {
+                continue;
+            }
+            let parent_roots = visited[&parent].clone();
+            visited.entry(next).or_default().extend(parent_roots);
+            self.ctx[next].for_each_child(|&child| todo.push((next, child)));
+        }
+        for (e, dependent_roots) in visited {
+            let expr = &self.ctx[e];
             if expr.num_children() == 0 && expr.is_symbol() {
                 let dependents = self
                     .upstream_dependents
-                    .entry(next)
+                    .entry(e)
                     .or_insert_with(|| FixedBitSet::with_capacity(self.mutable_slot_states.len()));
-                let offset_in_state_buffer = self.states_to_offset[&root.symbol];
-                if offset_in_state_buffer < self.mutable_slot_states.len() {
-                    dependents.insert(offset_in_state_buffer);
+                for root in dependent_roots {
+                    let offset_in_state_buffer = self.states_to_offset[&root.symbol];
+                    if offset_in_state_buffer < self.mutable_slot_states.len() {
+                        dependents.insert(offset_in_state_buffer);
+                    }
                 }
-            } else {
-                expr.for_each_child(|&child| todo.push((root.clone(), child)));
             }
         }
     }
