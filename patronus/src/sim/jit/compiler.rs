@@ -561,16 +561,29 @@ impl TaggedValue {
 impl CodeGenContext<'_, '_, '_> {
     /// the meaning of the input state is polymorphic over bv/array
     pub(super) fn load_input_state(&mut self, expr: ExprRef) -> TaggedValue {
-        let param_offset = self.input_state_buffer.get_state_offset(expr) as u32;
-        let input_buffer_address = self.fn_builder.block_params(self.block_id)[0];
+        let slot_address = self.input_state_slot(expr);
         let value = self.fn_builder.ins().load(
             self.int,
             // buffer is allocated by Rust, therefore trusted
             ir::MemFlags::trusted(),
-            input_buffer_address,
-            (param_offset * self.int.bytes()) as i32,
+            *slot_address,
+            0,
         );
         TaggedValue::tag(value, expr.get_type(self.expr_ctx))
+    }
+
+    fn input_state_slot(&mut self, expr: ExprRef) -> TaggedValue {
+        let param_offset = self.input_state_buffer.get_state_offset(expr) as u32;
+        let input_buffer_address = self.fn_builder.block_params(self.block_id)[0];
+        let param_offset = self
+            .fn_builder
+            .ins()
+            .iconst(self.int, (param_offset * self.int.bytes()) as i64);
+        let slot_address = self
+            .fn_builder
+            .ins()
+            .iadd(input_buffer_address, param_offset);
+        TaggedValue::tag(slot_address, expr.get_type(self.expr_ctx))
     }
 
     /// Reserves a long lived array cache, whose lifetime is tied to the JITCompiler
@@ -709,8 +722,11 @@ impl CodeGenContext<'_, '_, '_> {
     fn expr_codegen(&mut self, expr: ExprRef, args: &[TaggedValue]) -> TaggedValue {
         let value = match &self.expr_ctx[expr] {
             Expr::ArraySymbol { .. } => {
-                let src = self.load_input_state(expr);
-                return self.reserve_cloned_intermediate_cache(src);
+                let input_slot = self.input_state_slot(expr);
+                let cache_slot =
+                    self.reserve_intermediate_array_cache(input_slot.expect_array_type());
+                swap_ptr_at_slot(self, *cache_slot, *input_slot);
+                return cache_slot;
             }
             Expr::BVIte { .. } | Expr::ArrayIte { .. } => {
                 self.fn_builder.ins().select(*args[0], *args[1], *args[2])
