@@ -89,6 +89,10 @@ const BATCHED_UPDATE_THRESHOLD: f64 = 0.6;
 /// Only when this environment variable is set and the threshold condition is met, dynamic mode switch will be turned on.
 static DYNAMIC_MODE_SWITCH: LazyLock<bool> =
     LazyLock::new(|| std::env::var("DYNAMIC_MODE_SWITCH").is_ok_and(|enable| enable.eq("1")));
+/// Extra cranelift settings that will be directly passed to JIT compiler.
+/// This should be a colon separated key value pair joined by comma.
+static CRANELIFT_FLAGS: LazyLock<Option<String>> =
+    LazyLock::new(|| std::env::var("CRANELIFT_FLAGS").ok());
 /// Minimum number of expr nodes that will enable dynamic switching between per-expr and batched update mode.
 /// If the number of expr nodes is less than or equal to this, JIT will always use batched update mode.
 /// TODO: better heuristics than simple expr nodes count
@@ -155,7 +159,6 @@ pub struct JITEngine<'expr> {
     snapshots: Vec<Box<[i64]>>,
 }
 
-#[derive(Default)]
 struct JITBackend {
     compiler: JITCompiler,
     compiled_transition_sys: Option<EvalBatchedExprWithUpdate>,
@@ -163,6 +166,14 @@ struct JITBackend {
 }
 
 impl JITBackend {
+    fn with_compiler_flags(flags: Option<&str>) -> Self {
+        Self {
+            compiler: JITCompiler::new(flags),
+            compiled_transition_sys: None,
+            compiled_expr_eval: FxHashMap::default(),
+        }
+    }
+
     /// # Safety
     /// The caller should guarantee that `ret_placeholder` is a valid pointer to object of the same type as `expr`
     unsafe fn eval_expr(
@@ -321,7 +332,7 @@ impl<'expr> JITEngine<'expr> {
             *DYNAMIC_MODE_SWITCH && ctx.exprs.len() > DYNAMIC_MODE_SWITCH_THRESHOLD;
 
         let mut engine = Self {
-            backend: RefCell::default(),
+            backend: RefCell::new(JITBackend::with_compiler_flags(CRANELIFT_FLAGS.as_deref())),
             buffers,
             ctx,
             sys,

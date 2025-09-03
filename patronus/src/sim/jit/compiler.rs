@@ -74,16 +74,19 @@ impl EvalBatchedExprWithUpdate {
     }
 }
 
-impl Default for JITCompiler {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl JITCompiler {
-    pub(super) fn new() -> Self {
-        let mut builder = JITBuilder::new(cranelift::module::default_libcall_names())
-            .unwrap_or_else(|_| panic!("fail to launch jit instance"));
+    pub(super) fn new(flags: Option<&str>) -> Self {
+        let parsed_flags = flags.map_or(vec![], |s| {
+            s.split(",")
+                .map(|flag| {
+                    flag.split_once(":")
+                        .expect("flag should be a `:` separated pair")
+                })
+                .collect()
+        });
+        let mut builder =
+            JITBuilder::with_flags(&parsed_flags, cranelift::module::default_libcall_names())
+                .unwrap_or_else(|_| panic!("fail to launch jit instance"));
         runtime::load_runtime_lib(&mut builder);
         let module = JITModule::new(builder);
         Self {
