@@ -782,13 +782,13 @@ impl Simulator for JITEngine<'_> {
                             &baa::BitVecValue::zero(data_width),
                         );
                         std::slice::from_raw_parts(
-                            value as *const baa::BitVecValue,
+                            value as *const *mut baa::BitVecValue,
                             1 << index_width,
                         )
                         .iter()
                         .enumerate()
-                        .for_each(|(idx, bv)| {
-                            array.store(&BitVecValue::from_u64(idx as u64, index_width), bv);
+                        .for_each(|(idx, &bv)| {
+                            array.store(&BitVecValue::from_u64(idx as u64, index_width), &*bv);
                         });
                         baa::Value::Array(array)
                     };
