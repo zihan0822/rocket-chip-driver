@@ -1,6 +1,7 @@
 // Copyright 2025 Cornell University
 // released under BSD 3-Clause License
 // author: Zihan Li <zl2225@cornell.edu>
+use super::bv_codegen::select_container_primitive;
 use super::expr_graph::*;
 use super::heap::*;
 use super::{JITResult, StateBufferView, THIN_BV_MAX_WIDTH, runtime};
@@ -233,7 +234,6 @@ impl JITCompiler {
             int: types::I64,
             long_live_cache_read_holes: vec![],
         };
-
         codegen_ctx.codegen(codegen_epilogue);
 
         let function_id = self
@@ -255,11 +255,10 @@ fn copy_compiled_code_ret_at(
     data_type: expr::Type,
     codegen_ctx: &mut CodeGenContext,
 ) {
-    if matches!(data_type, expr::Type::BV(width) if width <= THIN_BV_MAX_WIDTH) {
-        codegen_ctx
-            .fn_builder
-            .ins()
-            .store(ir::MemFlags::trusted(), src, dst, 0);
+    if let expr::Type::BV(width) = data_type
+        && width <= THIN_BV_MAX_WIDTH
+    {
+        store_thin_bv_at_slot(dst, src, width, codegen_ctx);
         return;
     }
     let src = codegen_ctx.resource_ptr_at_slot(TaggedValue::tag(src, data_type));
@@ -281,15 +280,32 @@ fn try_swap_compiled_code_ret_with_slot(
     data_type: expr::Type,
     codegen_ctx: &mut CodeGenContext,
 ) {
-    if matches!(data_type, expr::Type::BV(width) if width <= THIN_BV_MAX_WIDTH) {
-        codegen_ctx
-            .fn_builder
-            .ins()
-            .store(ir::MemFlags::trusted(), src, dst_slot, 0);
+    if let expr::Type::BV(width) = data_type
+        && width <= THIN_BV_MAX_WIDTH
+    {
+        store_thin_bv_at_slot(dst_slot, src, width, codegen_ctx);
         return;
     }
     // `src` is interpreted as slot address of long lived heap resources
     swap_ptr_at_slot(codegen_ctx, dst_slot, src);
+}
+
+fn store_thin_bv_at_slot(
+    slot: Value,
+    mut ret: Value,
+    width: WidthInt,
+    codegen_ctx: &mut CodeGenContext,
+) {
+    if !matches!(
+        super::bv_codegen::select_container_primitive(width),
+        types::I64
+    ) {
+        ret = codegen_ctx.fn_builder.ins().uextend(types::I64, ret);
+    }
+    codegen_ctx
+        .fn_builder
+        .ins()
+        .store(ir::MemFlags::trusted(), ret, slot, 0);
 }
 
 fn swap_ptr_at_slot(codegen_ctx: &mut CodeGenContext, slot_a: Value, slot_b: Value) {
@@ -732,17 +748,21 @@ impl CodeGenContext<'_, '_, '_> {
                 return cache_slot;
             }
             Expr::BVIte { .. } | Expr::ArrayIte { .. } => {
+                assert_eq!(args[1].data_type, args[2].data_type);
                 self.fn_builder.ins().select(*args[0], *args[1], *args[2])
             }
             Expr::ArrayStore { .. } => {
                 let array_type = args[0].expect_array_type();
                 let data_width = array_type.data_width;
-                let (slot, index, data) = (args[0], *args[1], args[2]);
+                let (slot, mut index, data) = (args[0], args[1], args[2]);
                 let base = self.resource_ptr_at_slot(slot);
+                if index.expect_bv_type() < THIN_BV_MAX_WIDTH {
+                    index.value = self.fn_builder.ins().uextend(types::I64, *index);
+                }
                 let offset = self
                     .fn_builder
                     .ins()
-                    .imul_imm(index, self.int.bytes() as i64);
+                    .imul_imm(*index, self.int.bytes() as i64);
                 let address = self.fn_builder.ins().iadd(*base, offset);
                 if data_width > THIN_BV_MAX_WIDTH {
                     let dst_bv = self.fn_builder.ins().load(
@@ -755,10 +775,14 @@ impl CodeGenContext<'_, '_, '_> {
                     let data = self.resource_ptr_at_slot(data);
                     self.copy_from_bv(TaggedValue::tag_bv(dst_bv, data_width), data);
                 } else {
+                    let mut data = *data;
+                    if !matches!(select_container_primitive(data_width), types::I64) {
+                        data = self.fn_builder.ins().uextend(types::I64, data)
+                    }
                     self.fn_builder.ins().store(
                         // upheld by the unsafeness of CompiledEvalFn::call
                         ir::MemFlags::trusted(),
-                        *data,
+                        data,
                         address,
                         0,
                     );
@@ -767,14 +791,17 @@ impl CodeGenContext<'_, '_, '_> {
             }
             Expr::BVArrayRead { .. } => {
                 let data_width = args[0].expect_array_type().data_width;
-                let (slot, index) = (args[0], *args[1]);
+                let (slot, mut index) = (args[0], args[1]);
                 let base = self.resource_ptr_at_slot(slot);
+                if index.expect_bv_type() < THIN_BV_MAX_WIDTH {
+                    index.value = self.fn_builder.ins().uextend(types::I64, *index);
+                }
                 let offset = self
                     .fn_builder
                     .ins()
-                    .imul_imm(index, self.int.bytes() as i64);
+                    .imul_imm(*index, self.int.bytes() as i64);
                 let address = self.fn_builder.ins().iadd(*base, offset);
-                let element = self.fn_builder.ins().load(
+                let mut element = self.fn_builder.ins().load(
                     self.int,
                     // upheld by the unsafeness of CompiledEvalFn::call
                     ir::MemFlags::trusted(),
@@ -786,13 +813,26 @@ impl CodeGenContext<'_, '_, '_> {
                     return self.reserve_cloned_intermediate_cache(TaggedValue::tag_bv(
                         element, data_width,
                     ));
+                } else {
+                    let container_type = select_container_primitive(data_width);
+                    if !matches!(container_type, types::I64) {
+                        element = self.fn_builder.ins().ireduce(container_type, element);
+                    }
                 }
                 element
             }
             Expr::ArrayConstant { .. } => {
                 let tpe = expr.get_array_type(self.expr_ctx).unwrap();
                 // XXX: get rid of the extra alloc
-                let array_const = self.alloc_array(args[0], tpe);
+                let default_value = if !args[0].requires_bv_delegation() {
+                    self.fn_builder.ins().uextend(types::I64, *args[0])
+                } else {
+                    *args[0]
+                };
+                let array_const = self.alloc_array(
+                    TaggedValue::tag_bv(default_value, args[0].expect_bv_type()),
+                    tpe,
+                );
                 return self.reserve_cloned_intermediate_cache(array_const);
             }
             _ => self.dispatch_bv_operation_codegen(expr, args),

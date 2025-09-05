@@ -8,18 +8,43 @@ use cranelift::prelude::*;
 
 use super::compiler::{BVCodeGenVTable, CodeGenContext, TaggedValue};
 
+/// Contains width of result bit vector type.
 pub(super) struct BVWord(pub(super) WidthInt);
 pub(super) struct BVIndirect(pub(super) WidthInt);
 
+/// Given width of a bit vec value, select the smallest primitive type that is able to represent it
+pub(super) fn select_container_primitive(width: WidthInt) -> cranelift::prelude::Type {
+    match width {
+        1..=8 => types::I8,
+        9..=16 => types::I16,
+        17..=32 => types::I32,
+        33..=64 => types::I64,
+        _ => panic!("unsupported width for thin bit vec"),
+    }
+}
+
 impl BVWord {
-    fn sign_extend_to_word(
-        &self,
-        value: Value,
-        width: WidthInt,
-        ctx: &mut CodeGenContext,
-    ) -> Value {
-        let shifted = ctx.fn_builder.ins().ishl_imm(value, (64 - width) as i64);
-        ctx.fn_builder.ins().sshr_imm(shifted, (64 - width) as i64)
+    /// Unsigned extend input `value` to fit target width.
+    fn extend_to_fit(&self, value: TaggedValue, ctx: &mut CodeGenContext) -> Value {
+        debug_assert!(self.0 >= value.expect_bv_type());
+        let prev_type = select_container_primitive(value.expect_bv_type());
+        let target_type = select_container_primitive(self.0);
+        if !prev_type.eq(&target_type) {
+            ctx.fn_builder.ins().uextend(target_type, *value)
+        } else {
+            *value
+        }
+    }
+
+    fn truncate_to_fit(&self, value: TaggedValue, ctx: &mut CodeGenContext) -> Value {
+        debug_assert!(self.0 <= value.expect_bv_type());
+        let prev_type = select_container_primitive(value.expect_bv_type());
+        let target_type = select_container_primitive(self.0);
+        if !prev_type.eq(&target_type) {
+            ctx.fn_builder.ins().ireduce(target_type, *value)
+        } else {
+            *value
+        }
     }
 
     fn overflow_guard(&self, value: Value, ctx: &mut CodeGenContext) -> Value {
@@ -37,20 +62,22 @@ impl BVWord {
     }
 
     fn cmp(&self, lhs: Value, rhs: Value, condcode: IntCC, ctx: &mut CodeGenContext) -> Value {
-        let cmp = ctx.fn_builder.ins().icmp(condcode, lhs, rhs);
-        ctx.fn_builder.ins().uextend(ctx.int, cmp)
+        ctx.fn_builder.ins().icmp(condcode, lhs, rhs)
     }
 }
 
 impl BVCodeGenVTable for BVWord {
     fn symbol(&self, arg: ExprRef, ctx: &mut CodeGenContext) -> Value {
-        ctx.load_input_state(arg).value
+        let value = ctx.load_input_state(arg);
+        // TODO: currently bv symbol is always stored as `i64`
+        self.truncate_to_fit(TaggedValue::tag_bv(*value, 64), ctx)
     }
 
     fn literal(&self, value: BitVecValueRef, ctx: &mut CodeGenContext) -> Value {
-        ctx.fn_builder
-            .ins()
-            .iconst(ctx.int, value.to_u64().unwrap() as i64)
+        ctx.fn_builder.ins().iconst(
+            select_container_primitive(self.0),
+            value.to_u64().unwrap() as i64,
+        )
     }
 
     fn add(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value {
@@ -80,16 +107,33 @@ impl BVCodeGenVTable for BVWord {
         let flipped = ctx.fn_builder.ins().bnot(*arg);
         self.overflow_guard(ctx.fn_builder.ins().iadd_imm(flipped, 1), ctx)
     }
-    fn zero_extend(&self, arg: TaggedValue, _by: WidthInt, _ctx: &mut CodeGenContext) -> Value {
-        *arg
+
+    fn zero_extend(&self, arg: TaggedValue, _by: WidthInt, ctx: &mut CodeGenContext) -> Value {
+        self.extend_to_fit(arg, ctx)
     }
-    fn sign_extend(&self, arg: TaggedValue, by: WidthInt, ctx: &mut CodeGenContext) -> Value {
-        self.overflow_guard(self.sign_extend_to_word(*arg, self.0 - by, ctx), ctx)
+    fn sign_extend(&self, arg: TaggedValue, _by: WidthInt, ctx: &mut CodeGenContext) -> Value {
+        let mut ret = self.extend_to_fit(arg, ctx);
+        let num_leading_zeros =
+            select_container_primitive(self.0).bytes() * 8 - arg.expect_bv_type();
+        if num_leading_zeros != 0 {
+            let shifted = ctx.fn_builder.ins().ishl_imm(ret, num_leading_zeros as i64);
+            ret = ctx
+                .fn_builder
+                .ins()
+                .sshr_imm(shifted, num_leading_zeros as i64);
+        }
+        self.overflow_guard(ret, ctx)
     }
 
     fn shift_right(&self, arg0: TaggedValue, arg1: TaggedValue, ctx: &mut CodeGenContext) -> Value {
         assert!(!arg1.requires_bv_delegation());
-        ctx.fn_builder.ins().ushr(*arg0, *arg1)
+        self.truncate_to_fit(
+            TaggedValue::tag_bv(
+                ctx.fn_builder.ins().ushr(*arg0, *arg1),
+                arg0.expect_bv_type(),
+            ),
+            ctx,
+        )
     }
     fn arithmetic_shift_right(
         &self,
@@ -98,11 +142,18 @@ impl BVCodeGenVTable for BVWord {
         ctx: &mut CodeGenContext,
     ) -> Value {
         assert!(!arg1.requires_bv_delegation());
-        ctx.fn_builder.ins().sshr(*arg0, *arg1)
+        self.truncate_to_fit(
+            TaggedValue::tag_bv(
+                ctx.fn_builder.ins().sshr(*arg0, *arg1),
+                arg0.expect_bv_type(),
+            ),
+            ctx,
+        )
     }
     fn shift_left(&self, arg0: TaggedValue, arg1: TaggedValue, ctx: &mut CodeGenContext) -> Value {
         assert!(!arg1.requires_bv_delegation());
-        self.overflow_guard(ctx.fn_builder.ins().ishl(*arg0, *arg1), ctx)
+        let arg0 = self.extend_to_fit(arg0, ctx);
+        self.overflow_guard(ctx.fn_builder.ins().ishl(arg0, *arg1), ctx)
     }
 
     fn equal(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value {
@@ -144,11 +195,10 @@ impl BVCodeGenVTable for BVWord {
     }
 
     fn concat(&self, hi: TaggedValue, lo: TaggedValue, ctx: &mut CodeGenContext) -> Value {
-        let hi = ctx
-            .fn_builder
-            .ins()
-            .ishl_imm(*hi, lo.expect_bv_type() as i64);
-        ctx.fn_builder.ins().bor(hi, *lo)
+        let lo_width = lo.expect_bv_type();
+        let (hi, lo) = (self.extend_to_fit(hi, ctx), self.extend_to_fit(lo, ctx));
+        let hi = ctx.fn_builder.ins().ishl_imm(hi, lo_width as i64);
+        ctx.fn_builder.ins().bor(hi, lo)
     }
 
     fn slice(
@@ -161,10 +211,19 @@ impl BVCodeGenVTable for BVWord {
         if value.requires_bv_delegation() {
             let hi = ctx.fn_builder.ins().iconst(ctx.int, hi as i64);
             let lo = ctx.fn_builder.ins().iconst(ctx.int, lo as i64);
-            invoke_bv_extern_function(ctx.runtime_lib.bv_ops["slice"], &[*value, hi, lo], ctx)
-                .unwrap()
+            // extern `slice` fn always returns i64 type
+            let ret =
+                invoke_bv_extern_function(ctx.runtime_lib.bv_ops["slice"], &[*value, hi, lo], ctx)
+                    .unwrap();
+            self.truncate_to_fit(TaggedValue::tag_bv(ret, 64), ctx)
         } else {
-            let shifted = ctx.fn_builder.ins().ushr_imm(*value, lo as i64);
+            let shifted = self.truncate_to_fit(
+                TaggedValue::tag_bv(
+                    ctx.fn_builder.ins().ushr_imm(*value, lo as i64),
+                    value.expect_bv_type(),
+                ),
+                ctx,
+            );
             self.mask(shifted, hi - lo + 1, ctx)
         }
     }
@@ -345,9 +404,16 @@ impl BVCodeGenVTable for BVIndirect {
         unreachable!()
     }
 
-    fn concat(&self, hi: TaggedValue, lo: TaggedValue, ctx: &mut CodeGenContext) -> Value {
+    fn concat(&self, mut hi: TaggedValue, mut lo: TaggedValue, ctx: &mut CodeGenContext) -> Value {
         self.with_dst(ctx, |dst, ctx| {
             let (hi_width, lo_width) = (hi.expect_bv_type(), lo.expect_bv_type());
+            // extern `concat` function expects i64 type
+            if !hi.requires_bv_delegation() {
+                hi.value = BVWord(64).extend_to_fit(hi, ctx);
+            }
+            if !lo.requires_bv_delegation() {
+                lo.value = BVWord(64).extend_to_fit(lo, ctx);
+            }
             let hi_width = ctx.fn_builder.ins().iconst(ctx.int, hi_width as i64);
             let lo_width = ctx.fn_builder.ins().iconst(ctx.int, lo_width as i64);
             invoke_bv_extern_function(

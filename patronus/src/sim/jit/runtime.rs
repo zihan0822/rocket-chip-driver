@@ -162,16 +162,17 @@ fn import_bv_runtime_to_func_scope(
             BVOpKind::SliceWithOutputBuffer(_) | BVOpKind::Extend(_) | BVOpKind::Shift(_) => 4,
             BVOpKind::Concat(_) => 5,
         };
-        let num_returns = match registered.kind {
-            BVOpKind::Cmp(_) | BVOpKind::Slice(_) => 1,
-            _ => 0,
+        let return_types: &[types::Type] = match registered.kind {
+            BVOpKind::Cmp(_) => &[types::I8],
+            BVOpKind::Slice(_) => &[types::I64],
+            _ => &[],
         };
         let func_ref = import_extern_function(
             module,
             func,
             &bv_operation_name_mangle(registered.sym),
             std::iter::repeat_n(types::I64, num_params),
-            std::iter::repeat_n(types::I64, num_returns),
+            return_types.iter().copied(),
         );
         bv_runtime_lib.insert(registered.sym, func_ref);
     }
@@ -341,7 +342,7 @@ mod trampoline {
     pub(super) enum BVOpKind {
         Binary(unsafe extern "C" fn(*mut BitVecValue, *const BitVecValue, *const BitVecValue)),
         Unary(unsafe extern "C" fn(*mut BitVecValue, *const BitVecValue)),
-        Cmp(unsafe extern "C" fn(*const BitVecValue, *const BitVecValue) -> ThinBV),
+        Cmp(unsafe extern "C" fn(*const BitVecValue, *const BitVecValue) -> i8),
         Slice(unsafe extern "C" fn(*const BitVecValue, WidthInt, WidthInt) -> ThinBV),
         SliceWithOutputBuffer(
             unsafe extern "C" fn(*mut BitVecValue, *const BitVecValue, WidthInt, WidthInt),
@@ -409,8 +410,8 @@ mod trampoline {
             pub(super) unsafe extern "C" fn $func(
                 lhs: *const BitVecValue,
                 rhs: *const BitVecValue,
-            ) -> ThinBV { unsafe {
-                (&*lhs).$baa_delegation(&*rhs) as ThinBV
+            ) -> i8 { unsafe {
+                (&*lhs).$baa_delegation(&*rhs) as i8
             }}
         };
     }
