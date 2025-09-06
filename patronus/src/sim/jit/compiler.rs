@@ -132,6 +132,7 @@ impl JITCompiler {
             expr_ctx,
             next_expr_batch,
             input_state_buffer,
+            true,
             |batch, mut codegen_ctx| {
                 debug_assert_eq!(states_expr.len(), batch.len());
                 for (expr, ret) in std::iter::zip(states_expr, batch) {
@@ -180,6 +181,7 @@ impl JITCompiler {
             expr_ctx,
             vec![root_expr],
             input_state_buffer,
+            false,
             |ret, mut codegen_ctx| {
                 debug_assert_eq!(ret.len(), 1);
                 let data_type = root_expr.get_type(expr_ctx);
@@ -204,6 +206,7 @@ impl JITCompiler {
         expr_ctx: &expr::Context,
         expr_batch: Vec<ExprRef>,
         input_state_buffer: &dyn StateBufferView<i64>,
+        consume_input: bool,
         codegen_epilogue: F,
     ) -> JITResult<*const u8>
     where
@@ -233,6 +236,7 @@ impl JITCompiler {
             compiler: self,
             int: types::I64,
             long_live_cache_read_holes: vec![],
+            consume_input,
         };
         codegen_ctx.codegen(codegen_epilogue);
 
@@ -340,6 +344,7 @@ pub(super) struct CodeGenContext<'expr, 'ctx, 'engine> {
     /// Points to the dummy instruction that will be replaced with a read instruction from long lived heap resources buffer.
     /// These replacement operations are done after codegen, when the number of long lived cache are determined.
     long_live_cache_read_holes: Vec<(Value, expr::Type)>,
+    consume_input: bool,
 }
 
 impl CodeGenContext<'_, '_, '_> {
@@ -748,14 +753,23 @@ impl CodeGenContext<'_, '_, '_> {
         }
     }
 
-    fn expr_codegen(&mut self, expr: ExprRef, args: &[TaggedValue]) -> TaggedValue {
+    fn expr_codegen(
+        &mut self,
+        expr: ExprRef,
+        args: &[TaggedValue],
+    ) -> TaggedValue {
         let value = match &self.expr_ctx[expr] {
             Expr::ArraySymbol { .. } => {
-                let input_slot = self.input_state_slot(expr);
-                let cache_slot =
-                    self.reserve_intermediate_array_cache(input_slot.expect_array_type());
-                swap_ptr_at_slot(self, *cache_slot, *input_slot);
-                return cache_slot;
+                if !self.consume_input {
+                    let input = self.load_input_state(expr);
+                    return self.reserve_cloned_intermediate_cache(input);
+                } else {
+                    let input_slot = self.input_state_slot(expr);
+                    let cache_slot =
+                        self.reserve_intermediate_array_cache(input_slot.expect_array_type());
+                    swap_ptr_at_slot(self, *cache_slot, *input_slot);
+                    return cache_slot;
+                }
             }
             Expr::BVIte { .. } | Expr::ArrayIte { .. } => {
                 assert_eq!(args[1].data_type, args[2].data_type);

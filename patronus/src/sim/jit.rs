@@ -592,7 +592,7 @@ unsafe fn check_slot_value_dirty(a: i64, b: i64, tpe: expr::Type) -> bool {
             }
         }
         // TODO: Currently for input array, compiler might steal the previous input array.
-        // We always conservatively assume that array symbol is always dirty 
+        // We always conservatively assume that array symbol is always dirty
         expr::Type::Array(_) => true,
     }
 }
