@@ -540,13 +540,14 @@ impl<'expr> JITEngine<'expr> {
             (current_state_buffer!(self), next_state_buffer!(self));
         for offset in states_require_reexamine.ones() {
             let &(ref state, tpe) = &self.mutable_slot_states[offset];
-            let (current_slot, next_slot) = unsafe {
-                (
-                    StateSlot::from_typed_slot_value(&current_state_buffer.as_slice()[offset], tpe),
-                    StateSlot::from_typed_slot_value(&next_state_buffer.as_slice()[offset], tpe),
+            // SAFETY: state buffer invariance we've maintained ensures that slot contains proper type
+            if unsafe {
+                check_slot_value_dirty(
+                    current_state_buffer.as_slice()[offset],
+                    next_state_buffer.as_slice()[offset],
+                    tpe,
                 )
-            };
-            if current_slot.ne(&next_slot) {
+            } {
                 if let Some(roots) = self.upstream_dependents.get(&state.symbol) {
                     next_step_dirty_states.union_with(roots);
                 }
@@ -579,32 +580,20 @@ impl<'expr> JITEngine<'expr> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
-enum StateSlot<'a> {
-    ThinBitVec(&'a i64),
-    WideBitVec(&'a BitVecValue),
-    Array(&'a [i64]),
-}
-
-impl<'a> StateSlot<'a> {
-    /// # Safety
-    /// caller should guarantee that the value passed in points to a valid object of type `tpe`
-    /// caller should make sure the returned slot will only be used within valid lifetime
-    ///
-    /// An extra level of indirection is followed for wide bit vector and array.
-    unsafe fn from_typed_slot_value(value: &'a i64, tpe: expr::Type) -> Self {
-        unsafe {
-            match tpe {
-                expr::Type::BV(width) => match width {
-                    0..=64 => Self::ThinBitVec(value),
-                    _ => Self::WideBitVec(&*(*value as *const BitVecValue)),
-                },
-                expr::Type::Array(ArrayType { index_width, .. }) => {
-                    let len = 1 << index_width;
-                    Self::Array(std::slice::from_raw_parts(*value as *const i64, len))
-                }
+/// # Safety
+/// The caller should guarantee that `a` and `b` can be safely coerced to ptr of object of `tpe`
+unsafe fn check_slot_value_dirty(a: i64, b: i64, tpe: expr::Type) -> bool {
+    match tpe {
+        expr::Type::BV(width) => {
+            if width <= THIN_BV_MAX_WIDTH {
+                a != b
+            } else {
+                unsafe { (*(a as *const BitVecValue)).ne(&*(b as *const BitVecValue)) }
             }
         }
+        // TODO: Currently for input array, compiler might steal the previous input array.
+        // We always conservatively assume that array symbol is always dirty 
+        expr::Type::Array(_) => true,
     }
 }
 
