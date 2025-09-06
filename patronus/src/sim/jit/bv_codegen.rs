@@ -25,7 +25,7 @@ pub(super) fn select_container_primitive(width: WidthInt) -> cranelift::prelude:
 
 impl BVWord {
     /// Unsigned extend input `value` to fit target width.
-    fn extend_to_fit(&self, value: TaggedValue, ctx: &mut CodeGenContext) -> Value {
+    pub(super) fn extend_to_fit(&self, value: TaggedValue, ctx: &mut CodeGenContext) -> Value {
         debug_assert!(self.0 >= value.expect_bv_type());
         let prev_type = select_container_primitive(value.expect_bv_type());
         let target_type = select_container_primitive(self.0);
@@ -36,7 +36,7 @@ impl BVWord {
         }
     }
 
-    fn truncate_to_fit(&self, value: TaggedValue, ctx: &mut CodeGenContext) -> Value {
+    pub(super) fn truncate_to_fit(&self, value: TaggedValue, ctx: &mut CodeGenContext) -> Value {
         debug_assert!(self.0 <= value.expect_bv_type());
         let prev_type = select_container_primitive(value.expect_bv_type());
         let target_type = select_container_primitive(self.0);

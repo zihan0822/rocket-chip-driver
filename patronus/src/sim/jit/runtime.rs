@@ -73,60 +73,40 @@ pub(super) fn import_runtime_lib_to_func_scope(
     module: &mut JITModule,
     func: &mut Function,
 ) -> RuntimeLib {
-    let clone_array = import_extern_function(
-        module,
-        func,
-        CLONE_ARRAY_SYM,
-        [types::I64, types::I64],
-        [types::I64],
-    );
+    let clone_array =
+        import_extern_function(module, func, CLONE_ARRAY_SYM, [types::I64; 3], [types::I64]);
     let clone_array_of_wide_bv = import_extern_function(
         module,
         func,
         CLONE_ARRAY_OF_WIDE_BV_SYM,
-        [types::I64, types::I64],
+        [types::I64; 3],
         [types::I64],
     );
-    let dealloc_array = import_extern_function(
-        module,
-        func,
-        DEALLOC_ARRAY_SYM,
-        [types::I64, types::I64],
-        [],
-    );
+    let dealloc_array =
+        import_extern_function(module, func, DEALLOC_ARRAY_SYM, [types::I64; 3], []);
     let dealloc_array_of_wide_bv = import_extern_function(
         module,
         func,
         DEALLOC_ARRAY_OF_WIDE_BV_SYM,
-        [types::I64, types::I64],
+        [types::I64; 3],
         [],
     );
-    let alloc_array = import_extern_function(
-        module,
-        func,
-        ALLOC_ARRAY_SYM,
-        [types::I64, types::I64],
-        [types::I64],
-    );
+    let alloc_array =
+        import_extern_function(module, func, ALLOC_ARRAY_SYM, [types::I64; 3], [types::I64]);
     let alloc_array_of_wide_bv = import_extern_function(
         module,
         func,
         ALLOC_ARRAY_OF_WIDE_BV_SYM,
-        [types::I64, types::I64],
+        [types::I64; 3],
         [types::I64],
     );
-    let copy_from_array = import_extern_function(
-        module,
-        func,
-        COPY_FROM_ARRAY_SYM,
-        [types::I64, types::I64, types::I64],
-        [],
-    );
+    let copy_from_array =
+        import_extern_function(module, func, COPY_FROM_ARRAY_SYM, [types::I64; 4], []);
     let copy_from_array_of_wide_bv = import_extern_function(
         module,
         func,
         COPY_FROM_ARRAY_OF_WIDE_BV_SYM,
-        [types::I64, types::I64, types::I64],
+        [types::I64; 4],
         [],
     );
     let clone_bv = import_extern_function(module, func, CLONE_BV_SYM, [types::I64], [types::I64]);
@@ -202,19 +182,60 @@ fn bv_operation_name_mangle(sym: &str) -> String {
     format!("__bv_{sym}")
 }
 
-pub(super) unsafe extern "C" fn __clone_array(src: *const i64, index_width: WidthInt) -> *mut i64 {
-    unsafe {
-        let len = 1 << index_width;
-        let mut array = vec![0_i64; len];
-        let src = std::slice::from_raw_parts(src, len);
-        array.copy_from_slice(src);
-        array.leak() as *mut [i64] as *mut i64
+macro_rules! reinterp_array_ptr_by_data_width {
+    ($ptr: ident, $data_width: expr, $op: tt) => {
+        $crate::sim::jit::runtime::reinterp_array_ptr_by_data_width!(
+            [$ptr], $data_width, $op
+        )
+    };
+
+    ([$($ptr: ident),+], $data_width: expr, $op: tt) => {
+        $crate::sim::jit::runtime::reinterp_array_ptr_by_data_width!(
+            @dispatch [($($ptr),+)], $data_width,
+            [1..=8 => i8, 9..=16 => i16, 17..=32 => i32, 33..=64 => i64],
+            $op
+        )
+    };
+
+    (@dispatch [$ptr: tt], $data_width: expr, [$($pat: pat => $primitive:ty),+], $op: tt) => {
+        match $data_width {
+           $(
+                $pat => {
+                    $crate::sim::jit::runtime::reinterp_array_ptr_by_data_width!(@cast [$ptr], $primitive, $op)
+                },
+           )+
+           _ => unreachable!()
+        }
+    };
+
+    (@cast [($($ptr: ident),+)], $primitive: ty, $op: tt) => {
+        #[allow(unused_braces)]
+        {
+            $(let $ptr = $ptr as *mut $primitive;)+
+            $op
+        }
     }
+}
+pub(super) use reinterp_array_ptr_by_data_width;
+
+pub(super) unsafe extern "C" fn __clone_array(
+    src: *const (),
+    index_width: WidthInt,
+    data_width: WidthInt,
+) -> *mut () {
+    reinterp_array_ptr_by_data_width!(src, data_width, {
+        let len = 1 << index_width;
+        let mut array = vec![0; len];
+        let src = unsafe { std::slice::from_raw_parts(src, len) };
+        array.copy_from_slice(src);
+        array.leak() as *mut [_] as *mut ()
+    })
 }
 
 pub(super) unsafe extern "C" fn __clone_array_of_wide_bv(
     src: *const *const baa::BitVecValue,
     index_width: WidthInt,
+    _data_width: WidthInt,
 ) -> *const *mut baa::BitVecValue {
     unsafe {
         let len = 1 << index_width;
@@ -226,22 +247,26 @@ pub(super) unsafe extern "C" fn __clone_array_of_wide_bv(
 }
 
 pub(super) unsafe extern "C" fn __copy_from_array(
-    dst: *mut i64,
-    src: *const i64,
+    dst: *mut (),
+    src: *const (),
     index_width: WidthInt,
+    data_width: WidthInt,
 ) {
-    unsafe {
-        let len = 1 << index_width;
-        let dst = std::slice::from_raw_parts_mut(dst, len);
-        let src = std::slice::from_raw_parts(src, len);
-        dst.copy_from_slice(src);
-    }
+    let len = 1 << index_width;
+    reinterp_array_ptr_by_data_width!([dst, src], data_width, {
+        unsafe {
+            let dst = std::slice::from_raw_parts_mut(dst, len);
+            let src = std::slice::from_raw_parts_mut(src, len);
+            dst.copy_from_slice(src)
+        }
+    })
 }
 
 pub(super) unsafe extern "C" fn __copy_from_array_of_wide_bv(
     dst: *const *mut baa::BitVecValue,
     src: *const *const baa::BitVecValue,
     index_width: WidthInt,
+    _data_width: WidthInt,
 ) {
     unsafe {
         let len = 1 << index_width;
@@ -253,14 +278,32 @@ pub(super) unsafe extern "C" fn __copy_from_array_of_wide_bv(
     }
 }
 
-pub(super) extern "C" fn __alloc_array(index_width: WidthInt, default_data: i64) -> *mut i64 {
-    let len = 1 << index_width;
-    vec![default_data; len].leak() as *mut [i64] as *mut i64
+macro_rules! alloc_array_of_data_width {
+    ($default: expr, $index_width: expr, $data_width: expr, [$($pat: pat => $primitive: ty),+]) => {
+        match $data_width{
+            $(
+                $pat=> vec![$default as $primitive; 1 << $index_width].leak() as *mut [$primitive] as *mut (),
+            )+
+            _ => unreachable!()
+        }
+    }
+}
+
+pub(super) extern "C" fn __alloc_array(
+    default_data: i64,
+    index_width: WidthInt,
+    data_width: WidthInt,
+) -> *mut () {
+    alloc_array_of_data_width!(
+        default_data, index_width, data_width,
+        [1..=8 => i8, 9..=16 => i16, 17..=32 => i32, 33..=64 => i64]
+    )
 }
 
 pub(super) unsafe extern "C" fn __alloc_array_of_wide_bv(
-    index_width: WidthInt,
     default_data: *const baa::BitVecValue,
+    index_width: WidthInt,
+    _data_width: WidthInt,
 ) -> *const *mut baa::BitVecValue {
     let len = 1 << index_width;
     unsafe {
@@ -269,17 +312,24 @@ pub(super) unsafe extern "C" fn __alloc_array_of_wide_bv(
     }
 }
 
-pub(super) unsafe extern "C" fn __dealloc_array(src: *mut i64, index_width: WidthInt) {
-    unsafe {
+pub(super) unsafe extern "C" fn __dealloc_array(
+    src: *mut (),
+    index_width: WidthInt,
+    data_width: WidthInt,
+) {
+    reinterp_array_ptr_by_data_width!(src, data_width, {
         let len = 1 << index_width;
         let ptr = std::ptr::slice_from_raw_parts_mut(src, len);
-        let _ = Box::from_raw(ptr);
-    }
+        unsafe {
+            let _ = Box::from_raw(ptr);
+        }
+    })
 }
 
 pub(super) unsafe extern "C" fn __dealloc_array_of_wide_bv(
     src: *mut *mut baa::BitVecValue,
     index_width: WidthInt,
+    _data_width: WidthInt,
 ) {
     unsafe {
         let len = 1 << index_width;

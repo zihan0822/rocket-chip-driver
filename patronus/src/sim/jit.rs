@@ -265,13 +265,14 @@ macro_rules! next_state_buffer_mut {
 impl ArrayType {
     fn alloc(&self) -> *mut () {
         if self.data_width <= THIN_BV_MAX_WIDTH {
-            runtime::__alloc_array(self.index_width, 0) as _
+            runtime::__alloc_array(0, self.index_width, self.data_width) as _
         } else {
             // SAFETY: default value comes from a valid BitVecValue on stack
             unsafe {
                 runtime::__alloc_array_of_wide_bv(
-                    self.index_width,
                     &baa::BitVecValue::zero(self.data_width),
+                    self.index_width,
+                    self.data_width,
                 ) as _
             }
         }
@@ -282,11 +283,12 @@ impl ArrayType {
     unsafe fn dealloc(&self, ptr: *mut ()) {
         unsafe {
             if self.data_width <= THIN_BV_MAX_WIDTH {
-                runtime::__dealloc_array(ptr as *mut i64, self.index_width);
+                runtime::__dealloc_array(ptr, self.index_width, self.data_width);
             } else {
                 runtime::__dealloc_array_of_wide_bv(
                     ptr as *mut *mut baa::BitVecValue,
                     self.index_width,
+                    self.data_width,
                 )
             }
         }
@@ -297,11 +299,12 @@ impl ArrayType {
     unsafe fn clone(&self, ptr: *const ()) -> *mut () {
         unsafe {
             if self.data_width <= THIN_BV_MAX_WIDTH {
-                runtime::__clone_array(ptr as *const i64, self.index_width) as _
+                runtime::__clone_array(ptr, self.index_width, self.data_width) as _
             } else {
                 runtime::__clone_array_of_wide_bv(
                     ptr as *const *const baa::BitVecValue,
                     self.index_width,
+                    self.data_width,
                 ) as _
             }
         }
@@ -684,19 +687,32 @@ impl Simulator for JITEngine<'_> {
                         unreachable!()
                     };
                     debug_assert_eq!(1 << index_width, array.num_elements());
-                    let buffer: Vec<_> = (0..array.num_elements())
-                        .map(|idx| {
+                    let ptr = *current_state_buffer!(self).get_state_ref(state);
+                    if data_width <= THIN_BV_MAX_WIDTH {
+                        runtime::reinterp_array_ptr_by_data_width!(ptr, data_width, {
+                            let dst =
+                                unsafe { std::slice::from_raw_parts_mut(ptr, 1 << index_width) };
+                            for (idx, dst_element) in dst.iter_mut().enumerate() {
+                                let src_element =
+                                    array.select(&BitVecValue::from_u64(idx as u64, index_width));
+                                *dst_element = src_element.to_u64().unwrap() as _;
+                            }
+                        });
+                    } else {
+                        let dst = unsafe {
+                            std::slice::from_raw_parts(
+                                ptr as *const *mut BitVecValue,
+                                1 << index_width,
+                            )
+                        };
+                        for (idx, &dst) in dst.iter().enumerate() {
                             let src_element =
                                 array.select(&BitVecValue::from_u64(idx as u64, index_width));
-                            if data_width <= THIN_BV_MAX_WIDTH {
-                                src_element.to_u64().unwrap() as i64
-                            } else {
-                                Box::leak(Box::new(src_element)) as *mut baa::BitVecValue as i64
+                            unsafe {
+                                *dst = src_element;
                             }
-                        })
-                        .collect();
-                    let ptr = buffer.leak() as *mut [i64] as *mut i64 as i64;
-                    current_state_buffer_mut!(self).try_replace_with_heap_reclaim(state, ptr)
+                        }
+                    }
                 }
             }
         }
@@ -773,9 +789,11 @@ impl Simulator for JITEngine<'_> {
                 // SAFETY: jit compiler guarantees that `value` points to a valid array with correct type
                 unsafe {
                     let ret = if index_width <= THIN_BV_MAX_WIDTH {
-                        let words =
-                            std::slice::from_raw_parts(value as *const baa::Word, 1 << index_width);
-                        baa::Value::Array(words.into())
+                        runtime::reinterp_array_ptr_by_data_width!(value, data_width, {
+                            let data = std::slice::from_raw_parts(value, 1 << index_width);
+                            let words = Vec::from_iter(data.iter().map(|&item| item as u64));
+                            baa::Value::Array(words.as_slice().into())
+                        })
                     } else {
                         let mut array = baa::ArrayValue::new_dense(
                             index_width,

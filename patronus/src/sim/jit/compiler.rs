@@ -1,7 +1,7 @@
 // Copyright 2025 Cornell University
 // released under BSD 3-Clause License
 // author: Zihan Li <zl2225@cornell.edu>
-use super::bv_codegen::select_container_primitive;
+use super::bv_codegen::{self, select_container_primitive};
 use super::expr_graph::*;
 use super::heap::*;
 use super::{JITResult, StateBufferView, THIN_BV_MAX_WIDTH, runtime};
@@ -632,15 +632,16 @@ impl CodeGenContext<'_, '_, '_> {
             data_width,
         } = dst.expect_array_type();
         assert_eq!(src.data_type, dst.data_type);
-        let index_width = self.fn_builder.ins().iconst(self.int, index_width as i64);
         let callee = if data_width <= THIN_BV_MAX_WIDTH {
             self.runtime_lib.copy_from_array
         } else {
             self.runtime_lib.copy_from_array_of_wide_bv
         };
+        let index_width = self.fn_builder.ins().iconst(self.int, index_width as i64);
+        let data_width = self.fn_builder.ins().iconst(self.int, data_width as i64);
         self.fn_builder
             .ins()
-            .call(callee, &[*dst, *src, index_width]);
+            .call(callee, &[*dst, *src, index_width, data_width]);
     }
 
     fn dealloc_array(&mut self, array_to_dealloc: TaggedValue) {
@@ -648,15 +649,16 @@ impl CodeGenContext<'_, '_, '_> {
             index_width,
             data_width,
         } = array_to_dealloc.expect_array_type();
-        let index_width = self.fn_builder.ins().iconst(self.int, index_width as i64);
         let callee = if data_width <= THIN_BV_MAX_WIDTH {
             self.runtime_lib.dealloc_array
         } else {
             self.runtime_lib.dealloc_array_of_wide_bv
         };
+        let index_width = self.fn_builder.ins().iconst(self.int, index_width as i64);
+        let data_width = self.fn_builder.ins().iconst(self.int, data_width as i64);
         self.fn_builder
             .ins()
-            .call(callee, &[*array_to_dealloc, index_width]);
+            .call(callee, &[*array_to_dealloc, index_width, data_width]);
     }
 
     #[expect(dead_code)]
@@ -665,32 +667,40 @@ impl CodeGenContext<'_, '_, '_> {
             index_width,
             data_width,
         } = from.expect_array_type();
-        let index_width = self.fn_builder.ins().iconst(self.int, index_width as i64);
         let callee = if data_width <= THIN_BV_MAX_WIDTH {
             self.runtime_lib.clone_array
         } else {
             self.runtime_lib.clone_array_of_wide_bv
         };
-        let call = self.fn_builder.ins().call(callee, &[*from, index_width]);
+        let index_width = self.fn_builder.ins().iconst(self.int, index_width as i64);
+        let data_width = self.fn_builder.ins().iconst(self.int, data_width as i64);
+        let call = self
+            .fn_builder
+            .ins()
+            .call(callee, &[*from, index_width, data_width]);
         let ret = TaggedValue::tag(self.fn_builder.inst_results(call)[0], from.data_type);
         self.register_short_lived_heap_allocation(ret);
         ret
     }
 
     fn alloc_array(&mut self, default_data: TaggedValue, tpe: ArrayType) -> TaggedValue {
-        let index_width = self
-            .fn_builder
-            .ins()
-            .iconst(self.int, tpe.index_width as i64);
         let callee = if tpe.data_width <= THIN_BV_MAX_WIDTH {
             self.runtime_lib.alloc_array
         } else {
             self.runtime_lib.alloc_array_of_wide_bv
         };
+        let index_width = self
+            .fn_builder
+            .ins()
+            .iconst(self.int, tpe.index_width as i64);
+        let data_width = self
+            .fn_builder
+            .ins()
+            .iconst(self.int, tpe.data_width as i64);
         let call = self
             .fn_builder
             .ins()
-            .call(callee, &[index_width, *default_data]);
+            .call(callee, &[*default_data, index_width, data_width]);
         let ret = TaggedValue::tag_array(self.fn_builder.inst_results(call)[0], tpe);
         self.register_short_lived_heap_allocation(ret);
         ret
@@ -752,17 +762,14 @@ impl CodeGenContext<'_, '_, '_> {
                 self.fn_builder.ins().select(*args[0], *args[1], *args[2])
             }
             Expr::ArrayStore { .. } => {
-                let array_type = args[0].expect_array_type();
-                let data_width = array_type.data_width;
-                let (slot, mut index, data) = (args[0], args[1], args[2]);
+                let ArrayType { data_width, .. } = args[0].expect_array_type();
+                let (slot, index, data) = (args[0], args[1], args[2]);
                 let base = self.resource_ptr_at_slot(slot);
-                if index.expect_bv_type() < THIN_BV_MAX_WIDTH {
-                    index.value = self.fn_builder.ins().uextend(types::I64, *index);
-                }
+                let index = bv_codegen::BVWord(64).extend_to_fit(index, self);
                 let offset = self
                     .fn_builder
                     .ins()
-                    .imul_imm(*index, self.int.bytes() as i64);
+                    .imul_imm(index, select_container_primitive(data_width).bytes() as i64);
                 let address = self.fn_builder.ins().iadd(*base, offset);
                 if data_width > THIN_BV_MAX_WIDTH {
                     let dst_bv = self.fn_builder.ins().load(
@@ -775,14 +782,10 @@ impl CodeGenContext<'_, '_, '_> {
                     let data = self.resource_ptr_at_slot(data);
                     self.copy_from_bv(TaggedValue::tag_bv(dst_bv, data_width), data);
                 } else {
-                    let mut data = *data;
-                    if !matches!(select_container_primitive(data_width), types::I64) {
-                        data = self.fn_builder.ins().uextend(types::I64, data)
-                    }
                     self.fn_builder.ins().store(
                         // upheld by the unsafeness of CompiledEvalFn::call
                         ir::MemFlags::trusted(),
-                        data,
+                        *data,
                         address,
                         0,
                     );
@@ -790,19 +793,22 @@ impl CodeGenContext<'_, '_, '_> {
                 return slot;
             }
             Expr::BVArrayRead { .. } => {
-                let data_width = args[0].expect_array_type().data_width;
-                let (slot, mut index) = (args[0], args[1]);
+                let ArrayType { data_width, .. } = args[0].expect_array_type();
+                let (slot, index) = (args[0], args[1]);
                 let base = self.resource_ptr_at_slot(slot);
-                if index.expect_bv_type() < THIN_BV_MAX_WIDTH {
-                    index.value = self.fn_builder.ins().uextend(types::I64, *index);
-                }
+                let index = bv_codegen::BVWord(64).extend_to_fit(index, self);
+                let element_type = if data_width <= THIN_BV_MAX_WIDTH {
+                    select_container_primitive(data_width)
+                } else {
+                    types::I64
+                };
                 let offset = self
                     .fn_builder
                     .ins()
-                    .imul_imm(*index, self.int.bytes() as i64);
+                    .imul_imm(index, element_type.bytes() as i64);
                 let address = self.fn_builder.ins().iadd(*base, offset);
-                let mut element = self.fn_builder.ins().load(
-                    self.int,
+                let element = self.fn_builder.ins().load(
+                    element_type,
                     // upheld by the unsafeness of CompiledEvalFn::call
                     ir::MemFlags::trusted(),
                     address,
@@ -813,11 +819,6 @@ impl CodeGenContext<'_, '_, '_> {
                     return self.reserve_cloned_intermediate_cache(TaggedValue::tag_bv(
                         element, data_width,
                     ));
-                } else {
-                    let container_type = select_container_primitive(data_width);
-                    if !matches!(container_type, types::I64) {
-                        element = self.fn_builder.ins().ireduce(container_type, element);
-                    }
                 }
                 element
             }
