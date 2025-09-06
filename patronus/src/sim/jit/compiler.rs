@@ -26,7 +26,7 @@ pub(super) struct JITCompiler {
 #[derive(Default)]
 pub(super) struct ManagedHeapResource {
     pub(super) bv_data: HeapResourceCache<BitVecValue>,
-    array_data: SlicedHeapResourceCache<i64>,
+    array_data: SlicedHeapResourceCache<u8>,
     array_with_wide_bv_data: SlicedHeapResourceCache<LeakedBitVecPtr>,
 }
 
@@ -467,13 +467,21 @@ impl CodeGenContext<'_, '_, '_> {
                     index_width,
                     data_width,
                 }) => {
-                    let index_width = index_width as usize;
                     if data_width <= THIN_BV_MAX_WIDTH {
-                        let boxed_slice = vec![0i64; 1 << index_width].into_boxed_slice();
+                        let ptr = runtime::__alloc_array(0, index_width, data_width);
+                        let num_bytes = (1 << (index_width as usize))
+                            * (select_container_primitive(data_width).bytes() as usize);
+                        // SAFETY: `ptr` is always byte aligned and the coerced bytes slice len is computed properly
+                        let boxed_bytes = unsafe {
+                            Box::from_raw(std::ptr::slice_from_raw_parts_mut(
+                                ptr as *mut u8,
+                                num_bytes,
+                            ))
+                        };
                         self.compiler
                             .active_heap_resource
                             .array_data
-                            .push(boxed_slice);
+                            .push(boxed_bytes);
                         array_holes.push(value);
                     } else {
                         let data: Vec<_> = std::iter::repeat_with(|| {
@@ -753,11 +761,7 @@ impl CodeGenContext<'_, '_, '_> {
         }
     }
 
-    fn expr_codegen(
-        &mut self,
-        expr: ExprRef,
-        args: &[TaggedValue],
-    ) -> TaggedValue {
+    fn expr_codegen(&mut self, expr: ExprRef, args: &[TaggedValue]) -> TaggedValue {
         let value = match &self.expr_ctx[expr] {
             Expr::ArraySymbol { .. } => {
                 if !self.consume_input {
