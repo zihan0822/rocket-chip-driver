@@ -659,13 +659,19 @@ impl Simulator for JITEngine<'_> {
             let init_value = generator.generate(tpe);
             match init_value {
                 baa::Value::BitVec(bv) => {
-                    let bv = if bv.width() <= THIN_BV_MAX_WIDTH {
-                        bv.to_u64().unwrap() as i64
+                    if bv.width() <= THIN_BV_MAX_WIDTH {
+                        *current_state_buffer_mut!(self).get_state_mut(state) =
+                            bv.to_u64().unwrap() as i64;
                     } else {
+                        let dst = *current_state_buffer_mut!(self).get_state_mut(state);
                         // SAFETY: &bv is a valid pointer to `BitVecValue`
-                        unsafe { runtime::__clone_bv(&bv as *const BitVecValue) as i64 }
-                    };
-                    current_state_buffer_mut!(self).try_replace_with_heap_reclaim(state, bv)
+                        unsafe {
+                            runtime::__copy_from_bv(
+                                dst as *mut BitVecValue,
+                                &bv as *const BitVecValue,
+                            );
+                        }
+                    }
                 }
                 baa::Value::Array(array) => {
                     let expr::Type::Array(expr::ArrayType {
@@ -737,18 +743,24 @@ impl Simulator for JITEngine<'_> {
         let expr::Type::BV(width) = expr.get_type(self.ctx) else {
             unreachable!()
         };
+        let offset = current_state_buffer!(self).get_state_offset(expr);
         if width <= THIN_BV_MAX_WIDTH {
             let value = value.to_u64().unwrap();
-            *current_state_buffer_mut!(self).get_state_mut(expr) = value as i64;
-            *next_state_buffer_mut!(self).get_state_mut(expr) = value as i64;
+            current_state_buffer_mut!(self).as_mut_slice()[offset] = value as i64;
+            next_state_buffer_mut!(self).as_mut_slice()[offset] = value as i64;
         } else {
             // XXX: currently `runtime::__clone_bv` only supports raw pointer to `BitVecValue` as parameter
             let value: BitVecValue = value.into();
+            let value = &value as *const BitVecValue;
             unsafe {
-                *current_state_buffer_mut!(self).get_state_mut(expr) =
-                    runtime::__clone_bv(&value as *const BitVecValue) as i64;
-                *next_state_buffer_mut!(self).get_state_mut(expr) =
-                    runtime::__clone_bv(&value as *const BitVecValue) as i64;
+                runtime::__copy_from_bv(
+                    current_state_buffer!(self).as_slice()[offset] as *mut BitVecValue,
+                    value,
+                );
+                runtime::__copy_from_bv(
+                    next_state_buffer!(self).as_slice()[offset] as *mut BitVecValue,
+                    value,
+                );
             }
         }
 
