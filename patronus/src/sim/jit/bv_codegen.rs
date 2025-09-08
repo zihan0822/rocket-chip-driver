@@ -319,11 +319,16 @@ impl BVCodeGenVTable for BVIndirect {
 
     fn zero_extend(&self, arg: TaggedValue, by: WidthInt, ctx: &mut CodeGenContext) -> Value {
         self.with_dst(ctx, |dst, ctx| {
+            let arg = if arg.expect_bv_type() <= super::THIN_BV_MAX_WIDTH {
+                BVWord(64).extend_to_fit(arg, ctx)
+            } else {
+                *arg
+            };
             let original_width = ctx.fn_builder.ins().iconst(ctx.int, (self.0 - by) as i64);
             let by = ctx.fn_builder.ins().iconst(ctx.int, by as i64);
             invoke_bv_extern_function(
                 ctx.runtime_lib.bv_ops["zero_extend"],
-                &[*dst, *arg, original_width, by],
+                &[*dst, arg, original_width, by],
                 ctx,
             );
         })
@@ -331,11 +336,16 @@ impl BVCodeGenVTable for BVIndirect {
 
     fn sign_extend(&self, arg: TaggedValue, by: WidthInt, ctx: &mut CodeGenContext) -> Value {
         self.with_dst(ctx, |dst, ctx| {
+            let arg = if arg.expect_bv_type() <= super::THIN_BV_MAX_WIDTH {
+                BVWord(64).extend_to_fit(arg, ctx)
+            } else {
+                *arg
+            };
             let original_width = ctx.fn_builder.ins().iconst(ctx.int, (self.0 - by) as i64);
             let by = ctx.fn_builder.ins().iconst(ctx.int, by as i64);
             invoke_bv_extern_function(
                 ctx.runtime_lib.bv_ops["sign_extend"],
-                &[*dst, *arg, original_width, by],
+                &[*dst, arg, original_width, by],
                 ctx,
             );
         })

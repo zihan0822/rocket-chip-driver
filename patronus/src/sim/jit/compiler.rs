@@ -761,6 +761,19 @@ impl CodeGenContext<'_, '_, '_> {
         }
     }
 
+    /// Compute byte offset for bit vector element of `data_width` at `index`
+    fn array_offset(&mut self, index: TaggedValue, data_width: WidthInt) -> Value {
+        // TODO: support wide bv index type
+        assert!(index.expect_bv_type() <= THIN_BV_MAX_WIDTH);
+        let index = bv_codegen::BVWord(64).extend_to_fit(index, self);
+        let item_size = if data_width <= THIN_BV_MAX_WIDTH {
+            select_container_primitive(data_width).bytes()
+        } else {
+            types::I64.bytes()
+        };
+        self.fn_builder.ins().imul_imm(index, item_size as i64)
+    }
+
     fn expr_codegen(&mut self, expr: ExprRef, args: &[TaggedValue]) -> TaggedValue {
         let value = match &self.expr_ctx[expr] {
             Expr::ArraySymbol { .. } => {
@@ -783,11 +796,7 @@ impl CodeGenContext<'_, '_, '_> {
                 let ArrayType { data_width, .. } = args[0].expect_array_type();
                 let (slot, index, data) = (args[0], args[1], args[2]);
                 let base = self.resource_ptr_at_slot(slot);
-                let index = bv_codegen::BVWord(64).extend_to_fit(index, self);
-                let offset = self
-                    .fn_builder
-                    .ins()
-                    .imul_imm(index, select_container_primitive(data_width).bytes() as i64);
+                let offset = self.array_offset(index, data_width);
                 let address = self.fn_builder.ins().iadd(*base, offset);
                 if data_width > THIN_BV_MAX_WIDTH {
                     let dst_bv = self.fn_builder.ins().load(
