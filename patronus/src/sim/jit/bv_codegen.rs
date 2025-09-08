@@ -244,7 +244,7 @@ impl BVIndirect {
         ctx: &mut CodeGenContext,
         op: impl FnOnce(TaggedValue, &mut CodeGenContext),
     ) -> Value {
-        let dst_slot = ctx.reserve_intermediate_bv_cache(self.0);
+        let dst_slot = ctx.reserve_intermediate_bv_cache_slot(self.0);
         let dst = ctx.resource_ptr_at_slot(dst_slot);
         op(dst, ctx);
         *dst_slot

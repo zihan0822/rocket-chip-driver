@@ -399,7 +399,7 @@ impl CodeGenContext<'_, '_, '_> {
                     }
                     !at_disjoint_branch(self.expr_ctx, &bottom_up_expr_graph, e, other)
                 }) {
-                    let cow_slot = self.reserve_intermediate_array_cache(
+                    let cow_slot = self.reserve_intermediate_array_cache_slot(
                         expr.get_array_type(self.expr_ctx).unwrap(),
                     );
                     let cow = self.resource_ptr_at_slot(cow_slot);
@@ -620,13 +620,13 @@ impl CodeGenContext<'_, '_, '_> {
 
     /// Reserves a long lived array cache, whose lifetime is tied to the JITCompiler
     /// It is not registered as per-step heap allocation, therefore can be used across multiple steps to reduce heap transaction
-    fn reserve_intermediate_array_cache(&mut self, tpe: ArrayType) -> TaggedValue {
+    fn reserve_intermediate_array_cache_slot(&mut self, tpe: ArrayType) -> TaggedValue {
         self.phantom_register_long_lived_heap_resources(expr::Type::Array(tpe))
     }
 
     /// Reserves a long lived wide bit vector cache, whose lifetime is tied to the JITCompiler
     /// It is not registered as per-step heap allocation, therefore can be used across multiple steps to reduce heap transaction
-    pub(super) fn reserve_intermediate_bv_cache(&mut self, width: WidthInt) -> TaggedValue {
+    pub(super) fn reserve_intermediate_bv_cache_slot(&mut self, width: WidthInt) -> TaggedValue {
         assert!(width > THIN_BV_MAX_WIDTH);
         self.phantom_register_long_lived_heap_resources(expr::Type::BV(width))
     }
@@ -744,16 +744,16 @@ impl CodeGenContext<'_, '_, '_> {
             .call(self.runtime_lib.copy_from_bv, &[*dst, *src]);
     }
 
-    fn reserve_cloned_intermediate_cache(&mut self, src: TaggedValue) -> TaggedValue {
+    fn reserve_cloned_intermediate_cache_slot(&mut self, src: TaggedValue) -> TaggedValue {
         match src.data_type {
             expr::Type::Array(tpe) => {
-                let slot = self.reserve_intermediate_array_cache(tpe);
+                let slot = self.reserve_intermediate_array_cache_slot(tpe);
                 let dst = self.resource_ptr_at_slot(slot);
                 self.copy_from_array(dst, src);
                 slot
             }
             expr::Type::BV(tpe) => {
-                let slot = self.reserve_intermediate_bv_cache(tpe);
+                let slot = self.reserve_intermediate_bv_cache_slot(tpe);
                 let dst = self.resource_ptr_at_slot(slot);
                 self.copy_from_bv(dst, src);
                 slot
@@ -766,11 +766,11 @@ impl CodeGenContext<'_, '_, '_> {
             Expr::ArraySymbol { .. } => {
                 if !self.consume_input {
                     let input = self.load_input_state(expr);
-                    return self.reserve_cloned_intermediate_cache(input);
+                    return self.reserve_cloned_intermediate_cache_slot(input);
                 } else {
                     let input_slot = self.input_state_slot(expr);
                     let cache_slot =
-                        self.reserve_intermediate_array_cache(input_slot.expect_array_type());
+                        self.reserve_intermediate_array_cache_slot(input_slot.expect_array_type());
                     swap_ptr_at_slot(self, *cache_slot, *input_slot);
                     return cache_slot;
                 }
@@ -834,7 +834,7 @@ impl CodeGenContext<'_, '_, '_> {
                 );
                 if data_width > THIN_BV_MAX_WIDTH {
                     // maintains the invariance that wide bv never moves out of its container array
-                    return self.reserve_cloned_intermediate_cache(TaggedValue::tag_bv(
+                    return self.reserve_cloned_intermediate_cache_slot(TaggedValue::tag_bv(
                         element, data_width,
                     ));
                 }
@@ -852,7 +852,7 @@ impl CodeGenContext<'_, '_, '_> {
                     TaggedValue::tag_bv(default_value, args[0].expect_bv_type()),
                     tpe,
                 );
-                return self.reserve_cloned_intermediate_cache(array_const);
+                return self.reserve_cloned_intermediate_cache_slot(array_const);
             }
             _ => self.dispatch_bv_operation_codegen(expr, args),
         };
