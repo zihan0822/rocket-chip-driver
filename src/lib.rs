@@ -38,10 +38,6 @@ declare_module! {
         clock,
         #[in<1> = "reset", c_type = c_uchar]
         reset,
-        #[in<32> = "io_exit", c_type = c_uint]
-        exit,
-        #[out = "io_success", c_type = c_uchar]
-        io_success,
     }
 }
 
@@ -160,20 +156,6 @@ pub extern "C" fn set_driver_reset(signal: c_uchar) {
 pub extern "C" fn set_driver_clock(signal: c_uchar) {
     with_driver_mut(|driver| {
         driver.with_mut(|fields| fields.test_harness_module.set_clock(fields.sim, signal))
-    })
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn set_driver_exit(signal: c_uint) {
-    with_driver_mut(|driver| {
-        driver.with_mut(|fields| fields.test_harness_module.set_exit(fields.sim, signal))
-    })
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn get_driver_io_success() -> c_uchar {
-    with_driver_ref(|driver| {
-        driver.with(|fields| fields.test_harness_module.get_io_success(fields.sim))
     })
 }
 

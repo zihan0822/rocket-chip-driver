@@ -55,11 +55,9 @@ void tick_dtm(bool done_reset) {
       dtm->req_valid()
     };
     ffi::set_driver_debug_module_input(debug_input);
-    ffi::set_driver_exit((uint32_t) (dtm->done() ? (dtm->exit_code() << 1 | 1) : 0));
   } else {
     ffi::debug_module_input_payload_t debug_input = { 0 };
     ffi::set_driver_debug_module_input(debug_input);
-    ffi::set_driver_exit(0);
   }
 }
 
@@ -244,8 +242,7 @@ done_processing:
   int sync_reset_cycles = 10;
 
   while (trace_count < max_cycles) {
-    bool io_success = ffi::get_driver_io_success() != 0;
-    if (done_reset && (dtm->done() || io_success))
+    if (done_reset && (dtm->done()))
       break;
     uint8_t reset = trace_count < async_reset_cycles*2 ? trace_count % 2 :
       trace_count < async_reset_cycles*2 + sync_reset_cycles;
