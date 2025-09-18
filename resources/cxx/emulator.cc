@@ -37,9 +37,8 @@ void handle_sigterm(int sig) {
   dtm->stop();
 }
 
-void tick_dtm(bool done_reset) {
+void tick_dtm(bool done_reset, ffi::debug_module_output_payload_t& debug_output) {
   if (done_reset) {
-    ffi::debug_module_output_payload_t debug_output = ffi::get_driver_debug_module_output();
     dtm_t::resp resp_bits;
     resp_bits.resp = debug_output.resp_resp;
     resp_bits.data = debug_output.resp_data;
@@ -237,23 +236,18 @@ done_processing:
   // the reset signal instead of relying on the initial block.
   // ESSENT currently does not treat Async differently
   int async_reset_cycles = 2;
-
   // Rocket-chip requires synchronous reset to be asserted for several cycles.
   int sync_reset_cycles = 10;
-
   while (trace_count < max_cycles) {
     if (done_reset && (dtm->done()))
       break;
-    uint8_t reset = trace_count < async_reset_cycles*2 ? trace_count % 2 :
-      trace_count < async_reset_cycles*2 + sync_reset_cycles;
-    ffi::set_driver_reset(reset);
+    uint8_t reset = 
+      trace_count < async_reset_cycles + sync_reset_cycles;
     done_reset = !reset;
-    ffi::set_driver_clock(0);
+    auto debug_output = ffi::get_driver_debug_module_output();
+    ffi::set_driver_reset(reset);
     ffi::step_driver();
-    uint8_t clock = trace_count >= async_reset_cycles*2;
-    ffi::set_driver_clock(clock);
-    ffi::step_driver();
-    tick_dtm(done_reset);
+    tick_dtm(done_reset, debug_output);
     trace_count++;
   }
 
