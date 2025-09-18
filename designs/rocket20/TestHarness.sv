@@ -189464,12 +189464,10 @@ module TestHarness(
   input[1:0]   io_debug_req_bits_op,
   input   io_debug_resp_ready,
   input   io_debug_req_valid,
-  input[31:0]  io_exit,
   output[1:0]  io_debug_resp_bits_resp,
   output[31:0]  io_debug_resp_bits_data,
   output  io_debug_req_ready,
   output  io_debug_resp_valid,
-  output  io_success
 );
   wire  ldut_clock; // @[TestHarness.scala 17:19]
   wire  ldut_reset; // @[TestHarness.scala 17:19]
@@ -189613,9 +189611,6 @@ module TestHarness(
   wire  io_debug_resp_valid; // @[Periphery.scala 232:25]
   wire [31:0] io_debug_resp_bits_data; // @[Periphery.scala 232:25]
   wire [1:0] io_debug_resp_bits_resp; // @[Periphery.scala 232:25]
-  wire [31:0] io_exit; // @[Periphery.scala 232:25]
-  wire  _T_5 = io_exit >= 32'h2; // @[Periphery.scala 171:19]
-  wire  _T_8 = ~reset; // @[Periphery.scala 172:13]
   ExampleRocketSystem ldut ( // @[TestHarness.scala 17:19]
     .clock(ldut_clock),
     .reset(ldut_reset),
@@ -189762,7 +189757,6 @@ module TestHarness(
     .io_axi4_0_r_bits_resp(mmio_mem_io_axi4_0_r_bits_resp),
     .io_axi4_0_r_bits_last(mmio_mem_io_axi4_0_r_bits_last)
   );
-  assign io_success = io_exit == 32'h1; // @[Periphery.scala 170:26]
   assign ldut_clock = clock;
   assign ldut_reset = reset | AsyncResetRegVec_w1_i0_io_q; // @[TestHarness.scala 20:22]
   assign ldut_mem_axi4_0_aw_ready = mem_io_axi4_0_aw_ready; // @[SimAXIMem.scala 36:24]
@@ -189841,28 +189835,4 @@ module TestHarness(
   assign io_debug_resp_valid = ldut_debug_clockeddmi_dmi_resp_valid; // @[Periphery.scala 166:15]
   assign io_debug_resp_bits_data = ldut_debug_clockeddmi_dmi_resp_bits_data; // @[Periphery.scala 166:15]
   assign io_debug_resp_bits_resp = ldut_debug_clockeddmi_dmi_resp_bits_resp; // @[Periphery.scala 166:15]
-  always @(posedge clock) begin
-    `ifndef SYNTHESIS
-    `ifdef PRINTF_COND
-      if (`PRINTF_COND) begin
-    `endif
-        if (_T_5 & ~reset) begin
-          $fwrite(32'h80000002,"*** FAILED *** (exit code = %d)\n",{{1'd0}, io_exit[31:1]}); // @[Periphery.scala 172:13]
-        end
-    `ifdef PRINTF_COND
-      end
-    `endif
-    `endif // SYNTHESIS
-    `ifndef SYNTHESIS
-    `ifdef STOP_COND
-      if (`STOP_COND) begin
-    `endif
-        if (_T_5 & _T_8) begin
-          $fatal; // @[Periphery.scala 173:11]
-        end
-    `ifdef STOP_COND
-      end
-    `endif
-    `endif // SYNTHESIS
-  end
 endmodule

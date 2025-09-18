@@ -533,7 +533,7 @@ module TLMonitor(	// src/main/scala/tilelink/Monitor.scala:36:7
     wire [7:0][2:0] _GEN_14 = {3'h4, 3'h4, 3'h2, 3'h1, 3'h1, 3'h1, 3'h0, 3'h0};	// src/main/scala/tilelink/Monitor.scala:688:38
     wire            _GEN_15 = io_in_a_bits_size < 4'hD;	// src/main/scala/diplomacy/Parameters.scala:92:38
     wire            _GEN_16 = io_in_a_bits_size < 4'h7;	// src/main/scala/diplomacy/Parameters.scala:92:38
-    wire            _GEN_17 = io_in_a_bits_address[31:28] == 4'h8;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14
+    wire            _GEN_17 = io_in_a_bits_address[31:27] == 5'h10;	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14, :36:7
     wire            _GEN_18 = _GEN_15 & _GEN_16 & _GEN_17;	// src/main/scala/diplomacy/Parameters.scala:92:38, :137:{41,46,59}, src/main/scala/tilelink/Monitor.scala:85:72
     wire            _GEN_19 = io_in_a_valid & io_in_a_bits_opcode == 3'h6 & ~reset;	// src/main/scala/tilelink/Monitor.scala:45:11, :84:25
     wire            _GEN_20 = io_in_a_bits_param > 3'h2;	// src/main/scala/tilelink/Bundles.scala:111:27, src/main/scala/tilelink/Monitor.scala:643:42, :644:42
@@ -547,7 +547,7 @@ module TLMonitor(	// src/main/scala/tilelink/Monitor.scala:36:7
     wire            _GEN_27 =
       {io_in_a_bits_address[31:26], io_in_a_bits_address[25:16] ^ 10'h200} == 16'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:738:34, :739:34
     wire            _GEN_28 =
-      {io_in_a_bits_address[31:28], ~(io_in_a_bits_address[27:26])} == 6'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Bundles.scala:264:74, src/main/scala/tilelink/Monitor.scala:20:14
+      {io_in_a_bits_address[31:28], ~(io_in_a_bits_address[27:26])} == 6'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Bundles.scala:264:74
     wire            _GEN_29 =
       {io_in_a_bits_address[31], ~(io_in_a_bits_address[30:29])} == 3'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:643:42, :644:42
     wire            _GEN_30 = io_in_a_bits_mask != mask;	// src/main/scala/tilelink/Monitor.scala:113:30, src/main/scala/util/Misc.scala:222:10
@@ -1481,7 +1481,7 @@ module TLMonitor_1(	// src/main/scala/tilelink/Monitor.scala:36:7
     {io_in_b_bits_address[31:26], io_in_b_bits_address[25:16] ^ 10'h200};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
   wire [5:0]  _GEN_4 = {io_in_b_bits_address[31:28], ~(io_in_b_bits_address[27:26])};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
   wire [2:0]  _GEN_5 = {io_in_b_bits_address[31], ~(io_in_b_bits_address[30:29])};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
-  wire        _GEN_6 = io_in_b_bits_address[31:28] != 4'h8;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:36:7
+  wire        _GEN_6 = io_in_b_bits_address[31:27] != 5'h10;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14
   wire        address_ok =
     ~(|(io_in_b_bits_address[31:12])) | ~(|_GEN_1) | ~(|_GEN_2) | ~(|_GEN_3) | ~(|_GEN_4)
     | ~(|_GEN_5) | ~_GEN_6;	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/tilelink/Parameters.scala:636:64
@@ -1519,7 +1519,7 @@ module TLMonitor_1(	// src/main/scala/tilelink/Monitor.scala:36:7
     {io_in_c_bits_address[31:26], io_in_c_bits_address[25:16] ^ 10'h200};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
   wire [5:0]  _GEN_11 = {io_in_c_bits_address[31:28], ~(io_in_c_bits_address[27:26])};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
   wire [2:0]  _GEN_12 = {io_in_c_bits_address[31], ~(io_in_c_bits_address[30:29])};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
-  wire        _GEN_13 = io_in_c_bits_address[31:28] != 4'h8;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:36:7
+  wire        _GEN_13 = io_in_c_bits_address[31:27] != 5'h10;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14
   wire        address_ok_1 =
     ~(|(io_in_c_bits_address[31:12])) | ~(|_GEN_8) | ~(|_GEN_9) | ~(|_GEN_10)
     | ~(|_GEN_11) | ~(|_GEN_12) | ~_GEN_13;	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/tilelink/Parameters.scala:636:64
@@ -1720,7 +1720,7 @@ module TLMonitor_1(	// src/main/scala/tilelink/Monitor.scala:36:7
     wire            _GEN_35 = io_in_a_bits_size < 4'hD;	// src/main/scala/diplomacy/Parameters.scala:92:38
     wire            _GEN_36 = _GEN_35 & source_ok;	// src/main/scala/diplomacy/Parameters.scala:92:38, src/main/scala/tilelink/Parameters.scala:1139:46, :1174:30
     wire            _GEN_37 = io_in_a_bits_size < 4'h7;	// src/main/scala/diplomacy/Parameters.scala:92:38, src/main/scala/tilelink/Monitor.scala:36:7
-    wire            _GEN_38 = io_in_a_bits_address[31:28] == 4'h8;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:36:7
+    wire            _GEN_38 = io_in_a_bits_address[31:27] == 5'h10;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14
     wire            _GEN_39 = _GEN_36 & _GEN_37 & _GEN_38;	// src/main/scala/diplomacy/Parameters.scala:92:38, :137:{41,46,59}, src/main/scala/tilelink/Monitor.scala:85:72, src/main/scala/tilelink/Parameters.scala:1174:30
     wire            _GEN_40 = io_in_a_valid & io_in_a_bits_opcode == 3'h6 & ~reset;	// src/main/scala/tilelink/Monitor.scala:20:14, :45:11, :84:25
     wire            _GEN_41 = io_in_a_bits_address[31:12] == 20'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/tilelink/Monitor.scala:709:27
@@ -5181,7 +5181,7 @@ module TLMonitor_2(	// src/main/scala/tilelink/Monitor.scala:36:7
     wire [7:0][2:0] _GEN_14 = {3'h4, 3'h4, 3'h2, 3'h1, 3'h1, 3'h1, 3'h0, 3'h0};	// src/main/scala/tilelink/Monitor.scala:688:38
     wire            _GEN_15 = io_in_a_bits_size < 4'hD;	// src/main/scala/diplomacy/Parameters.scala:92:38
     wire            _GEN_16 = io_in_a_bits_size < 4'h7;	// src/main/scala/diplomacy/Parameters.scala:92:38
-    wire            _GEN_17 = io_in_a_bits_address[31:28] == 4'h8;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14
+    wire            _GEN_17 = io_in_a_bits_address[31:27] == 5'h10;	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14, :36:7
     wire            _GEN_18 = _GEN_15 & _GEN_16 & _GEN_17;	// src/main/scala/diplomacy/Parameters.scala:92:38, :137:{41,46,59}, src/main/scala/tilelink/Monitor.scala:85:72
     wire            _GEN_19 = io_in_a_valid & io_in_a_bits_opcode == 3'h6 & ~reset;	// src/main/scala/tilelink/Monitor.scala:45:11, :84:25
     wire            _GEN_20 = io_in_a_bits_param > 3'h2;	// src/main/scala/tilelink/Bundles.scala:111:27, src/main/scala/tilelink/Monitor.scala:643:42, :644:42
@@ -5195,7 +5195,7 @@ module TLMonitor_2(	// src/main/scala/tilelink/Monitor.scala:36:7
     wire            _GEN_27 =
       {io_in_a_bits_address[31:26], io_in_a_bits_address[25:16] ^ 10'h200} == 16'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:738:34, :739:34
     wire            _GEN_28 =
-      {io_in_a_bits_address[31:28], ~(io_in_a_bits_address[27:26])} == 6'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Bundles.scala:264:74, src/main/scala/tilelink/Monitor.scala:20:14
+      {io_in_a_bits_address[31:28], ~(io_in_a_bits_address[27:26])} == 6'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Bundles.scala:264:74
     wire            _GEN_29 =
       {io_in_a_bits_address[31], ~(io_in_a_bits_address[30:29])} == 3'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:643:42, :644:42
     wire            _GEN_30 = io_in_a_bits_mask != mask;	// src/main/scala/tilelink/Monitor.scala:113:30, src/main/scala/util/Misc.scala:222:10
@@ -6129,7 +6129,7 @@ module TLMonitor_3(	// src/main/scala/tilelink/Monitor.scala:36:7
     {io_in_b_bits_address[31:26], io_in_b_bits_address[25:16] ^ 10'h200};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
   wire [5:0]  _GEN_4 = {io_in_b_bits_address[31:28], ~(io_in_b_bits_address[27:26])};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
   wire [2:0]  _GEN_5 = {io_in_b_bits_address[31], ~(io_in_b_bits_address[30:29])};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
-  wire        _GEN_6 = io_in_b_bits_address[31:28] != 4'h8;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:36:7
+  wire        _GEN_6 = io_in_b_bits_address[31:27] != 5'h10;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14
   wire        address_ok =
     ~(|(io_in_b_bits_address[31:12])) | ~(|_GEN_1) | ~(|_GEN_2) | ~(|_GEN_3) | ~(|_GEN_4)
     | ~(|_GEN_5) | ~_GEN_6;	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/tilelink/Parameters.scala:636:64
@@ -6167,7 +6167,7 @@ module TLMonitor_3(	// src/main/scala/tilelink/Monitor.scala:36:7
     {io_in_c_bits_address[31:26], io_in_c_bits_address[25:16] ^ 10'h200};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
   wire [5:0]  _GEN_11 = {io_in_c_bits_address[31:28], ~(io_in_c_bits_address[27:26])};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
   wire [2:0]  _GEN_12 = {io_in_c_bits_address[31], ~(io_in_c_bits_address[30:29])};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
-  wire        _GEN_13 = io_in_c_bits_address[31:28] != 4'h8;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:36:7
+  wire        _GEN_13 = io_in_c_bits_address[31:27] != 5'h10;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14
   wire        address_ok_1 =
     ~(|(io_in_c_bits_address[31:12])) | ~(|_GEN_8) | ~(|_GEN_9) | ~(|_GEN_10)
     | ~(|_GEN_11) | ~(|_GEN_12) | ~_GEN_13;	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/tilelink/Parameters.scala:636:64
@@ -6368,7 +6368,7 @@ module TLMonitor_3(	// src/main/scala/tilelink/Monitor.scala:36:7
     wire            _GEN_35 = io_in_a_bits_size < 4'hD;	// src/main/scala/diplomacy/Parameters.scala:92:38
     wire            _GEN_36 = _GEN_35 & source_ok;	// src/main/scala/diplomacy/Parameters.scala:92:38, src/main/scala/tilelink/Parameters.scala:1139:46, :1174:30
     wire            _GEN_37 = io_in_a_bits_size < 4'h7;	// src/main/scala/diplomacy/Parameters.scala:92:38, src/main/scala/tilelink/Monitor.scala:36:7
-    wire            _GEN_38 = io_in_a_bits_address[31:28] == 4'h8;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:36:7
+    wire            _GEN_38 = io_in_a_bits_address[31:27] == 5'h10;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14
     wire            _GEN_39 = _GEN_36 & _GEN_37 & _GEN_38;	// src/main/scala/diplomacy/Parameters.scala:92:38, :137:{41,46,59}, src/main/scala/tilelink/Monitor.scala:85:72, src/main/scala/tilelink/Parameters.scala:1174:30
     wire            _GEN_40 = io_in_a_valid & io_in_a_bits_opcode == 3'h6 & ~reset;	// src/main/scala/tilelink/Monitor.scala:20:14, :45:11, :84:25
     wire            _GEN_41 = io_in_a_bits_address[31:12] == 20'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/tilelink/Monitor.scala:709:27
@@ -17309,7 +17309,7 @@ module TLMonitor_5(	// src/main/scala/tilelink/Monitor.scala:36:7
     wire [7:0][2:0] _GEN_14 = {3'h4, 3'h4, 3'h2, 3'h1, 3'h1, 3'h1, 3'h0, 3'h0};	// src/main/scala/tilelink/Monitor.scala:688:38
     wire            _GEN_15 = io_in_a_bits_size < 4'hD;	// src/main/scala/diplomacy/Parameters.scala:92:38
     wire            _GEN_16 = io_in_a_bits_size < 4'h7;	// src/main/scala/diplomacy/Parameters.scala:92:38
-    wire            _GEN_17 = io_in_a_bits_address[31:28] == 4'h8;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14
+    wire            _GEN_17 = io_in_a_bits_address[31:27] == 5'h10;	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14, :36:7
     wire            _GEN_18 = _GEN_15 & _GEN_16 & _GEN_17;	// src/main/scala/diplomacy/Parameters.scala:92:38, :137:{41,46,59}, src/main/scala/tilelink/Monitor.scala:85:72
     wire            _GEN_19 = io_in_a_valid & io_in_a_bits_opcode == 3'h6 & ~reset;	// src/main/scala/tilelink/Monitor.scala:45:11, :84:25
     wire            _GEN_20 = io_in_a_bits_param > 3'h2;	// src/main/scala/tilelink/Bundles.scala:111:27, src/main/scala/tilelink/Monitor.scala:643:42, :644:42
@@ -17323,7 +17323,7 @@ module TLMonitor_5(	// src/main/scala/tilelink/Monitor.scala:36:7
     wire            _GEN_27 =
       {io_in_a_bits_address[31:26], io_in_a_bits_address[25:16] ^ 10'h200} == 16'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:738:34, :739:34
     wire            _GEN_28 =
-      {io_in_a_bits_address[31:28], ~(io_in_a_bits_address[27:26])} == 6'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Bundles.scala:264:74, src/main/scala/tilelink/Monitor.scala:20:14
+      {io_in_a_bits_address[31:28], ~(io_in_a_bits_address[27:26])} == 6'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Bundles.scala:264:74
     wire            _GEN_29 =
       {io_in_a_bits_address[31], ~(io_in_a_bits_address[30:29])} == 3'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:643:42, :644:42
     wire            _GEN_30 = io_in_a_bits_mask != mask;	// src/main/scala/tilelink/Monitor.scala:113:30, src/main/scala/util/Misc.scala:222:10
@@ -18891,7 +18891,7 @@ module TLMonitor_6(	// src/main/scala/tilelink/Monitor.scala:36:7
     wire [7:0][2:0] _GEN_14 = {3'h4, 3'h4, 3'h2, 3'h1, 3'h1, 3'h1, 3'h0, 3'h0};	// src/main/scala/tilelink/Monitor.scala:688:38
     wire            _GEN_15 = io_in_a_bits_size < 4'hD;	// src/main/scala/diplomacy/Parameters.scala:92:38
     wire            _GEN_16 = io_in_a_bits_size < 4'h7;	// src/main/scala/diplomacy/Parameters.scala:92:38
-    wire            _GEN_17 = io_in_a_bits_address[31:28] == 4'h8;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14
+    wire            _GEN_17 = io_in_a_bits_address[31:27] == 5'h10;	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14, :36:7
     wire            _GEN_18 = _GEN_15 & _GEN_16 & _GEN_17;	// src/main/scala/diplomacy/Parameters.scala:92:38, :137:{41,46,59}, src/main/scala/tilelink/Monitor.scala:85:72
     wire            _GEN_19 = io_in_a_valid & io_in_a_bits_opcode == 3'h6 & ~reset;	// src/main/scala/tilelink/Monitor.scala:45:11, :84:25
     wire            _GEN_20 = io_in_a_bits_mask != 8'hFF;	// src/main/scala/tilelink/Monitor.scala:91:{18,31}
@@ -18904,7 +18904,7 @@ module TLMonitor_6(	// src/main/scala/tilelink/Monitor.scala:36:7
     wire            _GEN_26 =
       {io_in_a_bits_address[31:26], io_in_a_bits_address[25:16] ^ 10'h200} == 16'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:738:34, :739:34
     wire            _GEN_27 =
-      {io_in_a_bits_address[31:28], ~(io_in_a_bits_address[27:26])} == 6'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Bundles.scala:264:74, src/main/scala/tilelink/Monitor.scala:20:14
+      {io_in_a_bits_address[31:28], ~(io_in_a_bits_address[27:26])} == 6'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Bundles.scala:264:74
     wire            _GEN_28 =
       {io_in_a_bits_address[31], ~(io_in_a_bits_address[30:29])} == 3'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14, :643:42, :644:42
     wire            _GEN_29 = io_in_a_bits_mask != mask;	// src/main/scala/tilelink/Monitor.scala:113:30, src/main/scala/util/Misc.scala:222:10
@@ -20096,7 +20096,7 @@ module TLMonitor_7(	// src/main/scala/tilelink/Monitor.scala:36:7
     wire [7:0][2:0] _GEN_14 = {3'h4, 3'h4, 3'h2, 3'h1, 3'h1, 3'h1, 3'h0, 3'h0};	// src/main/scala/tilelink/Monitor.scala:688:38
     wire            _GEN_15 = io_in_a_bits_size < 4'hD;	// src/main/scala/diplomacy/Parameters.scala:92:38
     wire            _GEN_16 = io_in_a_bits_size < 4'h7;	// src/main/scala/diplomacy/Parameters.scala:92:38
-    wire            _GEN_17 = io_in_a_bits_address[31:28] == 4'h8;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14
+    wire            _GEN_17 = io_in_a_bits_address[31:27] == 5'h10;	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14, :36:7
     wire            _GEN_18 = _GEN_15 & _GEN_16 & _GEN_17;	// src/main/scala/diplomacy/Parameters.scala:92:38, :137:{41,46,59}, src/main/scala/tilelink/Monitor.scala:85:72
     wire            _GEN_19 = io_in_a_valid & io_in_a_bits_opcode == 3'h6 & ~reset;	// src/main/scala/tilelink/Monitor.scala:45:11, :84:25
     wire            _GEN_20 = io_in_a_bits_mask != 8'hFF;	// src/main/scala/tilelink/Monitor.scala:91:{18,31}
@@ -20109,7 +20109,7 @@ module TLMonitor_7(	// src/main/scala/tilelink/Monitor.scala:36:7
     wire            _GEN_26 =
       {io_in_a_bits_address[31:26], io_in_a_bits_address[25:16] ^ 10'h200} == 16'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:738:34, :739:34
     wire            _GEN_27 =
-      {io_in_a_bits_address[31:28], ~(io_in_a_bits_address[27:26])} == 6'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Bundles.scala:264:74, src/main/scala/tilelink/Monitor.scala:20:14
+      {io_in_a_bits_address[31:28], ~(io_in_a_bits_address[27:26])} == 6'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Bundles.scala:264:74
     wire            _GEN_28 =
       {io_in_a_bits_address[31], ~(io_in_a_bits_address[30:29])} == 3'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14, :643:42, :644:42
     wire            _GEN_29 = io_in_a_bits_mask != mask;	// src/main/scala/tilelink/Monitor.scala:113:30, src/main/scala/util/Misc.scala:222:10
@@ -21479,7 +21479,7 @@ module AXI4ToTL(	// src/main/scala/amba/axi4/ToTL.scala:79:9
        | {nodeIn_ar_bits_addr[31:26], nodeIn_ar_bits_addr[25:16] ^ 10'h200} == 16'h0
        | {nodeIn_ar_bits_addr[31:28], ~(nodeIn_ar_bits_addr[27:26])} == 6'h0
        | {nodeIn_ar_bits_addr[31], ~(nodeIn_ar_bits_addr[30:29])} == 3'h0
-       | nodeIn_ar_bits_addr[31:28] == 4'h8);	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25, dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, :551:17, src/main/scala/amba/axi4/Bundles.scala:33:21, src/main/scala/amba/axi4/ToTL.scala:102:30, :138:30, src/main/scala/chisel3/util/Mux.scala:30:73, src/main/scala/diplomacy/Parameters.scala:92:38, :137:{31,41,46,59}, src/main/scala/tilelink/Bundles.scala:264:74, src/main/scala/tilelink/Edges.scala:460:17, :500:17, src/main/scala/tilelink/Parameters.scala:684:54, :685:42, :686:26
+       | nodeIn_ar_bits_addr[31:27] == 5'h10);	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25, dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, :551:17, src/main/scala/amba/axi4/Bundles.scala:33:21, src/main/scala/amba/axi4/ToTL.scala:102:30, :138:30, src/main/scala/chisel3/util/Mux.scala:30:73, src/main/scala/diplomacy/Parameters.scala:92:38, :137:{31,41,46,59}, src/main/scala/tilelink/Bundles.scala:264:74, src/main/scala/tilelink/Edges.scala:460:17, :500:17, src/main/scala/tilelink/Parameters.scala:684:54, :685:42, :686:26
   wire [31:0] r_addr = r_ok ? nodeIn_ar_bits_addr : {29'h600, nodeIn_ar_bits_addr[2:0]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/ToTL.scala:106:{23,72}, src/main/scala/tilelink/Parameters.scala:686:26
   assign r_out_bits_a_address = r_addr;	// src/main/scala/amba/axi4/ToTL.scala:106:23, src/main/scala/tilelink/Edges.scala:460:17
   reg  [2:0]  r_count_0;	// src/main/scala/amba/axi4/ToTL.scala:107:28
@@ -21496,7 +21496,7 @@ module AXI4ToTL(	// src/main/scala/amba/axi4/ToTL.scala:79:9
        | {r_addr[31:30], r_addr[27], r_addr[25], ~(r_addr[16])} == 5'h0
        | {r_addr[31:30], r_addr[27], ~(r_addr[25]), r_addr[16]} == 5'h0
        | {r_addr[31:30], ~(r_addr[27])} == 3'h0 | {r_addr[31], ~(r_addr[30])} == 2'h0
-       | r_addr[31:30] == 2'h2);	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25, dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/ToTL.scala:79:9, :102:30, :106:23, :138:30, src/main/scala/chisel3/util/Mux.scala:30:73, src/main/scala/diplomacy/Parameters.scala:92:38, :137:{31,41,46,59}, src/main/scala/tilelink/Bundles.scala:264:74, src/main/scala/tilelink/Edges.scala:460:17, :500:17, src/main/scala/tilelink/Parameters.scala:684:54, :685:42, :686:26
+       | {r_addr[31:30] ^ 2'h2, r_addr[27]} == 3'h0);	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25, dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/ToTL.scala:79:9, :102:30, :106:23, :138:30, src/main/scala/chisel3/util/Mux.scala:30:73, src/main/scala/diplomacy/Parameters.scala:92:38, :137:{31,41,46,59}, src/main/scala/tilelink/Bundles.scala:264:74, src/main/scala/tilelink/Edges.scala:460:17, :500:17, src/main/scala/tilelink/Parameters.scala:684:54, :685:42, :686:26
   wire [3:0]  r_out_bits_size = r_out_bits_a_size;	// src/main/scala/amba/axi4/ToTL.scala:102:30, src/main/scala/tilelink/Edges.scala:460:17
   wire [3:0]  r_out_bits_source = r_out_bits_a_source;	// src/main/scala/amba/axi4/ToTL.scala:102:30, src/main/scala/tilelink/Edges.scala:460:17
   wire [31:0] r_out_bits_address = r_out_bits_a_address;	// src/main/scala/amba/axi4/ToTL.scala:102:30, src/main/scala/tilelink/Edges.scala:460:17
@@ -21612,7 +21612,7 @@ module AXI4ToTL(	// src/main/scala/amba/axi4/ToTL.scala:79:9
     & (nodeIn_aw_bits_addr[31:12] == 20'h0
        | {nodeIn_aw_bits_addr[31:26], nodeIn_aw_bits_addr[25:16] ^ 10'h200} == 16'h0
        | {nodeIn_aw_bits_addr[31:28], ~(nodeIn_aw_bits_addr[27:26])} == 6'h0
-       | nodeIn_aw_bits_addr[31:28] == 4'h8) | _w_out_bits_legal_T_48
+       | nodeIn_aw_bits_addr[31:27] == 5'h10) | _w_out_bits_legal_T_48
     & {nodeIn_aw_bits_addr[31], ~(nodeIn_aw_bits_addr[30:29])} == 3'h0;	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25, dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, :551:17, src/main/scala/amba/axi4/Bundles.scala:33:21, src/main/scala/amba/axi4/ToTL.scala:102:30, :138:30, src/main/scala/chisel3/util/Mux.scala:30:73, src/main/scala/diplomacy/Parameters.scala:92:38, :137:{31,41,46,59}, src/main/scala/tilelink/Bundles.scala:264:74, src/main/scala/tilelink/Edges.scala:460:17, :500:17, src/main/scala/tilelink/Parameters.scala:684:54, :685:42, :686:26
   wire [31:0] w_addr = w_ok ? nodeIn_aw_bits_addr : {29'h600, nodeIn_aw_bits_addr[2:0]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/ToTL.scala:106:23, :142:{23,72}, src/main/scala/tilelink/Parameters.scala:686:26
   assign w_out_bits_a_address = w_addr;	// src/main/scala/amba/axi4/ToTL.scala:142:23, src/main/scala/tilelink/Edges.scala:500:17
@@ -21632,8 +21632,9 @@ module AXI4ToTL(	// src/main/scala/amba/axi4/ToTL.scala:79:9
     | _w_out_bits_legal_T_13
     & ({w_addr[31:30], w_addr[27], w_addr[25], w_addr[16], w_addr[13]} == 6'h0
        | {w_addr[31:30], w_addr[27], ~(w_addr[25]), w_addr[16]} == 5'h0
-       | {w_addr[31:30], ~(w_addr[27])} == 3'h0 | w_addr[31:30] == 2'h2)
-    | _w_out_bits_legal_T_48 & {w_addr[31], ~(w_addr[30])} == 2'h0;	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25, dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/ToTL.scala:79:9, :102:30, :138:30, :142:23, src/main/scala/chisel3/util/Mux.scala:30:73, src/main/scala/diplomacy/Parameters.scala:92:38, :137:{31,41,46,59}, src/main/scala/tilelink/Bundles.scala:264:74, src/main/scala/tilelink/Edges.scala:460:17, :500:17, src/main/scala/tilelink/Parameters.scala:684:54, :685:42, :686:26
+       | {w_addr[31:30], ~(w_addr[27])} == 3'h0
+       | {w_addr[31:30] ^ 2'h2, w_addr[27]} == 3'h0) | _w_out_bits_legal_T_48
+    & {w_addr[31], ~(w_addr[30])} == 2'h0;	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25, dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/ToTL.scala:79:9, :102:30, :138:30, :142:23, src/main/scala/chisel3/util/Mux.scala:30:73, src/main/scala/diplomacy/Parameters.scala:92:38, :137:{31,41,46,59}, src/main/scala/tilelink/Bundles.scala:264:74, src/main/scala/tilelink/Edges.scala:460:17, :500:17, src/main/scala/tilelink/Parameters.scala:684:54, :685:42, :686:26
   wire [3:0]  w_out_bits_size = w_out_bits_a_size;	// src/main/scala/amba/axi4/ToTL.scala:138:30, src/main/scala/tilelink/Edges.scala:500:17
   wire [3:0]  w_out_bits_source = w_out_bits_a_source;	// src/main/scala/amba/axi4/ToTL.scala:138:30, src/main/scala/tilelink/Edges.scala:500:17
   wire [31:0] w_out_bits_address = w_out_bits_a_address;	// src/main/scala/amba/axi4/ToTL.scala:138:30, src/main/scala/tilelink/Edges.scala:500:17
@@ -22694,7 +22695,7 @@ module AXI4Fragmenter(	// src/main/scala/amba/axi4/Fragmenter.scala:37:9
           | {addr[31:30], addr[27], addr[25], ~(addr[16])} == 5'h0
           | {addr[31:30], addr[27], ~(addr[25]), addr[16]} == 5'h0
           | {addr[31:30], ~(addr[27])} == 3'h0 | {addr[31], ~(addr[30])} == 2'h0
-          | addr[31:30] == 2'h2}}}
+          | {addr[31:30] ^ 2'h2, addr[27]} == 3'h0}}}
     | {8{{addr[31:30], addr[27], addr[25], addr[16], ~(addr[13])} == 6'h0}};	// src/main/scala/amba/axi4/Fragmenter.scala:37:9, :73:23, :84:100, src/main/scala/chisel3/util/Mux.scala:30:73, src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}
   wire [5:0]  _GEN = len[6:1] | len[7:2];	// src/main/scala/amba/axi4/Fragmenter.scala:72:23, src/main/scala/util/package.scala:262:{43,48}
   wire [4:0]  _GEN_0 = _GEN[4:0] | {len[7], _GEN[5:2]};	// src/main/scala/amba/axi4/Fragmenter.scala:72:23, src/main/scala/util/package.scala:262:{43,48}
@@ -22766,7 +22767,8 @@ module AXI4Fragmenter(	// src/main/scala/amba/axi4/Fragmenter.scala:37:9
     {5'h0,
      {3{{addr_1[31:30], addr_1[27], addr_1[25], addr_1[13]} == 5'h0
           | {addr_1[31:30], addr_1[27], ~(addr_1[25])} == 4'h0
-          | {addr_1[31:30], ~(addr_1[27])} == 3'h0 | addr_1[31:30] == 2'h2}}}
+          | {addr_1[31:30], ~(addr_1[27])} == 3'h0
+          | {addr_1[31:30] ^ 2'h2, addr_1[27]} == 3'h0}}}
     | {8{{addr_1[31:30], addr_1[27], addr_1[25], ~(addr_1[13])} == 5'h0}};	// src/main/scala/amba/axi4/Fragmenter.scala:37:9, :73:23, :84:100, src/main/scala/chisel3/util/Mux.scala:30:73, src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/util/package.scala:253:48
   wire [7:0]  support1_1 =
     {_support1_T_79[7:5], _support1_T_79[4:0] | {5{{addr_1[31], ~(addr_1[30])} == 2'h0}}};	// src/main/scala/amba/axi4/Fragmenter.scala:37:9, :73:23, src/main/scala/chisel3/util/Mux.scala:30:73, src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}
@@ -40500,7 +40502,7 @@ module TLMonitor_18(	// src/main/scala/tilelink/Monitor.scala:36:7
     wire            _GEN_16 = io_in_a_bits_mask != 8'hFF;	// src/main/scala/tilelink/Monitor.scala:91:{18,31}
     wire            _GEN_17 = io_in_a_valid & (&io_in_a_bits_opcode) & ~reset;	// src/main/scala/tilelink/Monitor.scala:45:11, :95:25
     wire            _GEN_18 =
-      io_in_a_bits_size != 3'h7 & io_in_a_bits_address[31:28] == 4'h8;	// src/main/scala/diplomacy/Parameters.scala:92:38, :137:{31,41,46,59}, src/main/scala/tilelink/Edges.scala:230:28, src/main/scala/tilelink/Monitor.scala:20:14, src/main/scala/tilelink/Parameters.scala:684:54
+      io_in_a_bits_size != 3'h7 & io_in_a_bits_address[31:27] == 5'h10;	// src/main/scala/diplomacy/Parameters.scala:92:38, :137:{31,41,46,59}, src/main/scala/tilelink/Edges.scala:230:28, src/main/scala/tilelink/Monitor.scala:20:14, src/main/scala/tilelink/Parameters.scala:684:54
     wire            _GEN_19 = io_in_a_valid & io_in_a_bits_opcode == 3'h4 & ~reset;	// src/main/scala/tilelink/Monitor.scala:45:11, :107:25, :643:42, :644:42
     wire            _GEN_20 = io_in_a_bits_mask != mask;	// src/main/scala/tilelink/Monitor.scala:113:30, src/main/scala/util/Misc.scala:222:10
     wire            _GEN_21 = io_in_a_valid & io_in_a_bits_opcode == 3'h0 & ~reset;	// src/main/scala/tilelink/Edges.scala:220:59, :221:14, :234:25, src/main/scala/tilelink/Monitor.scala:45:11, :117:25, :643:42, :644:42
@@ -43034,7 +43036,7 @@ module TLMonitor_19(	// src/main/scala/tilelink/Monitor.scala:36:7
     wire            _GEN_16 = io_in_a_bits_mask != 8'hFF;	// src/main/scala/tilelink/Monitor.scala:91:{18,31}
     wire            _GEN_17 = io_in_a_valid & (&io_in_a_bits_opcode) & ~reset;	// src/main/scala/tilelink/Monitor.scala:45:11, :95:25
     wire            _GEN_18 =
-      io_in_a_bits_size != 3'h7 & io_in_a_bits_address[31:28] == 4'h8;	// src/main/scala/diplomacy/Parameters.scala:92:38, :137:{31,41,46,59}, src/main/scala/tilelink/Edges.scala:230:28, src/main/scala/tilelink/Monitor.scala:20:14, src/main/scala/tilelink/Parameters.scala:684:54
+      io_in_a_bits_size != 3'h7 & io_in_a_bits_address[31:27] == 5'h10;	// src/main/scala/diplomacy/Parameters.scala:92:38, :137:{31,41,46,59}, src/main/scala/tilelink/Edges.scala:230:28, src/main/scala/tilelink/Monitor.scala:20:14, src/main/scala/tilelink/Parameters.scala:684:54
     wire            _GEN_19 = io_in_a_valid & io_in_a_bits_opcode == 3'h4 & ~reset;	// src/main/scala/tilelink/Monitor.scala:45:11, :107:25, :643:42, :644:42
     wire            _GEN_20 = io_in_a_bits_mask != mask;	// src/main/scala/tilelink/Monitor.scala:113:30, src/main/scala/util/Misc.scala:222:10
     wire            _GEN_21 = io_in_a_valid & io_in_a_bits_opcode == 3'h0 & ~reset;	// src/main/scala/tilelink/Edges.scala:220:59, :221:14, :234:25, src/main/scala/tilelink/Monitor.scala:45:11, :117:25, :643:42, :644:42
@@ -51351,7 +51353,7 @@ module TLMonitor_20(	// src/main/scala/tilelink/Monitor.scala:36:7
     wire            _GEN_23 =
       ~(|(io_in_a_bits_source[4:3])) | io_in_a_bits_source[4:3] == 2'h1
       | _source_ok_WIRE_2 | _source_ok_WIRE_3 | _source_ok_WIRE_4;	// src/main/scala/diplomacy/Parameters.scala:46:9, :54:{10,32}, src/main/scala/tilelink/Parameters.scala:1175:43
-    wire            _GEN_24 = io_in_a_bits_address[31:28] == 4'h8;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14
+    wire            _GEN_24 = io_in_a_bits_address[31:27] == 5'h10;	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14, :36:7
     wire            _GEN_25 = io_in_a_bits_size != 3'h7 & _GEN_24;	// src/main/scala/diplomacy/Parameters.scala:92:38, :137:{41,46,59}, src/main/scala/tilelink/Edges.scala:220:59, src/main/scala/tilelink/Parameters.scala:684:54
     wire            _GEN_26 = _GEN_23 & _GEN_25;	// src/main/scala/tilelink/Monitor.scala:85:72, src/main/scala/tilelink/Parameters.scala:684:54, :1175:43
     wire            _GEN_27 = io_in_a_valid & io_in_a_bits_opcode == 3'h6 & ~reset;	// src/main/scala/tilelink/Monitor.scala:20:14, :45:11, :84:25
@@ -51376,7 +51378,7 @@ module TLMonitor_20(	// src/main/scala/tilelink/Monitor.scala:36:7
     wire            _GEN_46 = io_in_d_valid & io_in_d_bits_opcode == 3'h1 & ~reset;	// src/main/scala/tilelink/Monitor.scala:45:11, :52:11, :349:25, :643:42, :644:42
     wire            _GEN_47 = io_in_d_valid & io_in_d_bits_opcode == 3'h2 & ~reset;	// src/main/scala/tilelink/Monitor.scala:45:11, :52:11, :357:25, :643:42, :644:42
     wire            _GEN_48 = io_in_b_valid & ~reset;	// src/main/scala/tilelink/Monitor.scala:45:11, :52:11
-    wire            _GEN_49 = io_in_c_bits_address[31:28] != 4'h8;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14
+    wire            _GEN_49 = io_in_c_bits_address[31:27] != 5'h10;	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14, :36:7
     wire            _GEN_50 = io_in_c_valid & io_in_c_bits_opcode == 3'h4 & ~reset;	// src/main/scala/tilelink/Monitor.scala:45:11, :245:25, :643:42, :644:42
     wire            _GEN_51 = io_in_c_bits_size < 3'h3;	// src/main/scala/tilelink/Bundles.scala:148:30, src/main/scala/tilelink/Monitor.scala:248:30
     wire            _GEN_52 = io_in_c_valid & io_in_c_bits_opcode == 3'h5 & ~reset;	// src/main/scala/tilelink/Monitor.scala:45:11, :254:25, :644:42, src/main/scala/util/Misc.scala:202:81
@@ -51855,7 +51857,7 @@ module TLMonitor_20(	// src/main/scala/tilelink/Monitor.scala:36:7
         if (`STOP_COND_)	// src/main/scala/tilelink/Monitor.scala:52:11
           $fatal;	// src/main/scala/tilelink/Monitor.scala:52:11
       end
-      if (_GEN_48 & io_in_b_bits_address[31:28] != 4'h8) begin	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14, :52:11
+      if (_GEN_48 & io_in_b_bits_address[31:27] != 5'h10) begin	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14, :36:7, :52:11
         if (`ASSERT_VERBOSE_COND_)	// src/main/scala/tilelink/Monitor.scala:52:11
           $error("Assertion failed: 'B' channel carries Probe type which is unexpected using diplomatic parameters (connected at src/main/scala/subsystem/BankedCoherenceParams.scala:69:27)\n    at Monitor.scala:52 assert(cond, message)\n");	// src/main/scala/tilelink/Monitor.scala:52:11
         if (`STOP_COND_)	// src/main/scala/tilelink/Monitor.scala:52:11
@@ -55050,7 +55052,7 @@ module TLMonitor_21(	// src/main/scala/tilelink/Monitor.scala:36:7
     wire            _GEN_16 = io_in_a_bits_mask != 8'hFF;	// src/main/scala/tilelink/Monitor.scala:91:{18,31}
     wire            _GEN_17 = io_in_a_valid & (&io_in_a_bits_opcode) & ~reset;	// src/main/scala/tilelink/Monitor.scala:45:11, :95:25
     wire            _GEN_18 =
-      io_in_a_bits_size != 3'h7 & io_in_a_bits_address[31:28] == 4'h8;	// src/main/scala/diplomacy/Parameters.scala:92:38, :137:{31,41,46,59}, src/main/scala/tilelink/Edges.scala:230:28, src/main/scala/tilelink/Monitor.scala:20:14, src/main/scala/tilelink/Parameters.scala:684:54
+      io_in_a_bits_size != 3'h7 & io_in_a_bits_address[31:27] == 5'h10;	// src/main/scala/diplomacy/Parameters.scala:92:38, :137:{31,41,46,59}, src/main/scala/tilelink/Edges.scala:230:28, src/main/scala/tilelink/Monitor.scala:20:14, src/main/scala/tilelink/Parameters.scala:684:54
     wire            _GEN_19 = io_in_a_valid & io_in_a_bits_opcode == 3'h4 & ~reset;	// src/main/scala/tilelink/Monitor.scala:45:11, :107:25, :643:42, :644:42
     wire            _GEN_20 = io_in_a_bits_mask != mask;	// src/main/scala/tilelink/Monitor.scala:113:30, src/main/scala/util/Misc.scala:222:10
     wire            _GEN_21 = io_in_a_valid & io_in_a_bits_opcode == 3'h0 & ~reset;	// src/main/scala/tilelink/Edges.scala:220:59, :221:14, :234:25, src/main/scala/tilelink/Monitor.scala:45:11, :117:25, :643:42, :644:42
@@ -57113,7 +57115,7 @@ module TLMonitor_22(	// src/main/scala/tilelink/Monitor.scala:36:7
     {io_in_b_bits_address[31:26], io_in_b_bits_address[25:16] ^ 10'h200};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
   wire [5:0]  _GEN_4 = {io_in_b_bits_address[31:28], ~(io_in_b_bits_address[27:26])};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
   wire [2:0]  _GEN_5 = {io_in_b_bits_address[31], ~(io_in_b_bits_address[30:29])};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
-  wire        _GEN_6 = io_in_b_bits_address[31:28] != 4'h8;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:36:7
+  wire        _GEN_6 = io_in_b_bits_address[31:27] != 5'h10;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14
   wire        address_ok =
     ~(|(io_in_b_bits_address[31:12])) | ~(|_GEN_1) | ~(|_GEN_2) | ~(|_GEN_3) | ~(|_GEN_4)
     | ~(|_GEN_5) | ~_GEN_6;	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/tilelink/Parameters.scala:636:64
@@ -57181,7 +57183,7 @@ module TLMonitor_22(	// src/main/scala/tilelink/Monitor.scala:36:7
     {io_in_c_bits_address[31:26], io_in_c_bits_address[25:16] ^ 10'h200};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
   wire [5:0]  _GEN_12 = {io_in_c_bits_address[31:28], ~(io_in_c_bits_address[27:26])};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
   wire [2:0]  _GEN_13 = {io_in_c_bits_address[31], ~(io_in_c_bits_address[30:29])};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
-  wire        _GEN_14 = io_in_c_bits_address[31:28] != 4'h8;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:36:7
+  wire        _GEN_14 = io_in_c_bits_address[31:27] != 5'h10;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14
   wire        address_ok_1 =
     ~(|(io_in_c_bits_address[31:12])) | ~(|_GEN_9) | ~(|_GEN_10) | ~(|_GEN_11)
     | ~(|_GEN_12) | ~(|_GEN_13) | ~_GEN_14;	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/tilelink/Parameters.scala:636:64
@@ -57376,7 +57378,7 @@ module TLMonitor_22(	// src/main/scala/tilelink/Monitor.scala:36:7
     wire [7:0][2:0] _GEN_36 = {3'h4, 3'h4, 3'h2, 3'h1, 3'h1, 3'h1, 3'h0, 3'h0};	// src/main/scala/tilelink/Monitor.scala:688:38
     wire            _GEN_37 = io_in_a_bits_size < 4'hD;	// src/main/scala/diplomacy/Parameters.scala:92:38
     wire            _GEN_38 = io_in_a_bits_size < 4'h7;	// src/main/scala/diplomacy/Parameters.scala:92:38, src/main/scala/tilelink/Monitor.scala:36:7
-    wire            _GEN_39 = io_in_a_bits_address[31:28] == 4'h8;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:36:7
+    wire            _GEN_39 = io_in_a_bits_address[31:27] == 5'h10;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14
     wire            _GEN_40 = _GEN_37 & _GEN_38 & _GEN_39;	// src/main/scala/diplomacy/Parameters.scala:92:38, :137:{41,46,59}, src/main/scala/tilelink/Monitor.scala:85:72
     wire            _GEN_41 = io_in_a_valid & io_in_a_bits_opcode == 3'h6 & ~reset;	// src/main/scala/tilelink/Monitor.scala:45:11, :84:25
     wire            _GEN_42 = io_in_a_bits_address[31:12] == 20'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/tilelink/Monitor.scala:709:27
@@ -58819,12 +58821,12 @@ module TLMonitor_23(	// src/main/scala/tilelink/Monitor.scala:36:7
   wire [8:0]  c_first_beats1 = 9'h0;	// src/main/scala/tilelink/Edges.scala:220:59, :221:14, :234:25
   wire [8:0]  c_first_count = 9'h0;	// src/main/scala/tilelink/Edges.scala:220:59, :221:14, :234:25
   wire [8:0]  c_first_counter1 = 9'h1FF;	// src/main/scala/tilelink/Edges.scala:230:28
-  wire [3:0]  c_opcodes_set = 4'h0;	// src/main/scala/tilelink/Bundles.scala:111:27, src/main/scala/tilelink/Monitor.scala:637:69, :641:65, :659:79, :660:77, :740:34, :754:40, src/main/scala/util/Misc.scala:206:21
-  wire [3:0]  c_opcodes_set_interm = 4'h0;	// src/main/scala/tilelink/Bundles.scala:111:27, src/main/scala/tilelink/Monitor.scala:637:69, :641:65, :659:79, :660:77, :740:34, :754:40, src/main/scala/util/Misc.scala:206:21
   wire [4:0]  c_sizes_set_interm = 5'h0;	// src/main/scala/tilelink/Monitor.scala:648:38, :755:40
   wire [7:0]  mask = 8'hFF;	// src/main/scala/tilelink/Monitor.scala:20:14, :681:21, :791:21, src/main/scala/util/Misc.scala:222:10
   wire [3:0]  mask_lo = 4'hF;	// src/main/scala/tilelink/Monitor.scala:680:21, :790:21, src/main/scala/util/Misc.scala:222:10
   wire [3:0]  mask_hi = 4'hF;	// src/main/scala/tilelink/Monitor.scala:680:21, :790:21, src/main/scala/util/Misc.scala:222:10
+  wire [3:0]  c_opcodes_set = 4'h0;	// src/main/scala/tilelink/Bundles.scala:111:27, src/main/scala/tilelink/Monitor.scala:637:69, :641:65, :659:79, :660:77, :740:34, :754:40, src/main/scala/util/Misc.scala:206:21
+  wire [3:0]  c_opcodes_set_interm = 4'h0;	// src/main/scala/tilelink/Bundles.scala:111:27, src/main/scala/tilelink/Monitor.scala:637:69, :641:65, :659:79, :660:77, :740:34, :754:40, src/main/scala/util/Misc.scala:206:21
   wire [7:0]  c_sizes_set = 8'h0;	// src/main/scala/tilelink/Monitor.scala:741:34
   wire [8:0]  a_first_beats1_decode = 9'h7;	// src/main/scala/tilelink/Edges.scala:220:59
   wire [8:0]  a_first_beats1_decode_1 = 9'h7;	// src/main/scala/tilelink/Edges.scala:220:59
@@ -58967,7 +58969,7 @@ module TLMonitor_23(	// src/main/scala/tilelink/Monitor.scala:36:7
                  io_in_a_bits_address[25:16] ^ 10'h200} == 16'h0
               | {io_in_a_bits_address[31:28], ~(io_in_a_bits_address[27:26])} == 6'h0
               | {io_in_a_bits_address[31], ~(io_in_a_bits_address[30:29])} == 3'h0
-              | io_in_a_bits_address[31:28] == 4'h8)) begin	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Bundles.scala:264:74, src/main/scala/tilelink/Edges.scala:21:16, src/main/scala/tilelink/Monitor.scala:36:7, :45:11, src/main/scala/tilelink/Parameters.scala:686:26
+              | io_in_a_bits_address[31:27] == 5'h10)) begin	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Bundles.scala:264:74, src/main/scala/tilelink/Edges.scala:21:16, src/main/scala/tilelink/Monitor.scala:20:14, :36:7, :45:11, src/main/scala/tilelink/Parameters.scala:686:26
         if (`ASSERT_VERBOSE_COND_)	// src/main/scala/tilelink/Monitor.scala:45:11
           $error("Assertion failed: 'A' channel carries Get type which slave claims it can't support (connected at src/main/scala/rocket/Frontend.scala:394:21)\n    at Monitor.scala:45 assert(cond, message)\n");	// src/main/scala/tilelink/Monitor.scala:45:11
         if (`STOP_COND_)	// src/main/scala/tilelink/Monitor.scala:45:11
@@ -61011,27 +61013,25 @@ module PMAChecker(	// src/main/scala/rocket/PMA.scala:18:7
 );
 
   wire [9:0] _GEN = io_paddr[25:16] ^ 10'h200;	// src/main/scala/diplomacy/Parameters.scala:137:31
-  wire [3:0] _GEN_0 = io_paddr[31:28] ^ 4'h8;	// src/main/scala/diplomacy/Parameters.scala:137:31
+  wire [4:0] _GEN_0 = io_paddr[31:27] ^ 5'h10;	// src/main/scala/diplomacy/Parameters.scala:137:31
   wire       legal_address =
     io_paddr[33:12] == 22'h0 | {io_paddr[33:14], ~(io_paddr[13:12])} == 22'h0
     | {io_paddr[33:17], ~(io_paddr[16])} == 18'h0 | {io_paddr[33:26], _GEN} == 18'h0
     | {io_paddr[33:28], ~(io_paddr[27:26])} == 8'h0
-    | {io_paddr[33:31], ~(io_paddr[30:29])} == 5'h0 | {io_paddr[33:32], _GEN_0} == 6'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/rocket/PMA.scala:36:58
+    | {io_paddr[33:31], ~(io_paddr[30:29])} == 5'h0 | {io_paddr[33:32], _GEN_0} == 7'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/rocket/PMA.scala:36:58
   wire [3:0] _GEN_1 = {io_paddr[31:30], io_paddr[27], io_paddr[16]};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
   wire [2:0] _GEN_2 = {io_paddr[31:30], ~(io_paddr[27])};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
   wire [1:0] _GEN_3 = {io_paddr[31], ~(io_paddr[30])};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
-  assign io_resp_cacheable = legal_address & ~(_GEN_0[3]);	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/rocket/PMA.scala:18:7, :36:58, :39:19
+  wire [2:0] _GEN_4 = {_GEN_0[4:3], io_paddr[27]};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
+  assign io_resp_cacheable = legal_address & ~(_GEN_0[4]);	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/rocket/PMA.scala:18:7, :36:58, :39:19
   assign io_resp_r = legal_address;	// src/main/scala/rocket/PMA.scala:18:7, :36:58
-  assign io_resp_w =
-    legal_address & (~(|_GEN_1) | ~(|_GEN_2) | ~(|_GEN_3) | ~(|(_GEN_0[3:2])));	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/rocket/PMA.scala:18:7, :36:58, :39:19, src/main/scala/tilelink/Parameters.scala:629:89
-  assign io_resp_pp =
-    legal_address & (~(|_GEN_1) | ~(|_GEN_2) | ~(|_GEN_3) | ~(|(_GEN_0[3:2])));	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/rocket/PMA.scala:18:7, :36:58, :39:19, src/main/scala/tilelink/Parameters.scala:629:89
+  assign io_resp_w = legal_address & (~(|_GEN_1) | ~(|_GEN_2) | ~(|_GEN_3) | ~(|_GEN_4));	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/rocket/PMA.scala:18:7, :36:58, :39:19, src/main/scala/tilelink/Parameters.scala:629:89
+  assign io_resp_pp = legal_address & (~(|_GEN_1) | ~(|_GEN_2) | ~(|_GEN_3) | ~(|_GEN_4));	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/rocket/PMA.scala:18:7, :36:58, :39:19, src/main/scala/tilelink/Parameters.scala:629:89
   assign io_resp_al = legal_address & (~(|_GEN_1) | ~(|_GEN_2));	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/rocket/PMA.scala:18:7, :36:58, :39:19, src/main/scala/tilelink/Parameters.scala:629:89
   assign io_resp_aa = legal_address & (~(|_GEN_1) | ~(|_GEN_2));	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/rocket/PMA.scala:18:7, :36:58, :39:19, src/main/scala/tilelink/Parameters.scala:629:89
   assign io_resp_x =
     legal_address
-    & ({io_paddr[31:30], io_paddr[27], io_paddr[25]} == 4'h0 | ~(|_GEN_3)
-       | ~(|(_GEN_0[3:2])));	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/rocket/PMA.scala:18:7, :36:58, :39:19, src/main/scala/tilelink/Parameters.scala:629:89
+    & ({io_paddr[31:30], io_paddr[27], io_paddr[25]} == 4'h0 | ~(|_GEN_3) | ~(|_GEN_4));	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/rocket/PMA.scala:18:7, :36:58, :39:19, src/main/scala/tilelink/Parameters.scala:629:89
   assign io_resp_eff =
     legal_address
     & ({io_paddr[31:30], io_paddr[27], io_paddr[25], io_paddr[16], io_paddr[13]} == 6'h0
@@ -62480,7 +62480,7 @@ module DCache(	// src/main/scala/rocket/DCache.scala:101:7
     | {tlb_mpu_physaddr[33:26], tlb_mpu_physaddr[25:16] ^ 10'h200} == 18'h0
     | {tlb_mpu_physaddr[33:28], ~(tlb_mpu_physaddr[27:26])} == 8'h0
     | {tlb_mpu_physaddr[33:31], ~(tlb_mpu_physaddr[30:29])} == 5'h0
-    | {tlb_mpu_physaddr[33:32], tlb_mpu_physaddr[31:28] ^ 4'h8} == 6'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/rocket/DCache.scala:135:28, :192:24, :533:42, :1202:19, src/main/scala/rocket/HellaCache.scala:243:14, src/main/scala/rocket/TLB.scala:217:24, :414:25, :417:15, :517:61, :520:74, src/main/scala/rocket/TLBPermissions.scala:101:65, src/main/scala/util/package.scala:16:47, :45:27
+    | {tlb_mpu_physaddr[33:32], tlb_mpu_physaddr[31:27] ^ 5'h10} == 7'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/rocket/DCache.scala:101:7, :135:28, :192:24, :533:42, :1202:19, src/main/scala/rocket/HellaCache.scala:243:14, src/main/scala/rocket/TLB.scala:217:24, :414:25, :417:15, src/main/scala/rocket/TLBPermissions.scala:101:65, src/main/scala/util/package.scala:16:47
   wire             tlb_deny_access_to_debug =
     ~(tlb_mpu_priv[2]) & ~(|(tlb_mpu_physaddr[33:12]));	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/rocket/TLB.scala:414:25, :415:27, :428:{39,50}
   wire             tlb_prot_r =
@@ -63086,7 +63086,7 @@ module DCache(	// src/main/scala/rocket/DCache.scala:101:7
        pma_checker_mpu_physaddr[25:16] ^ 10'h200} == 18'h0
     | {pma_checker_mpu_physaddr[33:28], ~(pma_checker_mpu_physaddr[27:26])} == 8'h0
     | {pma_checker_mpu_physaddr[33:31], ~(pma_checker_mpu_physaddr[30:29])} == 5'h0
-    | {pma_checker_mpu_physaddr[33:32], pma_checker_mpu_physaddr[31:28] ^ 4'h8} == 6'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/rocket/DCache.scala:135:28, :192:24, :533:42, :1202:19, src/main/scala/rocket/HellaCache.scala:243:14, src/main/scala/rocket/TLB.scala:217:24, :414:25, :417:15, :517:61, :520:74, src/main/scala/rocket/TLBPermissions.scala:101:65, src/main/scala/util/package.scala:16:47, :45:27
+    | {pma_checker_mpu_physaddr[33:32], pma_checker_mpu_physaddr[31:27] ^ 5'h10} == 7'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/rocket/DCache.scala:101:7, :135:28, :192:24, :533:42, :1202:19, src/main/scala/rocket/HellaCache.scala:243:14, src/main/scala/rocket/TLB.scala:217:24, :414:25, :417:15, src/main/scala/rocket/TLBPermissions.scala:101:65, src/main/scala/util/package.scala:16:47
   wire             pma_checker_deny_access_to_debug =
     ~(pma_checker_mpu_priv[2]) & ~(|(pma_checker_mpu_physaddr[33:12]));	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/rocket/TLB.scala:414:25, :415:27, :428:{39,50}
   wire             pma_checker_prot_r =
@@ -64394,11 +64394,11 @@ module DCache(	// src/main/scala/rocket/DCache.scala:101:7
   wire [31:0]      atomics_a_6_address = s2_req_addr[31:0];	// src/main/scala/diplomacy/Parameters.scala:137:31, src/main/scala/rocket/DCache.scala:339:19, src/main/scala/tilelink/Edges.scala:517:17
   wire [31:0]      atomics_a_7_address = s2_req_addr[31:0];	// src/main/scala/diplomacy/Parameters.scala:137:31, src/main/scala/rocket/DCache.scala:339:19, src/main/scala/tilelink/Edges.scala:517:17
   wire [31:0]      atomics_a_8_address = s2_req_addr[31:0];	// src/main/scala/diplomacy/Parameters.scala:137:31, src/main/scala/rocket/DCache.scala:339:19, src/main/scala/tilelink/Edges.scala:517:17
-  wire             _GEN_39 = s2_req_addr[31:30] != 2'h2;	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/rocket/DCache.scala:339:19, src/main/scala/rocket/TLB.scala:476:40
+  wire [2:0]       _GEN_39 = {s2_req_addr[31:30] ^ 2'h2, s2_req_addr[27]};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}, src/main/scala/rocket/DCache.scala:339:19, src/main/scala/rocket/TLB.scala:476:40
   wire             get_legal =
     ~(|_GEN_34) | ~(|_GEN_35)
     | {s2_req_addr[31:30], s2_req_addr[27], s2_req_addr[25], ~(s2_req_addr[16])} == 5'h0
-    | ~(|_GEN_36) | ~(|_GEN_37) | ~(|_GEN_38) | ~_GEN_39;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/rocket/DCache.scala:339:19, src/main/scala/rocket/HellaCache.scala:243:14, src/main/scala/tilelink/Parameters.scala:686:26
+    | ~(|_GEN_36) | ~(|_GEN_37) | ~(|_GEN_38) | ~(|_GEN_39);	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/rocket/DCache.scala:339:19, src/main/scala/rocket/HellaCache.scala:243:14, src/main/scala/tilelink/Parameters.scala:686:26
   wire [3:0]       _GEN_40 = {2'h0, s2_req_size};	// src/main/scala/rocket/DCache.scala:339:19, :1202:19, src/main/scala/rocket/HellaCache.scala:243:14, :305:20, src/main/scala/rocket/TLB.scala:217:24, :416:19, src/main/scala/tilelink/Edges.scala:463:15, src/main/scala/tilelink/Metadata.scala:160:20, src/main/scala/util/package.scala:45:27
   wire [3:0]       get_size;	// src/main/scala/tilelink/Edges.scala:460:17
   assign get_size = _GEN_40;	// src/main/scala/tilelink/Edges.scala:460:17, :463:15
@@ -64515,7 +64515,7 @@ module DCache(	// src/main/scala/rocket/DCache.scala:101:7
   wire [3:0]       get_a_mask_hi = {get_a_mask_hi_hi, get_a_mask_hi_lo};	// src/main/scala/util/Misc.scala:222:10
   wire [7:0]       get_mask = {get_a_mask_hi, get_a_mask_lo};	// src/main/scala/tilelink/Edges.scala:460:17, src/main/scala/util/Misc.scala:222:10
   wire             put_legal =
-    ~(|_GEN_34) | ~(|_GEN_35) | ~(|_GEN_36) | ~(|_GEN_37) | ~_GEN_39 | ~(|_GEN_38);	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/tilelink/Parameters.scala:686:26
+    ~(|_GEN_34) | ~(|_GEN_35) | ~(|_GEN_36) | ~(|_GEN_37) | ~(|_GEN_39) | ~(|_GEN_38);	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/tilelink/Parameters.scala:686:26
   wire [3:0]       _put_a_mask_sizeOH_T_1 = 4'h1 << put_a_mask_sizeOH_shiftAmount;	// src/main/scala/chisel3/util/OneHot.scala:64:49, :65:12, src/main/scala/util/package.scala:16:47
   wire [2:0]       put_a_mask_sizeOH = {_put_a_mask_sizeOH_T_1[2:1], 1'h1};	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25, dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/chisel3/util/Decoupled.scala:356:21, src/main/scala/chisel3/util/OneHot.scala:65:{12,27}, src/main/scala/rocket/DCache.scala:120:32, :135:28, :159:22, :200:9, :275:56, :338:48, :422:51, :429:43, :502:95, :506:87, :516:5, :521:38, :555:55, :1089:72, src/main/scala/rocket/HellaCache.scala:243:14, src/main/scala/rocket/TLB.scala:318:7, :442:18, :606:107, src/main/scala/util/Misc.scala:202:81, :206:21, :209:26, :215:29
   wire             put_a_mask_sub_sub_sub_0_1 = &s2_req_size;	// src/main/scala/rocket/DCache.scala:339:19, src/main/scala/util/Misc.scala:206:21
@@ -64574,7 +64574,7 @@ module DCache(	// src/main/scala/rocket/DCache.scala:101:7
   wire [3:0]       put_a_mask_hi = {put_a_mask_hi_hi, put_a_mask_hi_lo};	// src/main/scala/util/Misc.scala:222:10
   wire [7:0]       put_mask = {put_a_mask_hi, put_a_mask_lo};	// src/main/scala/tilelink/Edges.scala:480:17, src/main/scala/util/Misc.scala:222:10
   wire             putpartial_legal =
-    ~(|_GEN_34) | ~(|_GEN_35) | ~(|_GEN_36) | ~(|_GEN_37) | ~_GEN_39 | ~(|_GEN_38);	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/tilelink/Parameters.scala:686:26
+    ~(|_GEN_34) | ~(|_GEN_35) | ~(|_GEN_36) | ~(|_GEN_37) | ~(|_GEN_39) | ~(|_GEN_38);	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/tilelink/Parameters.scala:686:26
   wire [7:0]       putpartial_mask = a_mask[7:0];	// src/main/scala/rocket/DCache.scala:582:29, src/main/scala/tilelink/Edges.scala:500:17, :508:15
   wire [3:0]       _GEN_41 = {s2_req_addr[31:30], s2_req_addr[27], s2_req_addr[16]};	// src/main/scala/diplomacy/Parameters.scala:137:{41,46}, src/main/scala/rocket/DCache.scala:339:19
   wire             atomics_legal = ~(|_GEN_41) | ~(|_GEN_37);	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/tilelink/Parameters.scala:685:42, :686:26
@@ -67623,7 +67623,8 @@ module ICache(	// src/main/scala/rocket/ICache.scala:251:7
        refill_paddr[27],
        ~(refill_paddr[25]),
        refill_paddr[16]} == 5'h0 | {refill_paddr[31:30], ~(refill_paddr[27])} == 3'h0
-    | {refill_paddr[31], ~(refill_paddr[30])} == 2'h0 | refill_paddr[31:30] == 2'h2;	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25, dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/chisel3/util/OneHot.scala:64:49, src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/rocket/ICache.scala:386:31, :489:27, :611:36, :769:64, src/main/scala/tilelink/Edges.scala:460:17, src/main/scala/tilelink/Parameters.scala:686:26
+    | {refill_paddr[31], ~(refill_paddr[30])} == 2'h0
+    | {refill_paddr[31:30] ^ 2'h2, refill_paddr[27]} == 3'h0;	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25, dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/chisel3/util/OneHot.scala:64:49, src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/rocket/ICache.scala:386:31, :489:27, :611:36, :769:64, src/main/scala/tilelink/Edges.scala:460:17, src/main/scala/tilelink/Parameters.scala:686:26
   wire [31:0]  masterNodeOut_a_bits_address = masterNodeOut_a_bits_a_address;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/tilelink/Edges.scala:460:17
   wire         masterNodeOut_a_bits_a_mask_sub_sub_1_2 =
     masterNodeOut_a_bits_a_mask_sub_sub_bit;	// src/main/scala/util/Misc.scala:210:26, :214:27
@@ -68946,15 +68947,15 @@ module ITLB(	// src/main/scala/rocket/TLB.scala:318:7
   wire [1:0]  real_hits_hi_hi = 2'h0;	// src/main/scala/rocket/TLB.scala:320:14, src/main/scala/util/package.scala:45:27
   wire [1:0]  waddr = 2'h0;	// src/main/scala/rocket/TLB.scala:320:14, :477:22, src/main/scala/util/package.scala:45:27
   wire [1:0]  idx = 2'h0;	// src/main/scala/rocket/TLB.scala:320:14, src/main/scala/util/package.scala:45:27, :163:13
-  wire [5:0]  stage2_bypass = 6'h3F;	// src/main/scala/rocket/TLB.scala:523:27, :606:82, :607:14
-  wire [5:0]  gpa_hits_hit_mask = 6'h3F;	// src/main/scala/rocket/TLB.scala:523:27, :606:82, :607:14
-  wire [5:0]  gpa_hits = 6'h3F;	// src/main/scala/rocket/TLB.scala:523:27, :606:82, :607:14
   wire [6:0]  ae_st_array = 7'h0;	// src/main/scala/rocket/TLB.scala:583:8, :590:53, :595:46, :598:24, :600:24, :601:24, :602:26
   wire [6:0]  must_alloc_array = 7'h0;	// src/main/scala/rocket/TLB.scala:583:8, :590:53, :595:46, :598:24, :600:24, :601:24, :602:26
   wire [6:0]  pf_st_array = 7'h0;	// src/main/scala/rocket/TLB.scala:583:8, :590:53, :595:46, :598:24, :600:24, :601:24, :602:26
   wire [6:0]  gf_ld_array = 7'h0;	// src/main/scala/rocket/TLB.scala:583:8, :590:53, :595:46, :598:24, :600:24, :601:24, :602:26
   wire [6:0]  gf_st_array = 7'h0;	// src/main/scala/rocket/TLB.scala:583:8, :590:53, :595:46, :598:24, :600:24, :601:24, :602:26
   wire [6:0]  gf_inst_array = 7'h0;	// src/main/scala/rocket/TLB.scala:583:8, :590:53, :595:46, :598:24, :600:24, :601:24, :602:26
+  wire [5:0]  stage2_bypass = 6'h3F;	// src/main/scala/rocket/TLB.scala:523:27, :606:82, :607:14
+  wire [5:0]  gpa_hits_hit_mask = 6'h3F;	// src/main/scala/rocket/TLB.scala:523:27, :606:82, :607:14
+  wire [5:0]  gpa_hits = 6'h3F;	// src/main/scala/rocket/TLB.scala:523:27, :606:82, :607:14
   wire [6:0]  hr_array = 7'h7F;	// src/main/scala/rocket/TLB.scala:524:21, :525:21, :526:21
   wire [6:0]  hw_array = 7'h7F;	// src/main/scala/rocket/TLB.scala:524:21, :525:21, :526:21
   wire [6:0]  hx_array = 7'h7F;	// src/main/scala/rocket/TLB.scala:524:21, :525:21, :526:21
@@ -68975,7 +68976,7 @@ module ITLB(	// src/main/scala/rocket/TLB.scala:318:7
     | {mpu_physaddr[33:26], mpu_physaddr[25:16] ^ 10'h200} == 18'h0
     | {mpu_physaddr[33:28], ~(mpu_physaddr[27:26])} == 8'h0
     | {mpu_physaddr[33:31], ~(mpu_physaddr[30:29])} == 5'h0
-    | {mpu_physaddr[33:32], mpu_physaddr[31:28] ^ 4'h8} == 6'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/rocket/TLB.scala:414:25, :417:15, :517:61, src/main/scala/rocket/TLBPermissions.scala:101:65, src/main/scala/util/package.scala:45:27
+    | {mpu_physaddr[33:32], mpu_physaddr[31:27] ^ 5'h10} == 7'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/rocket/TLB.scala:414:25, :417:15, :583:8, :590:53, :595:46, :598:24, :600:24, :601:24, :602:26, src/main/scala/rocket/TLBPermissions.scala:101:65
   wire        deny_access_to_debug = ~(mpu_priv[2]) & ~(|(mpu_physaddr[33:12]));	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/rocket/TLB.scala:414:25, :415:27, :428:{39,50}
   wire        prot_r = _pma_io_resp_r & ~deny_access_to_debug & _pmp_io_r;	// src/main/scala/rocket/TLB.scala:416:19, :422:19, :428:50, :429:{33,55}
   wire        newEntry_pr = prot_r;	// src/main/scala/rocket/TLB.scala:429:55, :449:24
@@ -71300,14 +71301,14 @@ module PTW(	// src/main/scala/rocket/PTW.scala:219:7
   wire [29:0] _GEN_2 = {r_pte_ppn[43:16], ~(r_pte_ppn[15:14])};	// src/main/scala/diplomacy/Parameters.scala:137:31, src/main/scala/rocket/PTW.scala:275:18
   wire [26:0] _GEN_3 = {r_pte_ppn[43:19], ~(r_pte_ppn[18:17])};	// src/main/scala/diplomacy/Parameters.scala:137:31, src/main/scala/rocket/PTW.scala:275:18
   wire [31:0] _GEN_4 = {r_pte_ppn[19:0], 12'h0};	// src/main/scala/diplomacy/Parameters.scala:137:31, src/main/scala/rocket/PTW.scala:275:18, :544:96
-  wire [27:0] _GEN_5 = {r_pte_ppn[43:20], r_pte_ppn[19:16] ^ 4'h8};	// src/main/scala/diplomacy/Parameters.scala:137:31, src/main/scala/rocket/PTW.scala:275:18
+  wire [28:0] _GEN_5 = {r_pte_ppn[43:20], r_pte_ppn[19:15] ^ 5'h10};	// src/main/scala/diplomacy/Parameters.scala:137:31, src/main/scala/rocket/PTW.scala:275:18
   wire        pmaPgLevelHomogeneous_1 =
-    _GEN_2 == 30'h0 | _GEN_3 == 27'h0 | _GEN_5 == 28'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/rocket/TLBPermissions.scala:101:65
+    _GEN_2 == 30'h0 | _GEN_3 == 27'h0 | _GEN_5 == 29'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/rocket/TLBPermissions.scala:101:65
   wire        pmaPgLevelHomogeneous_2 =
     r_pte_ppn == 44'h0 | {r_pte_ppn[43:2], ~(r_pte_ppn[1:0])} == 44'h0
     | {r_pte_ppn[43:5], ~(r_pte_ppn[4])} == 40'h0
     | {r_pte_ppn[43:14], r_pte_ppn[13:4] ^ 10'h200} == 40'h0 | _GEN_2 == 30'h0
-    | _GEN_3 == 27'h0 | _GEN_5 == 28'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/rocket/PTW.scala:275:18, :403:126, src/main/scala/rocket/TLBPermissions.scala:101:65
+    | _GEN_3 == 27'h0 | _GEN_5 == 29'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/rocket/PTW.scala:275:18, :403:126, src/main/scala/rocket/TLBPermissions.scala:101:65
   wire        _GEN_6 = (&count) | count == 2'h2;	// src/main/scala/rocket/PTW.scala:259:18, :317:73, src/main/scala/util/package.scala:39:{76,86}
   wire        pmaHomogeneous =
     _GEN_6 ? pmaPgLevelHomogeneous_2 : _leaf_T_5 & pmaPgLevelHomogeneous_1;	// src/main/scala/rocket/PTW.scala:382:47, src/main/scala/rocket/TLBPermissions.scala:101:65, src/main/scala/util/package.scala:39:76
@@ -84957,8 +84958,6 @@ module Rocket(	// src/main/scala/rocket/RocketCore.scala:158:7
   wire [4:0]       _ibuf_io_inst_0_bits_inst_rs1;	// src/main/scala/rocket/RocketCore.scala:317:20
   wire [31:0]      _ibuf_io_inst_0_bits_raw;	// src/main/scala/rocket/RocketCore.scala:317:20
   wire [63:0]      dcache_bypass_data = io_dmem_resp_bits_data_word_bypass;	// src/main/scala/rocket/RocketCore.scala:457:62
-  wire             coreMonitorBundle_clock = clock;	// src/main/scala/rocket/RocketCore.scala:1217:31
-  wire             coreMonitorBundle_reset = reset;	// src/main/scala/rocket/RocketCore.scala:1217:31
   wire             xrfWriteBundle_clock = clock;	// src/main/scala/rocket/RocketCore.scala:1280:28
   wire             xrfWriteBundle_reset = reset;	// src/main/scala/rocket/RocketCore.scala:1280:28
   wire             clock_en = 1'h1;	// src/main/scala/rocket/RocketCore.scala:158:7, :168:29
@@ -85007,7 +85006,6 @@ module Rocket(	// src/main/scala/rocket/RocketCore.scala:158:7
   wire             fp_data_hazard_mem = 1'h0;	// src/main/scala/rocket/RocketCore.scala:1029:55, :1372:19
   wire             id_vconfig_hazard = 1'h0;	// src/main/scala/rocket/RocketCore.scala:1032:39, :1372:19
   wire             fp_data_hazard_wb = 1'h0;	// src/main/scala/rocket/RocketCore.scala:1039:53, :1372:19
-  wire             coreMonitorBundle_wrenf = 1'h0;	// src/main/scala/rocket/RocketCore.scala:1217:31, :1372:19
   wire             xrfWriteBundle_excpt = 1'h0;	// src/main/scala/rocket/RocketCore.scala:1280:28, :1372:19
   wire             xrfWriteBundle_valid = 1'h0;	// src/main/scala/rocket/RocketCore.scala:1280:28, :1372:19
   wire             xrfWriteBundle_wrenf = 1'h0;	// src/main/scala/rocket/RocketCore.scala:1280:28, :1372:19
@@ -91672,7 +91670,6 @@ module Rocket(	// src/main/scala/rocket/RocketCore.scala:158:7
   wire [4:0]       ex_waddr = ex_reg_inst[11:7];	// src/main/scala/rocket/RocketCore.scala:264:24, :461:{29,36}
   wire [4:0]       mem_waddr = mem_reg_inst[11:7];	// src/main/scala/rocket/RocketCore.scala:283:25, :462:{31,38}
   wire [4:0]       wb_waddr = wb_reg_inst[11:7];	// src/main/scala/rocket/RocketCore.scala:305:24, :463:{29,36}
-  wire [4:0]       coreMonitorBundle_wrdst = wb_waddr;	// src/main/scala/rocket/RocketCore.scala:463:36, :1217:31
   wire             bypass_sources_1_1 = ex_reg_valid & ex_ctrl_wxd;	// src/main/scala/rocket/RocketCore.scala:248:20, :253:35, :466:19
   wire             bypass_sources_3_1 = mem_reg_valid & mem_ctrl_wxd;	// src/main/scala/rocket/RocketCore.scala:249:21, :270:36, :467:20, :468:20
   wire             bypass_sources_2_1 = bypass_sources_3_1 & ~mem_ctrl_mem;	// src/main/scala/rocket/RocketCore.scala:249:21, :467:{36,39}, :468:20
@@ -91911,13 +91908,11 @@ module Rocket(	// src/main/scala/rocket/RocketCore.scala:158:7
     dmem_resp_valid & dmem_resp_xpu
       ? io_dmem_resp_bits_data
       : ll_wen ? ll_wdata : (|wb_ctrl_csr) ? _csr_io_rw_rdata : wb_reg_wdata;	// src/main/scala/rocket/RocketCore.scala:250:20, :307:25, :347:19, :774:23, :777:44, :788:26, :790:24, :828:{21,38}, :829:21, :830:{21,34}
-  wire [63:0]      coreMonitorBundle_wrdata = rf_wdata;	// src/main/scala/rocket/RocketCore.scala:828:21, :1217:31
   wire [63:0]      xrfWriteBundle_wrdata = rf_wdata;	// src/main/scala/rocket/RocketCore.scala:828:21, :1280:28
   wire [63:0]      id_rs_0 =
     rf_wen & (|rf_waddr) & rf_waddr == id_raddr1 ? rf_wdata : _rf_ext_R1_data;	// src/main/scala/rocket/RocketCore.scala:332:72, :826:23, :827:21, :828:21, :833:17, :1350:15, :1356:26, :1357:19, :1362:{16,25}, :1365:{20,31,39}
   wire [63:0]      id_rs_1 =
     rf_wen & (|rf_waddr) & rf_waddr == id_raddr2 ? rf_wdata : _rf_ext_R0_data;	// src/main/scala/rocket/RocketCore.scala:332:72, :826:23, :827:21, :828:21, :833:17, :1350:15, :1356:26, :1357:19, :1362:{16,25}, :1365:{20,31,39}
-  wire [31:0]      coreMonitorBundle_timer = _csr_io_time[31:0];	// src/main/scala/rocket/RocketCore.scala:347:19, :870:29, :1217:31
   wire [31:0]      xrfWriteBundle_timer = _csr_io_time[31:0];	// src/main/scala/rocket/RocketCore.scala:347:19, :870:29, :1280:28
   wire             tval_dmem_addr = ~wb_reg_xcpt;	// src/main/scala/rocket/RocketCore.scala:294:35, :875:24
   wire             _htval_valid_imem_T = wb_reg_cause == 64'h14;	// src/main/scala/rocket/RocketCore.scala:297:35, src/main/scala/util/package.scala:16:47
@@ -92000,28 +91995,15 @@ module Rocket(	// src/main/scala/rocket/RocketCore.scala:158:7
     | take_pc_mem_wb;	// src/main/scala/rocket/RocketCore.scala:138:14, :313:35, :347:19, :785:22, :869:53, :1194:{28,62,118}, :1280:28
   reg              icache_blocked_REG;	// src/main/scala/rocket/RocketCore.scala:1214:55
   wire             icache_blocked = ~(io_imem_resp_valid | icache_blocked_REG);	// src/main/scala/rocket/RocketCore.scala:1214:{24,45,55}
-  wire [63:0]      _GEN_31 = {63'h0, io_hartid};	// src/main/scala/chisel3/util/OneHot.scala:58:35, src/main/scala/rocket/RocketCore.scala:1221:28
-  wire [63:0]      coreMonitorBundle_hartid;	// src/main/scala/rocket/RocketCore.scala:1217:31
-  assign coreMonitorBundle_hartid = _GEN_31;	// src/main/scala/rocket/RocketCore.scala:1217:31, :1221:28
-  wire [63:0]      xrfWriteBundle_hartid;	// src/main/scala/rocket/RocketCore.scala:1280:28
-  assign xrfWriteBundle_hartid = _GEN_31;	// src/main/scala/rocket/RocketCore.scala:1221:28, :1280:28
-  wire             coreMonitorBundle_valid =
-    _csr_io_trace_0_valid & ~_csr_io_trace_0_exception;	// src/main/scala/rocket/RocketCore.scala:347:19, :1217:31, :1223:{52,55}
-  wire [63:0]      coreMonitorBundle_pc =
-    {{30{_csr_io_trace_0_iaddr[33]}}, _csr_io_trace_0_iaddr};	// src/main/scala/rocket/RocketCore.scala:347:19, :1217:31, src/main/scala/util/package.scala:132:{15,20,38}
-  wire             coreMonitorBundle_wrenx = wb_wen & ~wb_set_sboard;	// src/main/scala/rocket/RocketCore.scala:765:69, :825:25, :1217:31, :1225:{37,40}
-  wire [4:0]       coreMonitorBundle_rd0src = wb_reg_inst[19:15];	// src/main/scala/rocket/RocketCore.scala:305:24, :1217:31, :1229:42
+  wire [63:0]      xrfWriteBundle_hartid = {63'h0, io_hartid};	// src/main/scala/chisel3/util/OneHot.scala:58:35, src/main/scala/rocket/RocketCore.scala:1221:28, :1280:28
   reg  [63:0]      coreMonitorBundle_rd0val_REG;	// src/main/scala/rocket/RocketCore.scala:1230:46
   reg  [63:0]      coreMonitorBundle_rd0val_REG_1;	// src/main/scala/rocket/RocketCore.scala:1230:38
-  wire [63:0]      coreMonitorBundle_rd0val = coreMonitorBundle_rd0val_REG_1;	// src/main/scala/rocket/RocketCore.scala:1217:31, :1230:38
-  wire [4:0]       coreMonitorBundle_rd1src = wb_reg_inst[24:20];	// src/main/scala/rocket/RocketCore.scala:305:24, :1217:31, :1231:42
   reg  [63:0]      coreMonitorBundle_rd1val_REG;	// src/main/scala/rocket/RocketCore.scala:1232:46
   reg  [63:0]      coreMonitorBundle_rd1val_REG_1;	// src/main/scala/rocket/RocketCore.scala:1232:38
-  wire [63:0]      coreMonitorBundle_rd1val = coreMonitorBundle_rd1val_REG_1;	// src/main/scala/rocket/RocketCore.scala:1217:31, :1232:38
-  wire [31:0]      coreMonitorBundle_inst;	// src/main/scala/rocket/RocketCore.scala:1217:31
   `ifndef SYNTHESIS	// src/main/scala/rocket/RocketCore.scala:885:11
-    wire _GEN_32 = wb_ctrl_rxs1 | wb_ctrl_rfs1;	// src/main/scala/rocket/RocketCore.scala:250:20, :1271:27
-    wire _GEN_33 = wb_ctrl_rxs2 | wb_ctrl_rfs2;	// src/main/scala/rocket/RocketCore.scala:250:20, :1273:27
+    wire _coreMonitorBundle_wrenx_T_1 = wb_wen & ~wb_set_sboard;	// src/main/scala/rocket/RocketCore.scala:765:69, :825:25, :1225:{37,40}
+    wire _GEN_31 = wb_ctrl_rxs1 | wb_ctrl_rfs1;	// src/main/scala/rocket/RocketCore.scala:250:20, :1271:27
+    wire _GEN_32 = wb_ctrl_rxs2 | wb_ctrl_rfs2;	// src/main/scala/rocket/RocketCore.scala:250:20, :1273:27
     always @(posedge clock) begin	// src/main/scala/rocket/RocketCore.scala:885:11
       if (~reset & ~(~htval_valid_imem | io_imem_gpa_valid)) begin	// src/main/scala/rocket/RocketCore.scala:883:40, :885:{11,12,30}
         if (`ASSERT_VERBOSE_COND_)	// src/main/scala/rocket/RocketCore.scala:885:11
@@ -92032,24 +92014,25 @@ module Rocket(	// src/main/scala/rocket/RocketCore.scala:158:7
       if ((`PRINTF_COND_) & _csr_io_trace_0_valid & ~reset)	// src/main/scala/rocket/RocketCore.scala:347:19, :885:11, :1265:13
         $fwrite(32'h80000002,
                 "C%d: %d [%d] pc=[%x] W[r%d=%x][%d] R[r%d=%x] R[r%d=%x] inst=[%x] DASM(%x)\n",
-                io_hartid, coreMonitorBundle_timer, coreMonitorBundle_valid,
-                coreMonitorBundle_pc,
-                wb_ctrl_wxd | wb_ctrl_wfd ? coreMonitorBundle_wrdst : 5'h0,
-                coreMonitorBundle_wrenx ? coreMonitorBundle_wrdata : 64'h0,
-                coreMonitorBundle_wrenx, _GEN_32 ? coreMonitorBundle_rd0src : 5'h0,
-                _GEN_32 ? coreMonitorBundle_rd0val : 64'h0,
-                _GEN_33 ? coreMonitorBundle_rd1src : 5'h0,
-                _GEN_33 ? coreMonitorBundle_rd1val : 64'h0, coreMonitorBundle_inst,
-                coreMonitorBundle_inst);	// src/main/scala/rocket/RocketCore.scala:138:14, :250:20, :347:19, :480:48, :785:22, :869:53, :1217:31, :1265:13, :1268:{13,26}, :1269:13, :1271:{13,27}, :1272:13, :1273:{13,27}, :1274:13, :1280:28
+                io_hartid, xrfWriteBundle_timer,
+                _csr_io_trace_0_valid & ~_csr_io_trace_0_exception,
+                {{30{_csr_io_trace_0_iaddr[33]}}, _csr_io_trace_0_iaddr},
+                wb_ctrl_wxd | wb_ctrl_wfd ? wb_waddr : 5'h0,
+                _coreMonitorBundle_wrenx_T_1 ? rf_wdata : 64'h0,
+                _coreMonitorBundle_wrenx_T_1, _GEN_31 ? wb_reg_inst[19:15] : 5'h0,
+                _GEN_31 ? coreMonitorBundle_rd0val_REG_1 : 64'h0,
+                _GEN_32 ? wb_reg_inst[24:20] : 5'h0,
+                _GEN_32 ? coreMonitorBundle_rd1val_REG_1 : 64'h0, _csr_io_trace_0_insn,
+                _csr_io_trace_0_insn);	// src/main/scala/rocket/RocketCore.scala:138:14, :250:20, :305:24, :347:19, :463:36, :480:48, :785:22, :828:21, :869:53, :1223:{52,55}, :1225:37, :1229:42, :1230:38, :1231:42, :1232:38, :1265:13, :1268:{13,26}, :1269:13, :1271:{13,27}, :1272:13, :1273:{13,27}, :1274:13, :1280:28, src/main/scala/util/package.scala:132:{15,20,38}
     end // always @(posedge)
   `endif // not def SYNTHESIS
   wire             xrfWriteBundle_wrenx =
     rf_wen & ~(_csr_io_trace_0_valid & wb_wen & wb_waddr == rf_waddr);	// src/main/scala/rocket/RocketCore.scala:347:19, :463:36, :825:25, :826:23, :827:21, :1280:28, :1289:{34,37,71,84}
-  wire             _GEN_34 =
+  wire             _GEN_33 =
     _bpu_io_xcpt_if | (|{hi_1, _ibuf_io_inst_0_bits_xcpt0_ae_inst});	// src/main/scala/rocket/RocketCore.scala:317:20, :422:19, :554:{28,40,47}
-  wire [2:0]       _GEN_35 = {hi, _ibuf_io_inst_0_bits_xcpt1_ae_inst};	// src/main/scala/rocket/RocketCore.scala:317:20, :549:22
-  wire             _GEN_36 = id_ctrl_mem_cmd == 5'h14;	// src/main/scala/chisel3/util/Mux.scala:50:70, src/main/scala/rocket/RocketCore.scala:327:21, src/main/scala/util/package.scala:16:47
-  wire             _GEN_37 = id_illegal_insn | id_virtual_insn;	// src/main/scala/rocket/RocketCore.scala:400:99, :402:39, :585:27
+  wire [2:0]       _GEN_34 = {hi, _ibuf_io_inst_0_bits_xcpt1_ae_inst};	// src/main/scala/rocket/RocketCore.scala:317:20, :549:22
+  wire             _GEN_35 = id_ctrl_mem_cmd == 5'h14;	// src/main/scala/chisel3/util/Mux.scala:50:70, src/main/scala/rocket/RocketCore.scala:327:21, src/main/scala/util/package.scala:16:47
+  wire             _GEN_36 = id_illegal_insn | id_virtual_insn;	// src/main/scala/rocket/RocketCore.scala:400:99, :402:39, :585:27
   wire             _mem_reg_store_T_5 = ex_ctrl_mem_cmd == 5'h4;	// src/main/scala/rocket/RocketCore.scala:248:20, src/main/scala/util/package.scala:16:47
   wire             _mem_reg_store_T_6 = ex_ctrl_mem_cmd == 5'h9;	// src/main/scala/rocket/RocketCore.scala:248:20, src/main/scala/util/package.scala:16:47
   wire             _mem_reg_store_T_7 = ex_ctrl_mem_cmd == 5'hA;	// src/main/scala/rocket/RocketCore.scala:248:20, src/main/scala/util/package.scala:16:47
@@ -92059,19 +92042,19 @@ module Rocket(	// src/main/scala/rocket/RocketCore.scala:158:7
   wire             _mem_reg_store_T_14 = ex_ctrl_mem_cmd == 5'hD;	// src/main/scala/chisel3/util/Mux.scala:50:70, src/main/scala/rocket/RocketCore.scala:248:20, src/main/scala/util/package.scala:16:47
   wire             _mem_reg_store_T_15 = ex_ctrl_mem_cmd == 5'hE;	// src/main/scala/chisel3/util/Mux.scala:50:70, src/main/scala/rocket/RocketCore.scala:248:20, src/main/scala/util/package.scala:16:47
   wire             _mem_reg_store_T_16 = ex_ctrl_mem_cmd == 5'hF;	// src/main/scala/chisel3/util/Mux.scala:50:70, src/main/scala/rocket/RocketCore.scala:248:20, src/main/scala/util/package.scala:16:47
-  wire [3:0][63:0] _GEN_38 =
+  wire [3:0][63:0] _GEN_37 =
     {{mem_reg_rs2_dat_padded},
      {{2{mem_reg_rs2_dat_padded[31:0]}}},
      {{2{{2{mem_reg_rs2_dat_padded[15:0]}}}}},
      {{2{{2{{2{mem_reg_rs2_dat_padded[7:0]}}}}}}}};	// src/main/scala/rocket/AMOALU.scala:13:27, :29:{13,19,32,69}
-  wire [31:0]      _GEN_39 = r & ~(ll_wen ? 32'h1 << ll_waddr : 32'h0);	// src/main/scala/rocket/RocketCore.scala:789:26, :790:24, :816:15, :1332:{62,64}, :1337:40, :1340:{49,58}
-  wire             _GEN_40 = wb_set_sboard & wb_wen;	// src/main/scala/rocket/RocketCore.scala:765:69, :825:25, :1015:28
-  wire             _GEN_41 = id_ctrl_rxs2 & ~do_bypass_1;	// src/main/scala/rocket/RocketCore.scala:327:21, :576:48, :580:{23,26}
-  wire             _GEN_42 =
+  wire [31:0]      _GEN_38 = r & ~(ll_wen ? 32'h1 << ll_waddr : 32'h0);	// src/main/scala/rocket/RocketCore.scala:789:26, :790:24, :816:15, :1332:{62,64}, :1337:40, :1340:{49,58}
+  wire             _GEN_39 = wb_set_sboard & wb_wen;	// src/main/scala/rocket/RocketCore.scala:765:69, :825:25, :1015:28
+  wire             _GEN_40 = id_ctrl_rxs2 & ~do_bypass_1;	// src/main/scala/rocket/RocketCore.scala:327:21, :576:48, :580:{23,26}
+  wire             _GEN_41 =
     ~ctrl_killd | _csr_io_interrupt | _ibuf_io_inst_0_bits_replay;	// src/main/scala/rocket/RocketCore.scala:317:20, :344:24, :347:19, :533:19, :592:41
-  wire             _GEN_43 = mem_reg_valid & mem_reg_flush_pipe;	// src/main/scala/rocket/RocketCore.scala:270:36, :275:36, :646:23
-  wire             _GEN_44 = _GEN_43 | ~ex_pc_valid;	// src/main/scala/rocket/RocketCore.scala:249:21, :603:51, :646:{23,46}, :648:28
-  wire             _GEN_45 = ex_ctrl_jalr & _csr_io_status_debug;	// src/main/scala/rocket/RocketCore.scala:248:20, :347:19, :678:24
+  wire             _GEN_42 = mem_reg_valid & mem_reg_flush_pipe;	// src/main/scala/rocket/RocketCore.scala:270:36, :275:36, :646:23
+  wire             _GEN_43 = _GEN_42 | ~ex_pc_valid;	// src/main/scala/rocket/RocketCore.scala:249:21, :603:51, :646:{23,46}, :648:28
+  wire             _GEN_44 = ex_ctrl_jalr & _csr_io_status_debug;	// src/main/scala/rocket/RocketCore.scala:248:20, :347:19, :678:24
   always @(posedge clock) begin	// src/main/scala/rocket/RocketCore.scala:158:7
     id_reg_pause <=
       ~unpause & (~ctrl_killd & id_ctrl_fence & id_fence_succ == 4'h0 | id_reg_pause);	// src/main/scala/chisel3/util/Mux.scala:50:70, src/main/scala/rocket/RocketCore.scala:166:25, :327:21, :344:24, :409:33, :533:19, :538:22, :542:{42,51,66}, :1194:118, :1195:{18,33}
@@ -92088,11 +92071,11 @@ module Rocket(	// src/main/scala/rocket/RocketCore.scala:158:7
       ex_ctrl_rxs2 <= id_ctrl_rxs2;	// src/main/scala/rocket/RocketCore.scala:248:20, :327:21
       ex_ctrl_rxs1 <= id_ctrl_rxs1;	// src/main/scala/rocket/RocketCore.scala:248:20, :327:21
       if (id_xcpt) begin	// src/main/scala/rocket/RocketCore.scala:1309:14
-        if (_GEN_34)	// src/main/scala/rocket/RocketCore.scala:554:28
+        if (_GEN_33)	// src/main/scala/rocket/RocketCore.scala:554:28
           ex_ctrl_sel_alu2 <= 3'h0;	// src/main/scala/rocket/RocketCore.scala:248:20, :1380:24
         else	// src/main/scala/rocket/RocketCore.scala:554:28
-          ex_ctrl_sel_alu2 <= {2'h0, |_GEN_35};	// src/main/scala/chisel3/util/pla.scala:102:36, src/main/scala/rocket/RocketCore.scala:138:14, :248:20, :347:19, :422:19, :548:24, :549:{22,29,34}, :551:26
-        if (_GEN_34 | (|_GEN_35))	// src/main/scala/rocket/RocketCore.scala:547:24, :549:{22,29,34}, :550:26, :554:{28,52}, :555:26
+          ex_ctrl_sel_alu2 <= {2'h0, |_GEN_34};	// src/main/scala/chisel3/util/pla.scala:102:36, src/main/scala/rocket/RocketCore.scala:138:14, :248:20, :347:19, :422:19, :548:24, :549:{22,29,34}, :551:26
+        if (_GEN_33 | (|_GEN_34))	// src/main/scala/rocket/RocketCore.scala:547:24, :549:{22,29,34}, :550:26, :554:{28,52}, :555:26
           ex_ctrl_sel_alu1 <= 2'h2;	// src/main/scala/chisel3/util/Mux.scala:50:70, src/main/scala/rocket/RocketCore.scala:248:20
         else	// src/main/scala/rocket/RocketCore.scala:547:24, :549:34, :550:26, :554:52, :555:26
           ex_ctrl_sel_alu1 <= 2'h1;	// src/main/scala/rocket/RocketCore.scala:248:20, :480:48
@@ -92106,7 +92089,7 @@ module Rocket(	// src/main/scala/rocket/RocketCore.scala:158:7
       ex_ctrl_sel_imm <= id_ctrl_sel_imm;	// src/main/scala/rocket/RocketCore.scala:248:20, :327:21
       ex_ctrl_alu_dw <= id_xcpt | id_ctrl_alu_dw;	// src/main/scala/rocket/RocketCore.scala:248:20, :327:21, :539:13, :544:20, :546:22, :1309:14
       ex_ctrl_mem <= id_ctrl_mem;	// src/main/scala/rocket/RocketCore.scala:248:20, :327:21
-      if (_GEN_36 & _csr_io_status_v)	// src/main/scala/rocket/RocketCore.scala:347:19, :566:40, src/main/scala/util/package.scala:16:47
+      if (_GEN_35 & _csr_io_status_v)	// src/main/scala/rocket/RocketCore.scala:347:19, :566:40, src/main/scala/util/package.scala:16:47
         ex_ctrl_mem_cmd <= 5'h15;	// src/main/scala/rocket/RocketCore.scala:248:20, src/main/scala/util/package.scala:16:47
       else	// src/main/scala/rocket/RocketCore.scala:566:40
         ex_ctrl_mem_cmd <= id_ctrl_mem_cmd;	// src/main/scala/rocket/RocketCore.scala:248:20, :327:21
@@ -92122,17 +92105,17 @@ module Rocket(	// src/main/scala/rocket/RocketCore.scala:158:7
       ex_ctrl_fence <= id_ctrl_fence;	// src/main/scala/rocket/RocketCore.scala:248:20, :327:21
       ex_ctrl_amo <= id_ctrl_amo;	// src/main/scala/rocket/RocketCore.scala:248:20, :327:21
       ex_ctrl_dp <= id_ctrl_dp;	// src/main/scala/rocket/RocketCore.scala:248:20, :327:21
-      ex_reg_rvc <= id_xcpt & (|_GEN_35) | _ibuf_io_inst_0_bits_rvc;	// src/main/scala/rocket/RocketCore.scala:254:35, :317:20, :540:16, :544:20, :549:{22,29,34}, :552:20, :1309:14
+      ex_reg_rvc <= id_xcpt & (|_GEN_34) | _ibuf_io_inst_0_bits_rvc;	// src/main/scala/rocket/RocketCore.scala:254:35, :317:20, :540:16, :544:20, :549:{22,29,34}, :552:20, :1309:14
       ex_reg_flush_pipe <= id_ctrl_fence_i | id_csr_flush;	// src/main/scala/rocket/RocketCore.scala:257:35, :327:21, :352:37, :559:42
       ex_reg_load_use <= id_load_use;	// src/main/scala/rocket/RocketCore.scala:258:35, :338:25
-      if (_GEN_36 | id_ctrl_mem_cmd == 5'h15 | id_ctrl_mem_cmd == 5'h16
+      if (_GEN_35 | id_ctrl_mem_cmd == 5'h15 | id_ctrl_mem_cmd == 5'h16
           | id_ctrl_mem_cmd == 5'h5)	// src/main/scala/chisel3/util/Mux.scala:50:70, src/main/scala/rocket/RocketCore.scala:327:21, src/main/scala/util/package.scala:16:47, :81:59
         ex_reg_mem_size <= {|id_raddr2, |id_raddr1};	// src/main/scala/rocket/RocketCore.scala:262:28, :332:72, :564:{29,40,59}
       else	// src/main/scala/util/package.scala:81:59
         ex_reg_mem_size <= _ibuf_io_inst_0_bits_inst_bits[13:12];	// src/main/scala/rocket/RocketCore.scala:262:28, :317:20, :562:95
-      ex_reg_rs_bypass_0 <= ~_GEN_37 & do_bypass;	// src/main/scala/rocket/RocketCore.scala:473:29, :576:48, :578:27, :585:{27,47}, :587:27
+      ex_reg_rs_bypass_0 <= ~_GEN_36 & do_bypass;	// src/main/scala/rocket/RocketCore.scala:473:29, :576:48, :578:27, :585:{27,47}, :587:27
       ex_reg_rs_bypass_1 <= do_bypass_1;	// src/main/scala/rocket/RocketCore.scala:473:29, :576:48
-      if (_GEN_37) begin	// src/main/scala/rocket/RocketCore.scala:585:27
+      if (_GEN_36) begin	// src/main/scala/rocket/RocketCore.scala:585:27
         ex_reg_rs_lsb_0 <= inst[1:0];	// src/main/scala/rocket/RocketCore.scala:474:26, :586:21, :588:31
         ex_reg_rs_msb_0 <= {32'h0, inst[31:2]};	// src/main/scala/rocket/RocketCore.scala:475:26, :580:38, :585:47, :586:21, :589:{24,32}, :816:15
       end
@@ -92142,13 +92125,13 @@ module Rocket(	// src/main/scala/rocket/RocketCore.scala:158:7
       end
       else	// src/main/scala/rocket/RocketCore.scala:580:23
         ex_reg_rs_lsb_0 <= bypass_src;	// src/main/scala/chisel3/util/Mux.scala:50:70, src/main/scala/rocket/RocketCore.scala:474:26
-      if (_GEN_41)	// src/main/scala/rocket/RocketCore.scala:580:23
+      if (_GEN_40)	// src/main/scala/rocket/RocketCore.scala:580:23
         ex_reg_rs_lsb_1 <= id_rs_1[1:0];	// src/main/scala/rocket/RocketCore.scala:474:26, :581:37, :1356:26
       else	// src/main/scala/rocket/RocketCore.scala:580:23
         ex_reg_rs_lsb_1 <= bypass_src_1;	// src/main/scala/chisel3/util/Mux.scala:50:70, src/main/scala/rocket/RocketCore.scala:474:26
     end
     ex_ctrl_vec <= ctrl_killd & ex_ctrl_vec;	// src/main/scala/rocket/RocketCore.scala:248:20, :344:24, :538:22, :539:13
-    if (_GEN_44) begin	// src/main/scala/rocket/RocketCore.scala:249:21, :646:46, :648:28
+    if (_GEN_43) begin	// src/main/scala/rocket/RocketCore.scala:249:21, :646:46, :648:28
     end
     else begin	// src/main/scala/rocket/RocketCore.scala:249:21, :646:46, :648:28
       mem_ctrl_legal <= ex_ctrl_legal;	// src/main/scala/rocket/RocketCore.scala:248:20, :249:21
@@ -92174,7 +92157,7 @@ module Rocket(	// src/main/scala/rocket/RocketCore.scala:158:7
       mem_ctrl_div <= ex_ctrl_div;	// src/main/scala/rocket/RocketCore.scala:248:20, :249:21
       mem_ctrl_wxd <= ex_ctrl_wxd;	// src/main/scala/rocket/RocketCore.scala:248:20, :249:21
       mem_ctrl_csr <= ex_ctrl_csr;	// src/main/scala/rocket/RocketCore.scala:248:20, :249:21
-      mem_ctrl_fence_i <= _GEN_45 | ex_ctrl_fence_i;	// src/main/scala/rocket/RocketCore.scala:248:20, :249:21, :649:14, :678:{24,48}, :680:24
+      mem_ctrl_fence_i <= _GEN_44 | ex_ctrl_fence_i;	// src/main/scala/rocket/RocketCore.scala:248:20, :249:21, :649:14, :678:{24,48}, :680:24
       mem_ctrl_fence <= ex_ctrl_fence;	// src/main/scala/rocket/RocketCore.scala:248:20, :249:21
       mem_ctrl_amo <= ex_ctrl_amo;	// src/main/scala/rocket/RocketCore.scala:248:20, :249:21
       mem_ctrl_dp <= ex_ctrl_dp;	// src/main/scala/rocket/RocketCore.scala:248:20, :249:21
@@ -92230,7 +92213,7 @@ module Rocket(	// src/main/scala/rocket/RocketCore.scala:158:7
     end
     ex_reg_xcpt_interrupt <= ~take_pc_mem_wb & _ibuf_io_inst_0_valid & _csr_io_interrupt;	// src/main/scala/rocket/RocketCore.scala:252:35, :313:35, :317:20, :347:19, :534:20, :536:62
     ex_reg_valid <= ~ctrl_killd;	// src/main/scala/rocket/RocketCore.scala:253:35, :344:24, :533:19
-    if (_GEN_42) begin	// src/main/scala/rocket/RocketCore.scala:592:41
+    if (_GEN_41) begin	// src/main/scala/rocket/RocketCore.scala:592:41
       ex_reg_btb_resp_cfiType <= _ibuf_io_btb_resp_cfiType;	// src/main/scala/rocket/RocketCore.scala:255:35, :317:20
       ex_reg_btb_resp_taken <= _ibuf_io_btb_resp_taken;	// src/main/scala/rocket/RocketCore.scala:255:35, :317:20
       ex_reg_btb_resp_mask <= _ibuf_io_btb_resp_mask;	// src/main/scala/rocket/RocketCore.scala:255:35, :317:20
@@ -92249,10 +92232,10 @@ module Rocket(	// src/main/scala/rocket/RocketCore.scala:158:7
     ex_reg_replay <=
       ~take_pc_mem_wb & _ibuf_io_inst_0_valid & _ibuf_io_inst_0_bits_replay;	// src/main/scala/rocket/RocketCore.scala:260:26, :313:35, :317:20, :534:{20,54}
     ex_reg_hls <= ctrl_killd & ex_reg_hls;	// src/main/scala/rocket/RocketCore.scala:263:23, :344:24, :538:22, :561:16
-    ex_reg_set_vconfig <= ~_GEN_42 & ex_reg_set_vconfig;	// src/main/scala/rocket/RocketCore.scala:267:36, :592:{41,73}, :599:24
+    ex_reg_set_vconfig <= ~_GEN_41 & ex_reg_set_vconfig;	// src/main/scala/rocket/RocketCore.scala:267:36, :592:{41,73}, :599:24
     mem_reg_xcpt_interrupt <= ~take_pc_mem_wb & ex_reg_xcpt_interrupt;	// src/main/scala/rocket/RocketCore.scala:252:35, :269:36, :313:35, :534:20, :642:45
     mem_reg_valid <= ~ctrl_killx;	// src/main/scala/rocket/RocketCore.scala:270:36, :610:48, :639:20
-    if (_GEN_44) begin	// src/main/scala/rocket/RocketCore.scala:249:21, :272:36, :646:46, :648:28
+    if (_GEN_43) begin	// src/main/scala/rocket/RocketCore.scala:249:21, :272:36, :646:46, :648:28
     end
     else begin	// src/main/scala/rocket/RocketCore.scala:272:36, :646:46, :648:28
       mem_reg_rvc <= ex_reg_rvc;	// src/main/scala/rocket/RocketCore.scala:254:35, :271:36
@@ -92267,10 +92250,10 @@ module Rocket(	// src/main/scala/rocket/RocketCore.scala:158:7
     end
     mem_reg_xcpt <= ~ctrl_killx & ex_xcpt;	// src/main/scala/rocket/RocketCore.scala:273:36, :610:48, :639:20, :641:31, :1309:14
     mem_reg_replay <= ~take_pc_mem_wb & replay_ex;	// src/main/scala/rocket/RocketCore.scala:274:36, :313:35, :534:20, :609:33, :640:37
-    if (_GEN_44) begin	// src/main/scala/rocket/RocketCore.scala:249:21, :280:36, :646:46, :648:28
+    if (_GEN_43) begin	// src/main/scala/rocket/RocketCore.scala:249:21, :280:36, :646:46, :648:28
     end
     else begin	// src/main/scala/rocket/RocketCore.scala:280:36, :646:46, :648:28
-      mem_reg_flush_pipe <= _GEN_45 | ex_reg_flush_pipe;	// src/main/scala/rocket/RocketCore.scala:257:35, :275:36, :655:24, :678:{24,48}, :681:26
+      mem_reg_flush_pipe <= _GEN_44 | ex_reg_flush_pipe;	// src/main/scala/rocket/RocketCore.scala:257:35, :275:36, :655:24, :678:{24,48}, :681:26
       mem_reg_cause <= ex_cause;	// src/main/scala/rocket/RocketCore.scala:276:36, :1309:50
       mem_reg_slow_bypass <= ex_slow_bypass;	// src/main/scala/rocket/RocketCore.scala:277:36, :612:50
       mem_reg_load <=
@@ -92289,8 +92272,8 @@ module Rocket(	// src/main/scala/rocket/RocketCore.scala:158:7
            | _mem_reg_store_T_16);	// src/main/scala/chisel3/util/Mux.scala:50:70, src/main/scala/rocket/Consts.scala:90:{32,49,76}, src/main/scala/rocket/RocketCore.scala:248:20, :279:36, :612:40, :652:34, src/main/scala/util/package.scala:16:47
       mem_reg_set_vconfig <= ex_reg_set_vconfig;	// src/main/scala/rocket/RocketCore.scala:267:36, :280:36
     end
-    mem_reg_sfence <= ~(_GEN_43 | ex_pc_valid) & mem_reg_sfence;	// src/main/scala/rocket/RocketCore.scala:281:27, :603:51, :646:{23,46}, :647:20, :648:28, :653:20
-    if (_GEN_44) begin	// src/main/scala/rocket/RocketCore.scala:249:21, :287:26, :646:46, :648:28
+    mem_reg_sfence <= ~(_GEN_42 | ex_pc_valid) & mem_reg_sfence;	// src/main/scala/rocket/RocketCore.scala:281:27, :603:51, :646:{23,46}, :647:20, :648:28, :653:20
+    if (_GEN_43) begin	// src/main/scala/rocket/RocketCore.scala:249:21, :287:26, :646:46, :648:28
     end
     else begin	// src/main/scala/rocket/RocketCore.scala:287:26, :646:46, :648:28
       mem_reg_pc <= ex_reg_pc;	// src/main/scala/rocket/RocketCore.scala:261:22, :282:23
@@ -92300,11 +92283,11 @@ module Rocket(	// src/main/scala/rocket/RocketCore.scala:158:7
       mem_reg_raw_inst <= ex_reg_raw_inst;	// src/main/scala/rocket/RocketCore.scala:265:28, :286:29
       mem_reg_wdata <= _alu_io_out;	// src/main/scala/rocket/RocketCore.scala:287:26, :512:19
     end
-    if (_GEN_43 | ~(ex_pc_valid & ex_ctrl_rxs2 & (ex_ctrl_mem | ex_ctrl_rocc))) begin	// src/main/scala/rocket/RocketCore.scala:248:20, :288:24, :603:51, :646:{23,46}, :648:28, :671:{40,71}, :673:19
+    if (_GEN_42 | ~(ex_pc_valid & ex_ctrl_rxs2 & (ex_ctrl_mem | ex_ctrl_rocc))) begin	// src/main/scala/rocket/RocketCore.scala:248:20, :288:24, :603:51, :646:{23,46}, :648:28, :671:{40,71}, :673:19
     end
     else	// src/main/scala/rocket/RocketCore.scala:288:24, :646:46, :648:28
-      mem_reg_rs2 <= _GEN_38[mem_reg_rs2_size];	// src/main/scala/rocket/AMOALU.scala:11:18, :29:{13,19}, src/main/scala/rocket/RocketCore.scala:288:24
-    if (_GEN_44) begin	// src/main/scala/rocket/RocketCore.scala:249:21, :291:35, :646:46, :648:28
+      mem_reg_rs2 <= _GEN_37[mem_reg_rs2_size];	// src/main/scala/rocket/AMOALU.scala:11:18, :29:{13,19}, src/main/scala/rocket/RocketCore.scala:288:24
+    if (_GEN_43) begin	// src/main/scala/rocket/RocketCore.scala:249:21, :291:35, :646:46, :648:28
     end
     else begin	// src/main/scala/rocket/RocketCore.scala:291:35, :646:46, :648:28
       mem_br_taken <= _alu_io_cmp_out;	// src/main/scala/rocket/RocketCore.scala:289:25, :512:19
@@ -92316,7 +92299,7 @@ module Rocket(	// src/main/scala/rocket/RocketCore.scala:158:7
     wb_reg_flush_pipe <= ~ctrl_killm & mem_reg_flush_pipe;	// src/main/scala/rocket/RocketCore.scala:275:36, :296:35, :710:61, :713:19, :716:36
     if (mem_pc_valid & (mem_ctrl_rocc | mem_reg_sfence | mem_reg_set_vconfig))	// src/main/scala/rocket/RocketCore.scala:249:21, :280:36, :281:27, :308:23, :622:54, :717:23, :721:{43,67}, :722:18
       wb_reg_rs2 <= mem_reg_rs2;	// src/main/scala/rocket/RocketCore.scala:288:24, :308:23
-    if (~ctrl_killd & _GEN_41)	// src/main/scala/rocket/RocketCore.scala:344:24, :475:26, :533:19, :538:22, :580:{23,38}, :582:26
+    if (~ctrl_killd & _GEN_40)	// src/main/scala/rocket/RocketCore.scala:344:24, :475:26, :533:19, :538:22, :580:{23,38}, :582:26
       ex_reg_rs_msb_1 <= id_rs_1[63:2];	// src/main/scala/rocket/RocketCore.scala:475:26, :582:38, :1356:26
     div_io_kill_REG <= _div_io_req_ready & _div_io_req_valid_T;	// src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/rocket/RocketCore.scala:519:19, :520:36, :709:41
     dcache_blocked_blocked <=
@@ -92335,10 +92318,10 @@ module Rocket(	// src/main/scala/rocket/RocketCore.scala:158:7
     end
     else begin	// src/main/scala/rocket/RocketCore.scala:158:7
       id_reg_fence <= ~ctrl_killd & id_fence_next | id_mem_busy & id_reg_fence;	// src/main/scala/rocket/RocketCore.scala:339:29, :344:24, :410:37, :411:38, :412:{23,38}, :533:19, :538:22, :543:{26,41}
-      if (ll_wen | _GEN_40)	// src/main/scala/rocket/RocketCore.scala:790:24, :1015:28, :1343:17
-        _r <= _GEN_39 | (_GEN_40 ? 32'h1 << wb_waddr : 32'h0);	// src/main/scala/rocket/RocketCore.scala:463:36, :816:15, :1015:28, :1331:60, :1332:62, :1336:29, :1340:{49,58}
+      if (ll_wen | _GEN_39)	// src/main/scala/rocket/RocketCore.scala:790:24, :1015:28, :1343:17
+        _r <= _GEN_38 | (_GEN_39 ? 32'h1 << wb_waddr : 32'h0);	// src/main/scala/rocket/RocketCore.scala:463:36, :816:15, :1015:28, :1331:60, :1332:62, :1336:29, :1340:{49,58}
       else if (ll_wen)	// src/main/scala/rocket/RocketCore.scala:790:24
-        _r <= _GEN_39;	// src/main/scala/rocket/RocketCore.scala:1332:62, :1336:29
+        _r <= _GEN_38;	// src/main/scala/rocket/RocketCore.scala:1332:62, :1336:29
     end
   end // always @(posedge)
   `ifdef ENABLE_INITIAL_REG_	// src/main/scala/rocket/RocketCore.scala:158:7
@@ -92729,11 +92712,6 @@ module Rocket(	// src/main/scala/rocket/RocketCore.scala:158:7
     .io_trace_0_tval                    (io_trace_insns_0_tval),
     .io_customCSRs_0_value              (_csr_io_customCSRs_0_value)
   );
-  wire             coreMonitorBundle_excpt;	// src/main/scala/rocket/RocketCore.scala:1217:31
-  assign coreMonitorBundle_excpt = _csr_io_trace_0_exception;	// src/main/scala/rocket/RocketCore.scala:347:19, :1217:31
-  wire [2:0]       coreMonitorBundle_priv_mode;	// src/main/scala/rocket/RocketCore.scala:1217:31
-  assign coreMonitorBundle_priv_mode = _csr_io_trace_0_priv;	// src/main/scala/rocket/RocketCore.scala:347:19, :1217:31
-  assign coreMonitorBundle_inst = _csr_io_trace_0_insn;	// src/main/scala/rocket/RocketCore.scala:347:19, :1217:31
   wire [2:0]       xrfWriteBundle_priv_mode;	// src/main/scala/rocket/RocketCore.scala:1280:28
   assign xrfWriteBundle_priv_mode = _csr_io_trace_0_priv;	// src/main/scala/rocket/RocketCore.scala:347:19, :1280:28
   BreakpointUnit bpu (	// src/main/scala/rocket/RocketCore.scala:422:19
@@ -95113,7 +95091,7 @@ module TLMonitor_24(	// src/main/scala/tilelink/Monitor.scala:36:7
     {io_in_b_bits_address[31:26], io_in_b_bits_address[25:16] ^ 10'h200};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
   wire [5:0]  _GEN_4 = {io_in_b_bits_address[31:28], ~(io_in_b_bits_address[27:26])};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
   wire [2:0]  _GEN_5 = {io_in_b_bits_address[31], ~(io_in_b_bits_address[30:29])};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
-  wire        _GEN_6 = io_in_b_bits_address[31:28] != 4'h8;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:36:7
+  wire        _GEN_6 = io_in_b_bits_address[31:27] != 5'h10;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14
   wire        address_ok =
     ~(|(io_in_b_bits_address[31:12])) | ~(|_GEN_1) | ~(|_GEN_2) | ~(|_GEN_3) | ~(|_GEN_4)
     | ~(|_GEN_5) | ~_GEN_6;	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/tilelink/Parameters.scala:636:64
@@ -95186,7 +95164,7 @@ module TLMonitor_24(	// src/main/scala/tilelink/Monitor.scala:36:7
     {io_in_c_bits_address[31:26], io_in_c_bits_address[25:16] ^ 10'h200};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
   wire [5:0]  _GEN_12 = {io_in_c_bits_address[31:28], ~(io_in_c_bits_address[27:26])};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
   wire [2:0]  _GEN_13 = {io_in_c_bits_address[31], ~(io_in_c_bits_address[30:29])};	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46}
-  wire        _GEN_14 = io_in_c_bits_address[31:28] != 4'h8;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:36:7
+  wire        _GEN_14 = io_in_c_bits_address[31:27] != 5'h10;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14
   wire        address_ok_1 =
     ~(|(io_in_c_bits_address[31:12])) | ~(|_GEN_9) | ~(|_GEN_10) | ~(|_GEN_11)
     | ~(|_GEN_12) | ~(|_GEN_13) | ~_GEN_14;	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/tilelink/Parameters.scala:636:64
@@ -95391,7 +95369,7 @@ module TLMonitor_24(	// src/main/scala/tilelink/Monitor.scala:36:7
     wire            _GEN_37 = io_in_a_bits_size < 4'hD;	// src/main/scala/diplomacy/Parameters.scala:92:38
     wire            _GEN_38 = _GEN_37 & source_ok;	// src/main/scala/diplomacy/Parameters.scala:92:38, src/main/scala/tilelink/Parameters.scala:1139:46, :1174:30
     wire            _GEN_39 = io_in_a_bits_size < 4'h7;	// src/main/scala/diplomacy/Parameters.scala:92:38, src/main/scala/tilelink/Monitor.scala:36:7
-    wire            _GEN_40 = io_in_a_bits_address[31:28] == 4'h8;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:36:7
+    wire            _GEN_40 = io_in_a_bits_address[31:27] == 5'h10;	// src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}, src/main/scala/tilelink/Monitor.scala:20:14
     wire            _GEN_41 = _GEN_38 & _GEN_39 & _GEN_40;	// src/main/scala/diplomacy/Parameters.scala:92:38, :137:{41,46,59}, src/main/scala/tilelink/Monitor.scala:85:72, src/main/scala/tilelink/Parameters.scala:1174:30
     wire            _GEN_42 = io_in_a_valid & io_in_a_bits_opcode == 3'h6 & ~reset;	// src/main/scala/tilelink/Monitor.scala:45:11, :84:25
     wire            _GEN_43 = io_in_a_bits_address[31:12] == 20'h0;	// src/main/scala/diplomacy/Parameters.scala:137:{41,46,59}, src/main/scala/tilelink/Monitor.scala:709:27
@@ -97300,7 +97278,7 @@ module Queue2_TLBundleC_a32d64s2k2z4c(	// src/main/scala/chisel3/util/Decoupled.
 endmodule
 
 // VCS coverage exclude_file
-module ram_2x2(	// src/main/scala/chisel3/util/Decoupled.scala:256:91
+module ram_sink_2x2(	// src/main/scala/chisel3/util/Decoupled.scala:256:91
   input        R0_addr,
                R0_en,
                R0_clk,
@@ -97387,7 +97365,7 @@ module Queue2_TLBundleE_a32d64s2k2z4c(	// src/main/scala/chisel3/util/Decoupled.
       `FIRRTL_AFTER_INITIAL	// src/main/scala/chisel3/util/Decoupled.scala:243:7
     `endif // FIRRTL_AFTER_INITIAL
   `endif // ENABLE_INITIAL_REG_
-  ram_2x2 ram_sink_ext (	// src/main/scala/chisel3/util/Decoupled.scala:256:91
+  ram_sink_2x2 ram_sink_ext (	// src/main/scala/chisel3/util/Decoupled.scala:256:91
     .R0_addr (deq_ptr_value),	// src/main/scala/chisel3/util/Counter.scala:61:40
     .R0_en   (1'h1),	// src/main/scala/chisel3/util/Decoupled.scala:243:7
     .R0_clk  (clock),
@@ -142994,7 +142972,7 @@ module TLROM(	// src/main/scala/devices/tilelink/BootROM.scala:41:9
      64'h636F7301000000,
      64'h200000001000000,
      64'h4601000004000000,
-     64'h300000000000010,
+     64'h300000000000008,
      64'h80E5000000,
      64'h800000003000000,
      64'h79726F6D656D,
@@ -143565,7 +143543,7 @@ module TLROM(	// src/main/scala/devices/tilelink/BootROM.scala:41:9
   wire [63:0]        rom_114 = 64'h636F7301000000;	// src/main/scala/devices/tilelink/BootROM.scala:50:22
   wire [63:0]        rom_101 = 64'h4601000004000000;	// src/main/scala/devices/tilelink/BootROM.scala:50:22
   wire [63:0]        rom_112 = 64'h4601000004000000;	// src/main/scala/devices/tilelink/BootROM.scala:50:22
-  wire [63:0]        rom_111 = 64'h300000000000010;	// src/main/scala/devices/tilelink/BootROM.scala:50:22
+  wire [63:0]        rom_111 = 64'h300000000000008;	// src/main/scala/devices/tilelink/BootROM.scala:50:22
   wire [63:0]        rom_110 = 64'h80E5000000;	// src/main/scala/devices/tilelink/BootROM.scala:50:22
   wire [63:0]        rom_108 = 64'h79726F6D656D;	// src/main/scala/devices/tilelink/BootROM.scala:50:22
   wire [63:0]        rom_107 = 64'h7C00000007000000;	// src/main/scala/devices/tilelink/BootROM.scala:50:22
@@ -146312,11 +146290,11 @@ module ExampleRocketSystem(	// src/main/scala/system/ExampleRocketSystem.scala:2
 endmodule
 
 // VCS coverage exclude_file
-module mem_4096x64(	// src/main/scala/util/DescribedSRAM.scala:17:26
-  input  [11:0] R0_addr,
+module mem_16777216x64(	// src/main/scala/util/DescribedSRAM.scala:17:26
+  input  [23:0] R0_addr,
   input         R0_en,
                 R0_clk,
-  input  [11:0] W0_addr,
+  input  [23:0] W0_addr,
   input         W0_en,
                 W0_clk,
   input  [63:0] W0_data,
@@ -146324,9 +146302,9 @@ module mem_4096x64(	// src/main/scala/util/DescribedSRAM.scala:17:26
   output [63:0] R0_data
 );
 
-  reg [63:0] Memory[0:4095];	// src/main/scala/util/DescribedSRAM.scala:17:26
+  reg [63:0] Memory[0:16777215];	// src/main/scala/util/DescribedSRAM.scala:17:26
   reg        _R0_en_d0;	// src/main/scala/util/DescribedSRAM.scala:17:26
-  reg [11:0] _R0_addr_d0;	// src/main/scala/util/DescribedSRAM.scala:17:26
+  reg [23:0] _R0_addr_d0;	// src/main/scala/util/DescribedSRAM.scala:17:26
   always @(posedge R0_clk) begin	// src/main/scala/util/DescribedSRAM.scala:17:26
     _R0_en_d0 <= R0_en;	// src/main/scala/util/DescribedSRAM.scala:17:26
     _R0_addr_d0 <= R0_addr;	// src/main/scala/util/DescribedSRAM.scala:17:26
@@ -146357,17 +146335,17 @@ module mem_4096x64(	// src/main/scala/util/DescribedSRAM.scala:17:26
     initial begin	// src/main/scala/util/DescribedSRAM.scala:17:26
       `INIT_RANDOM_PROLOG_	// src/main/scala/util/DescribedSRAM.scala:17:26
       `ifdef RANDOMIZE_MEM_INIT	// src/main/scala/util/DescribedSRAM.scala:17:26
-        for (logic [12:0] i = 13'h0; i < 13'h1000; i += 13'h1) begin
+        for (logic [24:0] i = 25'h0; i < 25'h1000000; i += 25'h1) begin
           for (logic [6:0] j = 7'h0; j < 7'h40; j += 7'h20) begin
             _RANDOM_MEM[j +: 32] = `RANDOM;	// src/main/scala/util/DescribedSRAM.scala:17:26
           end	// src/main/scala/util/DescribedSRAM.scala:17:26
-          Memory[i[11:0]] = _RANDOM_MEM;	// src/main/scala/util/DescribedSRAM.scala:17:26
+          Memory[i[23:0]] = _RANDOM_MEM;	// src/main/scala/util/DescribedSRAM.scala:17:26
         end	// src/main/scala/util/DescribedSRAM.scala:17:26
       `endif // RANDOMIZE_MEM_INIT
       `ifdef RANDOMIZE_REG_INIT	// src/main/scala/util/DescribedSRAM.scala:17:26
         _RANDOM = {`RANDOM};	// src/main/scala/util/DescribedSRAM.scala:17:26
         _R0_en_d0 = _RANDOM[0];	// src/main/scala/util/DescribedSRAM.scala:17:26
-        _R0_addr_d0 = _RANDOM[12:1];	// src/main/scala/util/DescribedSRAM.scala:17:26
+        _R0_addr_d0 = _RANDOM[24:1];	// src/main/scala/util/DescribedSRAM.scala:17:26
       `endif // RANDOMIZE_REG_INIT
     end // initial
   `endif // ENABLE_INITIAL_MEM_
@@ -146457,30 +146435,54 @@ module AXI4RAM(	// src/main/scala/amba/axi4/SRAM.scala:58:9
   wire [7:0]  wdata_5;	// src/main/scala/amba/axi4/SRAM.scala:90:45
   wire [7:0]  wdata_6;	// src/main/scala/amba/axi4/SRAM.scala:90:45
   wire [7:0]  wdata_7;	// src/main/scala/amba/axi4/SRAM.scala:90:45
-  wire [1:0]  r_addr_lo_lo_hi = nodeIn_ar_bits_addr[5:4];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:21
-  wire [2:0]  r_addr_lo_lo = {r_addr_lo_lo_hi, nodeIn_ar_bits_addr[3]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:{21,49,73}
-  wire [1:0]  r_addr_lo_hi_hi = nodeIn_ar_bits_addr[8:7];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:21
-  wire [2:0]  r_addr_lo_hi = {r_addr_lo_hi_hi, nodeIn_ar_bits_addr[6]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:{21,49,73}
-  wire [5:0]  r_addr_lo = {r_addr_lo_hi, r_addr_lo_lo};	// src/main/scala/amba/axi4/SRAM.scala:70:21
-  wire [1:0]  r_addr_hi_lo_hi = nodeIn_ar_bits_addr[11:10];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:21
-  wire [2:0]  r_addr_hi_lo = {r_addr_hi_lo_hi, nodeIn_ar_bits_addr[9]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:{21,49,73}
-  wire [1:0]  r_addr_hi_hi_hi = nodeIn_ar_bits_addr[14:13];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:21
-  wire [2:0]  r_addr_hi_hi = {r_addr_hi_hi_hi, nodeIn_ar_bits_addr[12]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:{21,49,73}
-  wire [5:0]  r_addr_hi = {r_addr_hi_hi, r_addr_hi_lo};	// src/main/scala/amba/axi4/SRAM.scala:70:21
-  wire [11:0] r_addr = {r_addr_hi, r_addr_lo};	// src/main/scala/amba/axi4/SRAM.scala:70:21
-  wire [1:0]  w_addr_lo_lo_hi = nodeIn_aw_bits_addr[5:4];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:21
-  wire [2:0]  w_addr_lo_lo = {w_addr_lo_lo_hi, nodeIn_aw_bits_addr[3]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:{21,49,73}
-  wire [1:0]  w_addr_lo_hi_hi = nodeIn_aw_bits_addr[8:7];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:21
-  wire [2:0]  w_addr_lo_hi = {w_addr_lo_hi_hi, nodeIn_aw_bits_addr[6]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:{21,49,73}
-  wire [5:0]  w_addr_lo = {w_addr_lo_hi, w_addr_lo_lo};	// src/main/scala/amba/axi4/SRAM.scala:71:21
-  wire [1:0]  w_addr_hi_lo_hi = nodeIn_aw_bits_addr[11:10];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:21
-  wire [2:0]  w_addr_hi_lo = {w_addr_hi_lo_hi, nodeIn_aw_bits_addr[9]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:{21,49,73}
-  wire [1:0]  w_addr_hi_hi_hi = nodeIn_aw_bits_addr[14:13];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:21
-  wire [2:0]  w_addr_hi_hi = {w_addr_hi_hi_hi, nodeIn_aw_bits_addr[12]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:{21,49,73}
-  wire [5:0]  w_addr_hi = {w_addr_hi_hi, w_addr_hi_lo};	// src/main/scala/amba/axi4/SRAM.scala:71:21
-  wire [11:0] w_addr = {w_addr_hi, w_addr_lo};	// src/main/scala/amba/axi4/SRAM.scala:71:21
-  wire        r_sel0 = nodeIn_ar_bits_addr[31:15] == 17'h10000;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}
-  wire        w_sel0 = nodeIn_aw_bits_addr[31:15] == 17'h10000;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}
+  wire [1:0]  r_addr_lo_lo_lo_hi = nodeIn_ar_bits_addr[5:4];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:21
+  wire [2:0]  r_addr_lo_lo_lo = {r_addr_lo_lo_lo_hi, nodeIn_ar_bits_addr[3]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:{21,49,73}
+  wire [1:0]  r_addr_lo_lo_hi_hi = nodeIn_ar_bits_addr[8:7];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:21
+  wire [2:0]  r_addr_lo_lo_hi = {r_addr_lo_lo_hi_hi, nodeIn_ar_bits_addr[6]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:{21,49,73}
+  wire [5:0]  r_addr_lo_lo = {r_addr_lo_lo_hi, r_addr_lo_lo_lo};	// src/main/scala/amba/axi4/SRAM.scala:70:21
+  wire [1:0]  r_addr_lo_hi_lo_hi = nodeIn_ar_bits_addr[11:10];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:21
+  wire [2:0]  r_addr_lo_hi_lo = {r_addr_lo_hi_lo_hi, nodeIn_ar_bits_addr[9]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:{21,49,73}
+  wire [1:0]  r_addr_lo_hi_hi_hi = nodeIn_ar_bits_addr[14:13];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:21
+  wire [2:0]  r_addr_lo_hi_hi = {r_addr_lo_hi_hi_hi, nodeIn_ar_bits_addr[12]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:{21,49,73}
+  wire [5:0]  r_addr_lo_hi = {r_addr_lo_hi_hi, r_addr_lo_hi_lo};	// src/main/scala/amba/axi4/SRAM.scala:70:21
+  wire [11:0] r_addr_lo = {r_addr_lo_hi, r_addr_lo_lo};	// src/main/scala/amba/axi4/SRAM.scala:70:21
+  wire [1:0]  r_addr_hi_lo_lo_hi = nodeIn_ar_bits_addr[17:16];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:21
+  wire [2:0]  r_addr_hi_lo_lo = {r_addr_hi_lo_lo_hi, nodeIn_ar_bits_addr[15]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:{21,49,73}
+  wire [1:0]  r_addr_hi_lo_hi_hi = nodeIn_ar_bits_addr[20:19];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:21
+  wire [2:0]  r_addr_hi_lo_hi = {r_addr_hi_lo_hi_hi, nodeIn_ar_bits_addr[18]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:{21,49,73}
+  wire [5:0]  r_addr_hi_lo = {r_addr_hi_lo_hi, r_addr_hi_lo_lo};	// src/main/scala/amba/axi4/SRAM.scala:70:21
+  wire [1:0]  r_addr_hi_hi_lo_hi = nodeIn_ar_bits_addr[23:22];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:21
+  wire [2:0]  r_addr_hi_hi_lo = {r_addr_hi_hi_lo_hi, nodeIn_ar_bits_addr[21]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:{21,49,73}
+  wire [1:0]  r_addr_hi_hi_hi_hi = nodeIn_ar_bits_addr[26:25];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:21
+  wire [2:0]  r_addr_hi_hi_hi = {r_addr_hi_hi_hi_hi, nodeIn_ar_bits_addr[24]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:{21,49,73}
+  wire [5:0]  r_addr_hi_hi = {r_addr_hi_hi_hi, r_addr_hi_hi_lo};	// src/main/scala/amba/axi4/SRAM.scala:70:21
+  wire [11:0] r_addr_hi = {r_addr_hi_hi, r_addr_hi_lo};	// src/main/scala/amba/axi4/SRAM.scala:70:21
+  wire [23:0] r_addr = {r_addr_hi, r_addr_lo};	// src/main/scala/amba/axi4/SRAM.scala:70:21
+  wire [1:0]  w_addr_lo_lo_lo_hi = nodeIn_aw_bits_addr[5:4];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:21
+  wire [2:0]  w_addr_lo_lo_lo = {w_addr_lo_lo_lo_hi, nodeIn_aw_bits_addr[3]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:{21,49,73}
+  wire [1:0]  w_addr_lo_lo_hi_hi = nodeIn_aw_bits_addr[8:7];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:21
+  wire [2:0]  w_addr_lo_lo_hi = {w_addr_lo_lo_hi_hi, nodeIn_aw_bits_addr[6]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:{21,49,73}
+  wire [5:0]  w_addr_lo_lo = {w_addr_lo_lo_hi, w_addr_lo_lo_lo};	// src/main/scala/amba/axi4/SRAM.scala:71:21
+  wire [1:0]  w_addr_lo_hi_lo_hi = nodeIn_aw_bits_addr[11:10];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:21
+  wire [2:0]  w_addr_lo_hi_lo = {w_addr_lo_hi_lo_hi, nodeIn_aw_bits_addr[9]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:{21,49,73}
+  wire [1:0]  w_addr_lo_hi_hi_hi = nodeIn_aw_bits_addr[14:13];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:21
+  wire [2:0]  w_addr_lo_hi_hi = {w_addr_lo_hi_hi_hi, nodeIn_aw_bits_addr[12]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:{21,49,73}
+  wire [5:0]  w_addr_lo_hi = {w_addr_lo_hi_hi, w_addr_lo_hi_lo};	// src/main/scala/amba/axi4/SRAM.scala:71:21
+  wire [11:0] w_addr_lo = {w_addr_lo_hi, w_addr_lo_lo};	// src/main/scala/amba/axi4/SRAM.scala:71:21
+  wire [1:0]  w_addr_hi_lo_lo_hi = nodeIn_aw_bits_addr[17:16];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:21
+  wire [2:0]  w_addr_hi_lo_lo = {w_addr_hi_lo_lo_hi, nodeIn_aw_bits_addr[15]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:{21,49,73}
+  wire [1:0]  w_addr_hi_lo_hi_hi = nodeIn_aw_bits_addr[20:19];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:21
+  wire [2:0]  w_addr_hi_lo_hi = {w_addr_hi_lo_hi_hi, nodeIn_aw_bits_addr[18]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:{21,49,73}
+  wire [5:0]  w_addr_hi_lo = {w_addr_hi_lo_hi, w_addr_hi_lo_lo};	// src/main/scala/amba/axi4/SRAM.scala:71:21
+  wire [1:0]  w_addr_hi_hi_lo_hi = nodeIn_aw_bits_addr[23:22];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:21
+  wire [2:0]  w_addr_hi_hi_lo = {w_addr_hi_hi_lo_hi, nodeIn_aw_bits_addr[21]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:{21,49,73}
+  wire [1:0]  w_addr_hi_hi_hi_hi = nodeIn_aw_bits_addr[26:25];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:21
+  wire [2:0]  w_addr_hi_hi_hi = {w_addr_hi_hi_hi_hi, nodeIn_aw_bits_addr[24]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:{21,49,73}
+  wire [5:0]  w_addr_hi_hi = {w_addr_hi_hi_hi, w_addr_hi_hi_lo};	// src/main/scala/amba/axi4/SRAM.scala:71:21
+  wire [11:0] w_addr_hi = {w_addr_hi_hi, w_addr_hi_lo};	// src/main/scala/amba/axi4/SRAM.scala:71:21
+  wire [23:0] w_addr = {w_addr_hi, w_addr_lo};	// src/main/scala/amba/axi4/SRAM.scala:71:21
+  wire        r_sel0 = nodeIn_ar_bits_addr[31:27] == 5'h10;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}
+  wire        w_sel0 = nodeIn_aw_bits_addr[31:27] == 5'h10;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}
   reg         w_full;	// src/main/scala/amba/axi4/SRAM.scala:75:25
   wire        nodeIn_b_valid = w_full;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:75:25
   reg  [3:0]  w_id;	// src/main/scala/amba/axi4/SRAM.scala:76:21
@@ -146605,7 +146607,7 @@ module AXI4RAM(	// src/main/scala/amba/axi4/SRAM.scala:58:9
       `FIRRTL_AFTER_INITIAL	// src/main/scala/amba/axi4/SRAM.scala:58:9
     `endif // FIRRTL_AFTER_INITIAL
   `endif // ENABLE_INITIAL_REG_
-  mem_4096x64 mem_ext (	// src/main/scala/util/DescribedSRAM.scala:17:26
+  mem_16777216x64 mem_ext (	// src/main/scala/util/DescribedSRAM.scala:17:26
     .R0_addr (r_addr),	// src/main/scala/amba/axi4/SRAM.scala:70:21
     .R0_en   (ren),	// src/main/scala/chisel3/util/Decoupled.scala:51:35
     .R0_clk  (clock),
@@ -146628,395 +146630,6 @@ module AXI4RAM(	// src/main/scala/amba/axi4/SRAM.scala:58:9
   assign auto_in_r_bits_data = nodeIn_r_bits_data;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:58:9
   assign auto_in_r_bits_resp = nodeIn_r_bits_resp;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:58:9
   assign auto_in_r_bits_echo_real_last = nodeIn_r_bits_echo_real_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:58:9
-endmodule
-
-// VCS coverage exclude_file
-module mem_1024x64(	// src/main/scala/util/DescribedSRAM.scala:17:26
-  input  [9:0]  R0_addr,
-  input         R0_en,
-                R0_clk,
-  input  [9:0]  W0_addr,
-  input         W0_en,
-                W0_clk,
-  input  [63:0] W0_data,
-  input  [7:0]  W0_mask,
-  output [63:0] R0_data
-);
-
-  reg [63:0] Memory[0:1023];	// src/main/scala/util/DescribedSRAM.scala:17:26
-  reg        _R0_en_d0;	// src/main/scala/util/DescribedSRAM.scala:17:26
-  reg [9:0]  _R0_addr_d0;	// src/main/scala/util/DescribedSRAM.scala:17:26
-  always @(posedge R0_clk) begin	// src/main/scala/util/DescribedSRAM.scala:17:26
-    _R0_en_d0 <= R0_en;	// src/main/scala/util/DescribedSRAM.scala:17:26
-    _R0_addr_d0 <= R0_addr;	// src/main/scala/util/DescribedSRAM.scala:17:26
-  end // always @(posedge)
-  always @(posedge W0_clk) begin	// src/main/scala/util/DescribedSRAM.scala:17:26
-    if (W0_en & W0_mask[0])	// src/main/scala/util/DescribedSRAM.scala:17:26
-      Memory[W0_addr][32'h0 +: 8] <= W0_data[7:0];	// src/main/scala/util/DescribedSRAM.scala:17:26
-    if (W0_en & W0_mask[1])	// src/main/scala/util/DescribedSRAM.scala:17:26
-      Memory[W0_addr][32'h8 +: 8] <= W0_data[15:8];	// src/main/scala/util/DescribedSRAM.scala:17:26
-    if (W0_en & W0_mask[2])	// src/main/scala/util/DescribedSRAM.scala:17:26
-      Memory[W0_addr][32'h10 +: 8] <= W0_data[23:16];	// src/main/scala/util/DescribedSRAM.scala:17:26
-    if (W0_en & W0_mask[3])	// src/main/scala/util/DescribedSRAM.scala:17:26
-      Memory[W0_addr][32'h18 +: 8] <= W0_data[31:24];	// src/main/scala/util/DescribedSRAM.scala:17:26
-    if (W0_en & W0_mask[4])	// src/main/scala/util/DescribedSRAM.scala:17:26
-      Memory[W0_addr][32'h20 +: 8] <= W0_data[39:32];	// src/main/scala/util/DescribedSRAM.scala:17:26
-    if (W0_en & W0_mask[5])	// src/main/scala/util/DescribedSRAM.scala:17:26
-      Memory[W0_addr][32'h28 +: 8] <= W0_data[47:40];	// src/main/scala/util/DescribedSRAM.scala:17:26
-    if (W0_en & W0_mask[6])	// src/main/scala/util/DescribedSRAM.scala:17:26
-      Memory[W0_addr][32'h30 +: 8] <= W0_data[55:48];	// src/main/scala/util/DescribedSRAM.scala:17:26
-    if (W0_en & W0_mask[7])	// src/main/scala/util/DescribedSRAM.scala:17:26
-      Memory[W0_addr][32'h38 +: 8] <= W0_data[63:56];	// src/main/scala/util/DescribedSRAM.scala:17:26
-  end // always @(posedge)
-  `ifdef ENABLE_INITIAL_MEM_	// src/main/scala/util/DescribedSRAM.scala:17:26
-    `ifdef RANDOMIZE_REG_INIT	// src/main/scala/util/DescribedSRAM.scala:17:26
-      reg [31:0] _RANDOM;	// src/main/scala/util/DescribedSRAM.scala:17:26
-    `endif // RANDOMIZE_REG_INIT
-    reg [63:0] _RANDOM_MEM;	// src/main/scala/util/DescribedSRAM.scala:17:26
-    initial begin	// src/main/scala/util/DescribedSRAM.scala:17:26
-      `INIT_RANDOM_PROLOG_	// src/main/scala/util/DescribedSRAM.scala:17:26
-      `ifdef RANDOMIZE_MEM_INIT	// src/main/scala/util/DescribedSRAM.scala:17:26
-        for (logic [10:0] i = 11'h0; i < 11'h400; i += 11'h1) begin
-          for (logic [6:0] j = 7'h0; j < 7'h40; j += 7'h20) begin
-            _RANDOM_MEM[j +: 32] = `RANDOM;	// src/main/scala/util/DescribedSRAM.scala:17:26
-          end	// src/main/scala/util/DescribedSRAM.scala:17:26
-          Memory[i[9:0]] = _RANDOM_MEM;	// src/main/scala/util/DescribedSRAM.scala:17:26
-        end	// src/main/scala/util/DescribedSRAM.scala:17:26
-      `endif // RANDOMIZE_MEM_INIT
-      `ifdef RANDOMIZE_REG_INIT	// src/main/scala/util/DescribedSRAM.scala:17:26
-        _RANDOM = {`RANDOM};	// src/main/scala/util/DescribedSRAM.scala:17:26
-        _R0_en_d0 = _RANDOM[0];	// src/main/scala/util/DescribedSRAM.scala:17:26
-        _R0_addr_d0 = _RANDOM[10:1];	// src/main/scala/util/DescribedSRAM.scala:17:26
-      `endif // RANDOMIZE_REG_INIT
-    end // initial
-  `endif // ENABLE_INITIAL_MEM_
-  assign R0_data = _R0_en_d0 ? Memory[_R0_addr_d0] : 64'bx;	// src/main/scala/util/DescribedSRAM.scala:17:26
-endmodule
-
-module AXI4RAM_1(	// src/main/scala/amba/axi4/SRAM.scala:58:9
-  input         clock,	// src/main/scala/amba/axi4/SRAM.scala:58:9
-                reset,	// src/main/scala/amba/axi4/SRAM.scala:58:9
-                auto_in_aw_valid,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [3:0]  auto_in_aw_bits_id,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [31:0] auto_in_aw_bits_addr,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [7:0]  auto_in_aw_bits_len,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [2:0]  auto_in_aw_bits_size,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [1:0]  auto_in_aw_bits_burst,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input         auto_in_aw_bits_lock,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [3:0]  auto_in_aw_bits_cache,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [2:0]  auto_in_aw_bits_prot,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [3:0]  auto_in_aw_bits_qos,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input         auto_in_aw_bits_echo_real_last,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-                auto_in_w_valid,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [63:0] auto_in_w_bits_data,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [7:0]  auto_in_w_bits_strb,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input         auto_in_w_bits_last,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-                auto_in_b_ready,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-                auto_in_ar_valid,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [3:0]  auto_in_ar_bits_id,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [31:0] auto_in_ar_bits_addr,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [7:0]  auto_in_ar_bits_len,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [2:0]  auto_in_ar_bits_size,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [1:0]  auto_in_ar_bits_burst,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input         auto_in_ar_bits_lock,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [3:0]  auto_in_ar_bits_cache,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [2:0]  auto_in_ar_bits_prot,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [3:0]  auto_in_ar_bits_qos,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input         auto_in_ar_bits_echo_real_last,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-                auto_in_r_ready,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output        auto_in_aw_ready,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-                auto_in_w_ready,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-                auto_in_b_valid,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [3:0]  auto_in_b_bits_id,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [1:0]  auto_in_b_bits_resp,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output        auto_in_b_bits_echo_real_last,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-                auto_in_ar_ready,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-                auto_in_r_valid,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [3:0]  auto_in_r_bits_id,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [63:0] auto_in_r_bits_data,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [1:0]  auto_in_r_bits_resp,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output        auto_in_r_bits_echo_real_last	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-);
-
-  wire [63:0] _mem_ext_R0_data;	// src/main/scala/util/DescribedSRAM.scala:17:26
-  wire        nodeIn_aw_valid = auto_in_aw_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire [3:0]  nodeIn_aw_bits_id = auto_in_aw_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire [31:0] nodeIn_aw_bits_addr = auto_in_aw_bits_addr;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire [7:0]  nodeIn_aw_bits_len = auto_in_aw_bits_len;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire [2:0]  nodeIn_aw_bits_size = auto_in_aw_bits_size;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire [1:0]  nodeIn_aw_bits_burst = auto_in_aw_bits_burst;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire        nodeIn_aw_bits_lock = auto_in_aw_bits_lock;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire [3:0]  nodeIn_aw_bits_cache = auto_in_aw_bits_cache;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire [2:0]  nodeIn_aw_bits_prot = auto_in_aw_bits_prot;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire [3:0]  nodeIn_aw_bits_qos = auto_in_aw_bits_qos;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire        nodeIn_aw_bits_echo_real_last = auto_in_aw_bits_echo_real_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire        nodeIn_w_valid = auto_in_w_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire [63:0] nodeIn_w_bits_data = auto_in_w_bits_data;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire [7:0]  nodeIn_w_bits_strb = auto_in_w_bits_strb;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire        nodeIn_w_bits_last = auto_in_w_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire        nodeIn_b_ready = auto_in_b_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire        nodeIn_ar_valid = auto_in_ar_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire [3:0]  nodeIn_ar_bits_id = auto_in_ar_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire [31:0] nodeIn_ar_bits_addr = auto_in_ar_bits_addr;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire [7:0]  nodeIn_ar_bits_len = auto_in_ar_bits_len;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire [2:0]  nodeIn_ar_bits_size = auto_in_ar_bits_size;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire [1:0]  nodeIn_ar_bits_burst = auto_in_ar_bits_burst;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire        nodeIn_ar_bits_lock = auto_in_ar_bits_lock;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire [3:0]  nodeIn_ar_bits_cache = auto_in_ar_bits_cache;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire [2:0]  nodeIn_ar_bits_prot = auto_in_ar_bits_prot;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire [3:0]  nodeIn_ar_bits_qos = auto_in_ar_bits_qos;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire        nodeIn_ar_bits_echo_real_last = auto_in_ar_bits_echo_real_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire        nodeIn_r_ready = auto_in_r_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire        nodeIn_r_bits_last = 1'h1;	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25, dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire [7:0]  wdata_0;	// src/main/scala/amba/axi4/SRAM.scala:90:45
-  wire [7:0]  wdata_1;	// src/main/scala/amba/axi4/SRAM.scala:90:45
-  wire [7:0]  wdata_2;	// src/main/scala/amba/axi4/SRAM.scala:90:45
-  wire [7:0]  wdata_3;	// src/main/scala/amba/axi4/SRAM.scala:90:45
-  wire [7:0]  wdata_4;	// src/main/scala/amba/axi4/SRAM.scala:90:45
-  wire [7:0]  wdata_5;	// src/main/scala/amba/axi4/SRAM.scala:90:45
-  wire [7:0]  wdata_6;	// src/main/scala/amba/axi4/SRAM.scala:90:45
-  wire [7:0]  wdata_7;	// src/main/scala/amba/axi4/SRAM.scala:90:45
-  wire [1:0]  r_addr_lo_lo = nodeIn_ar_bits_addr[4:3];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:21
-  wire [1:0]  r_addr_lo_hi_hi = nodeIn_ar_bits_addr[7:6];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:21
-  wire [2:0]  r_addr_lo_hi = {r_addr_lo_hi_hi, nodeIn_ar_bits_addr[5]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:{21,49,73}
-  wire [4:0]  r_addr_lo = {r_addr_lo_hi, r_addr_lo_lo};	// src/main/scala/amba/axi4/SRAM.scala:70:21
-  wire [1:0]  r_addr_hi_lo = nodeIn_ar_bits_addr[9:8];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:21
-  wire [1:0]  r_addr_hi_hi_hi = nodeIn_ar_bits_addr[12:11];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:21
-  wire [2:0]  r_addr_hi_hi = {r_addr_hi_hi_hi, nodeIn_ar_bits_addr[10]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:70:{21,49,73}
-  wire [4:0]  r_addr_hi = {r_addr_hi_hi, r_addr_hi_lo};	// src/main/scala/amba/axi4/SRAM.scala:70:21
-  wire [9:0]  r_addr = {r_addr_hi, r_addr_lo};	// src/main/scala/amba/axi4/SRAM.scala:70:21
-  wire [1:0]  w_addr_lo_lo = nodeIn_aw_bits_addr[4:3];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:21
-  wire [1:0]  w_addr_lo_hi_hi = nodeIn_aw_bits_addr[7:6];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:21
-  wire [2:0]  w_addr_lo_hi = {w_addr_lo_hi_hi, nodeIn_aw_bits_addr[5]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:{21,49,73}
-  wire [4:0]  w_addr_lo = {w_addr_lo_hi, w_addr_lo_lo};	// src/main/scala/amba/axi4/SRAM.scala:71:21
-  wire [1:0]  w_addr_hi_lo = nodeIn_aw_bits_addr[9:8];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:21
-  wire [1:0]  w_addr_hi_hi_hi = nodeIn_aw_bits_addr[12:11];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:21
-  wire [2:0]  w_addr_hi_hi = {w_addr_hi_hi_hi, nodeIn_aw_bits_addr[10]};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:71:{21,49,73}
-  wire [4:0]  w_addr_hi = {w_addr_hi_hi, w_addr_hi_lo};	// src/main/scala/amba/axi4/SRAM.scala:71:21
-  wire [9:0]  w_addr = {w_addr_hi, w_addr_lo};	// src/main/scala/amba/axi4/SRAM.scala:71:21
-  wire        r_sel0 = nodeIn_ar_bits_addr[31:13] == 19'h40004;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}
-  wire        w_sel0 = nodeIn_aw_bits_addr[31:13] == 19'h40004;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/diplomacy/Parameters.scala:137:{31,41,46,59}
-  reg         w_full;	// src/main/scala/amba/axi4/SRAM.scala:75:25
-  wire        nodeIn_b_valid = w_full;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:75:25
-  reg  [3:0]  w_id;	// src/main/scala/amba/axi4/SRAM.scala:76:21
-  wire [3:0]  nodeIn_b_bits_id = w_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:76:21
-  reg         w_echo_real_last;	// src/main/scala/amba/axi4/SRAM.scala:77:21
-  wire        nodeIn_b_bits_echo_real_last = w_echo_real_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:77:21
-  reg         r_sel1;	// src/main/scala/amba/axi4/SRAM.scala:78:25
-  reg         w_sel1;	// src/main/scala/amba/axi4/SRAM.scala:79:25
-  wire        nodeIn_aw_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire        _GEN = nodeIn_aw_ready & nodeIn_aw_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/chisel3/util/Decoupled.scala:51:35
-  assign wdata_0 = nodeIn_w_bits_data[7:0];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:90:{45,66}
-  assign wdata_1 = nodeIn_w_bits_data[15:8];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:90:{45,66}
-  assign wdata_2 = nodeIn_w_bits_data[23:16];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:90:{45,66}
-  assign wdata_3 = nodeIn_w_bits_data[31:24];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:90:{45,66}
-  assign wdata_4 = nodeIn_w_bits_data[39:32];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:90:{45,66}
-  assign wdata_5 = nodeIn_w_bits_data[47:40];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:90:{45,66}
-  assign wdata_6 = nodeIn_w_bits_data[55:48];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:90:{45,66}
-  assign wdata_7 = nodeIn_w_bits_data[63:56];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:90:{45,66}
-  assign nodeIn_aw_ready = nodeIn_w_valid & (nodeIn_b_ready | ~w_full);	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:75:25, :97:{32,47,50}
-  wire        nodeIn_w_ready = nodeIn_aw_valid & (nodeIn_b_ready | ~w_full);	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:75:25, :97:50, :98:{32,47}
-  wire [1:0]  nodeIn_b_bits_resp = w_sel1 ? 2'h0 : 2'h3;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:58:9, :79:25, :101:26
-  reg         r_full;	// src/main/scala/amba/axi4/SRAM.scala:104:25
-  wire        nodeIn_r_valid = r_full;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:104:25
-  reg  [3:0]  r_id;	// src/main/scala/amba/axi4/SRAM.scala:105:21
-  wire [3:0]  nodeIn_r_bits_id = r_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:105:21
-  reg         r_echo_real_last;	// src/main/scala/amba/axi4/SRAM.scala:106:21
-  wire        nodeIn_ar_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire        nodeIn_r_bits_echo_real_last = r_echo_real_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:106:21
-  wire        ren = nodeIn_ar_ready & nodeIn_ar_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/chisel3/util/Decoupled.scala:51:35
-  reg         rdata_REG;	// src/main/scala/util/package.scala:100:91
-  reg  [7:0]  rdata_r_0;	// src/main/scala/util/package.scala:88:63
-  reg  [7:0]  rdata_r_1;	// src/main/scala/util/package.scala:88:63
-  reg  [7:0]  rdata_r_2;	// src/main/scala/util/package.scala:88:63
-  reg  [7:0]  rdata_r_3;	// src/main/scala/util/package.scala:88:63
-  reg  [7:0]  rdata_r_4;	// src/main/scala/util/package.scala:88:63
-  reg  [7:0]  rdata_r_5;	// src/main/scala/util/package.scala:88:63
-  reg  [7:0]  rdata_r_6;	// src/main/scala/util/package.scala:88:63
-  reg  [7:0]  rdata_r_7;	// src/main/scala/util/package.scala:88:63
-  wire [7:0]  rdata_0 = rdata_REG ? _mem_ext_R0_data[7:0] : rdata_r_0;	// src/main/scala/util/DescribedSRAM.scala:17:26, src/main/scala/util/package.scala:88:{42,63}, :100:91
-  wire [7:0]  rdata_1 = rdata_REG ? _mem_ext_R0_data[15:8] : rdata_r_1;	// src/main/scala/util/DescribedSRAM.scala:17:26, src/main/scala/util/package.scala:88:{42,63}, :100:91
-  wire [7:0]  rdata_2 = rdata_REG ? _mem_ext_R0_data[23:16] : rdata_r_2;	// src/main/scala/util/DescribedSRAM.scala:17:26, src/main/scala/util/package.scala:88:{42,63}, :100:91
-  wire [7:0]  rdata_3 = rdata_REG ? _mem_ext_R0_data[31:24] : rdata_r_3;	// src/main/scala/util/DescribedSRAM.scala:17:26, src/main/scala/util/package.scala:88:{42,63}, :100:91
-  wire [7:0]  rdata_4 = rdata_REG ? _mem_ext_R0_data[39:32] : rdata_r_4;	// src/main/scala/util/DescribedSRAM.scala:17:26, src/main/scala/util/package.scala:88:{42,63}, :100:91
-  wire [7:0]  rdata_5 = rdata_REG ? _mem_ext_R0_data[47:40] : rdata_r_5;	// src/main/scala/util/DescribedSRAM.scala:17:26, src/main/scala/util/package.scala:88:{42,63}, :100:91
-  wire [7:0]  rdata_6 = rdata_REG ? _mem_ext_R0_data[55:48] : rdata_r_6;	// src/main/scala/util/DescribedSRAM.scala:17:26, src/main/scala/util/package.scala:88:{42,63}, :100:91
-  wire [7:0]  rdata_7 = rdata_REG ? _mem_ext_R0_data[63:56] : rdata_r_7;	// src/main/scala/util/DescribedSRAM.scala:17:26, src/main/scala/util/package.scala:88:{42,63}, :100:91
-  assign nodeIn_ar_ready = nodeIn_r_ready | ~r_full;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:104:25, :122:{31,34}
-  wire [1:0]  nodeIn_r_bits_resp = r_sel1 ? 2'h0 : 2'h3;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:58:9, :78:25, :125:26
-  wire [15:0] nodeIn_r_bits_data_lo_lo = {rdata_1, rdata_0};	// src/main/scala/amba/axi4/SRAM.scala:126:26, src/main/scala/util/package.scala:88:42
-  wire [15:0] nodeIn_r_bits_data_lo_hi = {rdata_3, rdata_2};	// src/main/scala/amba/axi4/SRAM.scala:126:26, src/main/scala/util/package.scala:88:42
-  wire [31:0] nodeIn_r_bits_data_lo =
-    {nodeIn_r_bits_data_lo_hi, nodeIn_r_bits_data_lo_lo};	// src/main/scala/amba/axi4/SRAM.scala:126:26
-  wire [15:0] nodeIn_r_bits_data_hi_lo = {rdata_5, rdata_4};	// src/main/scala/amba/axi4/SRAM.scala:126:26, src/main/scala/util/package.scala:88:42
-  wire [15:0] nodeIn_r_bits_data_hi_hi = {rdata_7, rdata_6};	// src/main/scala/amba/axi4/SRAM.scala:126:26, src/main/scala/util/package.scala:88:42
-  wire [31:0] nodeIn_r_bits_data_hi =
-    {nodeIn_r_bits_data_hi_hi, nodeIn_r_bits_data_hi_lo};	// src/main/scala/amba/axi4/SRAM.scala:126:26
-  wire [63:0] nodeIn_r_bits_data = {nodeIn_r_bits_data_hi, nodeIn_r_bits_data_lo};	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:126:26
-  always @(posedge clock) begin	// src/main/scala/amba/axi4/SRAM.scala:58:9
-    if (reset) begin	// src/main/scala/amba/axi4/SRAM.scala:58:9
-      w_full <= 1'h0;	// src/main/scala/amba/axi4/SRAM.scala:58:9, :75:25
-      r_full <= 1'h0;	// src/main/scala/amba/axi4/SRAM.scala:58:9, :104:25
-    end
-    else begin	// src/main/scala/amba/axi4/SRAM.scala:58:9
-      w_full <= _GEN | ~(nodeIn_b_ready & nodeIn_b_valid) & w_full;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:75:25, :81:{23,32}, :82:{23,32}, src/main/scala/chisel3/util/Decoupled.scala:51:35
-      r_full <= ren | ~(nodeIn_r_ready & nodeIn_r_valid) & r_full;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:104:25, :108:{23,32}, :109:{23,32}, src/main/scala/chisel3/util/Decoupled.scala:51:35
-    end
-    if (_GEN) begin	// src/main/scala/chisel3/util/Decoupled.scala:51:35
-      w_id <= nodeIn_aw_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:76:21
-      w_echo_real_last <= nodeIn_aw_bits_echo_real_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:77:21
-    end
-    r_sel1 <= r_sel0;	// src/main/scala/amba/axi4/SRAM.scala:78:25, src/main/scala/diplomacy/Parameters.scala:137:59
-    w_sel1 <= w_sel0;	// src/main/scala/amba/axi4/SRAM.scala:79:25, src/main/scala/diplomacy/Parameters.scala:137:59
-    if (ren) begin	// src/main/scala/chisel3/util/Decoupled.scala:51:35
-      r_id <= nodeIn_ar_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:105:21
-      r_echo_real_last <= nodeIn_ar_bits_echo_real_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:106:21
-    end
-    rdata_REG <= ren;	// src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/util/package.scala:100:91
-    if (rdata_REG) begin	// src/main/scala/util/package.scala:100:91
-      rdata_r_0 <= _mem_ext_R0_data[7:0];	// src/main/scala/util/DescribedSRAM.scala:17:26, src/main/scala/util/package.scala:88:63
-      rdata_r_1 <= _mem_ext_R0_data[15:8];	// src/main/scala/util/DescribedSRAM.scala:17:26, src/main/scala/util/package.scala:88:63
-      rdata_r_2 <= _mem_ext_R0_data[23:16];	// src/main/scala/util/DescribedSRAM.scala:17:26, src/main/scala/util/package.scala:88:63
-      rdata_r_3 <= _mem_ext_R0_data[31:24];	// src/main/scala/util/DescribedSRAM.scala:17:26, src/main/scala/util/package.scala:88:63
-      rdata_r_4 <= _mem_ext_R0_data[39:32];	// src/main/scala/util/DescribedSRAM.scala:17:26, src/main/scala/util/package.scala:88:63
-      rdata_r_5 <= _mem_ext_R0_data[47:40];	// src/main/scala/util/DescribedSRAM.scala:17:26, src/main/scala/util/package.scala:88:63
-      rdata_r_6 <= _mem_ext_R0_data[55:48];	// src/main/scala/util/DescribedSRAM.scala:17:26, src/main/scala/util/package.scala:88:63
-      rdata_r_7 <= _mem_ext_R0_data[63:56];	// src/main/scala/util/DescribedSRAM.scala:17:26, src/main/scala/util/package.scala:88:63
-    end
-  end // always @(posedge)
-  `ifdef ENABLE_INITIAL_REG_	// src/main/scala/amba/axi4/SRAM.scala:58:9
-    `ifdef FIRRTL_BEFORE_INITIAL	// src/main/scala/amba/axi4/SRAM.scala:58:9
-      `FIRRTL_BEFORE_INITIAL	// src/main/scala/amba/axi4/SRAM.scala:58:9
-    `endif // FIRRTL_BEFORE_INITIAL
-    logic [31:0] _RANDOM[0:2];	// src/main/scala/amba/axi4/SRAM.scala:58:9
-    initial begin	// src/main/scala/amba/axi4/SRAM.scala:58:9
-      `ifdef INIT_RANDOM_PROLOG_	// src/main/scala/amba/axi4/SRAM.scala:58:9
-        `INIT_RANDOM_PROLOG_	// src/main/scala/amba/axi4/SRAM.scala:58:9
-      `endif // INIT_RANDOM_PROLOG_
-      `ifdef RANDOMIZE_REG_INIT	// src/main/scala/amba/axi4/SRAM.scala:58:9
-        for (logic [1:0] i = 2'h0; i < 2'h3; i += 2'h1) begin
-          _RANDOM[i] = `RANDOM;	// src/main/scala/amba/axi4/SRAM.scala:58:9
-        end	// src/main/scala/amba/axi4/SRAM.scala:58:9
-        w_full = _RANDOM[2'h0][0];	// src/main/scala/amba/axi4/SRAM.scala:58:9, :75:25
-        w_id = _RANDOM[2'h0][4:1];	// src/main/scala/amba/axi4/SRAM.scala:58:9, :75:25, :76:21
-        w_echo_real_last = _RANDOM[2'h0][5];	// src/main/scala/amba/axi4/SRAM.scala:58:9, :75:25, :77:21
-        r_sel1 = _RANDOM[2'h0][6];	// src/main/scala/amba/axi4/SRAM.scala:58:9, :75:25, :78:25
-        w_sel1 = _RANDOM[2'h0][7];	// src/main/scala/amba/axi4/SRAM.scala:58:9, :75:25, :79:25
-        r_full = _RANDOM[2'h0][8];	// src/main/scala/amba/axi4/SRAM.scala:58:9, :75:25, :104:25
-        r_id = _RANDOM[2'h0][12:9];	// src/main/scala/amba/axi4/SRAM.scala:58:9, :75:25, :105:21
-        r_echo_real_last = _RANDOM[2'h0][13];	// src/main/scala/amba/axi4/SRAM.scala:58:9, :75:25, :106:21
-        rdata_REG = _RANDOM[2'h0][14];	// src/main/scala/amba/axi4/SRAM.scala:58:9, :75:25, src/main/scala/util/package.scala:100:91
-        rdata_r_0 = _RANDOM[2'h0][22:15];	// src/main/scala/amba/axi4/SRAM.scala:58:9, :75:25, src/main/scala/util/package.scala:88:63
-        rdata_r_1 = _RANDOM[2'h0][30:23];	// src/main/scala/amba/axi4/SRAM.scala:58:9, :75:25, src/main/scala/util/package.scala:88:63
-        rdata_r_2 = {_RANDOM[2'h0][31], _RANDOM[2'h1][6:0]};	// src/main/scala/amba/axi4/SRAM.scala:58:9, :75:25, src/main/scala/util/package.scala:88:63
-        rdata_r_3 = _RANDOM[2'h1][14:7];	// src/main/scala/amba/axi4/SRAM.scala:58:9, src/main/scala/util/package.scala:88:63
-        rdata_r_4 = _RANDOM[2'h1][22:15];	// src/main/scala/amba/axi4/SRAM.scala:58:9, src/main/scala/util/package.scala:88:63
-        rdata_r_5 = _RANDOM[2'h1][30:23];	// src/main/scala/amba/axi4/SRAM.scala:58:9, src/main/scala/util/package.scala:88:63
-        rdata_r_6 = {_RANDOM[2'h1][31], _RANDOM[2'h2][6:0]};	// src/main/scala/amba/axi4/SRAM.scala:58:9, src/main/scala/util/package.scala:88:63
-        rdata_r_7 = _RANDOM[2'h2][14:7];	// src/main/scala/amba/axi4/SRAM.scala:58:9, src/main/scala/util/package.scala:88:63
-      `endif // RANDOMIZE_REG_INIT
-    end // initial
-    `ifdef FIRRTL_AFTER_INITIAL	// src/main/scala/amba/axi4/SRAM.scala:58:9
-      `FIRRTL_AFTER_INITIAL	// src/main/scala/amba/axi4/SRAM.scala:58:9
-    `endif // FIRRTL_AFTER_INITIAL
-  `endif // ENABLE_INITIAL_REG_
-  mem_1024x64 mem_ext (	// src/main/scala/util/DescribedSRAM.scala:17:26
-    .R0_addr (r_addr),	// src/main/scala/amba/axi4/SRAM.scala:70:21
-    .R0_en   (ren),	// src/main/scala/chisel3/util/Decoupled.scala:51:35
-    .R0_clk  (clock),
-    .W0_addr (w_addr),	// src/main/scala/amba/axi4/SRAM.scala:71:21
-    .W0_en   (_GEN & w_sel0),	// src/main/scala/amba/axi4/SRAM.scala:91:22, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/diplomacy/Parameters.scala:137:59
-    .W0_clk  (clock),
-    .W0_data ({wdata_7, wdata_6, wdata_5, wdata_4, wdata_3, wdata_2, wdata_1, wdata_0}),	// src/main/scala/amba/axi4/SRAM.scala:90:45, src/main/scala/util/DescribedSRAM.scala:17:26
-    .W0_mask (nodeIn_w_bits_strb),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-    .R0_data (_mem_ext_R0_data)
-  );
-  assign auto_in_aw_ready = nodeIn_aw_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:58:9
-  assign auto_in_w_ready = nodeIn_w_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:58:9
-  assign auto_in_b_valid = nodeIn_b_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:58:9
-  assign auto_in_b_bits_id = nodeIn_b_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:58:9
-  assign auto_in_b_bits_resp = nodeIn_b_bits_resp;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:58:9
-  assign auto_in_b_bits_echo_real_last = nodeIn_b_bits_echo_real_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:58:9
-  assign auto_in_ar_ready = nodeIn_ar_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:58:9
-  assign auto_in_r_valid = nodeIn_r_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:58:9
-  assign auto_in_r_bits_id = nodeIn_r_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:58:9
-  assign auto_in_r_bits_data = nodeIn_r_bits_data;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:58:9
-  assign auto_in_r_bits_resp = nodeIn_r_bits_resp;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:58:9
-  assign auto_in_r_bits_echo_real_last = nodeIn_r_bits_echo_real_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/SRAM.scala:58:9
-endmodule
-
-module Queue2_UInt2(	// src/main/scala/chisel3/util/Decoupled.scala:243:7
-  input        clock,	// src/main/scala/chisel3/util/Decoupled.scala:243:7
-               reset,	// src/main/scala/chisel3/util/Decoupled.scala:243:7
-               io_enq_valid,	// src/main/scala/chisel3/util/Decoupled.scala:255:14
-  input  [1:0] io_enq_bits,	// src/main/scala/chisel3/util/Decoupled.scala:255:14
-  input        io_deq_ready,	// src/main/scala/chisel3/util/Decoupled.scala:255:14
-  output       io_enq_ready,	// src/main/scala/chisel3/util/Decoupled.scala:255:14
-               io_deq_valid,	// src/main/scala/chisel3/util/Decoupled.scala:255:14
-  output [1:0] io_deq_bits	// src/main/scala/chisel3/util/Decoupled.scala:255:14
-);
-
-  wire [1:0] _ram_ext_R0_data;	// src/main/scala/chisel3/util/Decoupled.scala:256:91
-  reg        enq_ptr_value;	// src/main/scala/chisel3/util/Counter.scala:61:40
-  wire       wrap = enq_ptr_value;	// src/main/scala/chisel3/util/Counter.scala:61:40, :73:24
-  reg        deq_ptr_value;	// src/main/scala/chisel3/util/Counter.scala:61:40
-  wire       wrap_1 = deq_ptr_value;	// src/main/scala/chisel3/util/Counter.scala:61:40, :73:24
-  reg        maybe_full;	// src/main/scala/chisel3/util/Decoupled.scala:259:27
-  wire       ptr_match = enq_ptr_value == deq_ptr_value;	// src/main/scala/chisel3/util/Counter.scala:61:40, src/main/scala/chisel3/util/Decoupled.scala:260:33
-  wire       empty = ptr_match & ~maybe_full;	// src/main/scala/chisel3/util/Decoupled.scala:259:27, :260:33, :261:{25,28}
-  wire       full = ptr_match & maybe_full;	// src/main/scala/chisel3/util/Decoupled.scala:259:27, :260:33, :262:24
-  wire       _io_deq_valid_output = io_enq_valid | ~empty;	// src/main/scala/chisel3/util/Decoupled.scala:261:25, :285:{16,19}, :297:{24,39}
-  wire       do_deq = ~empty & io_deq_ready & _io_deq_valid_output;	// src/main/scala/chisel3/util/Decoupled.scala:261:25, :264:27, :285:16, :297:{24,39}, :298:17, :300:14
-  wire       do_enq = ~(empty & io_deq_ready) & ~full & io_enq_valid;	// src/main/scala/chisel3/util/Decoupled.scala:261:25, :262:24, :263:27, :286:19, :298:17, :301:{26,35}
-  wire       ptr_diff = enq_ptr_value - deq_ptr_value;	// src/main/scala/chisel3/util/Counter.scala:61:40, src/main/scala/chisel3/util/Decoupled.scala:309:32
-  always @(posedge clock) begin	// src/main/scala/chisel3/util/Decoupled.scala:243:7
-    if (reset) begin	// src/main/scala/chisel3/util/Decoupled.scala:243:7
-      enq_ptr_value <= 1'h0;	// src/main/scala/chisel3/util/Counter.scala:61:40, src/main/scala/chisel3/util/Decoupled.scala:243:7
-      deq_ptr_value <= 1'h0;	// src/main/scala/chisel3/util/Counter.scala:61:40, src/main/scala/chisel3/util/Decoupled.scala:243:7
-      maybe_full <= 1'h0;	// src/main/scala/chisel3/util/Decoupled.scala:243:7, :259:27
-    end
-    else begin	// src/main/scala/chisel3/util/Decoupled.scala:243:7
-      if (do_enq)	// src/main/scala/chisel3/util/Decoupled.scala:263:27
-        enq_ptr_value <= enq_ptr_value - 1'h1;	// src/main/scala/chisel3/util/Counter.scala:61:40, :77:24
-      if (do_deq)	// src/main/scala/chisel3/util/Decoupled.scala:264:27
-        deq_ptr_value <= deq_ptr_value - 1'h1;	// src/main/scala/chisel3/util/Counter.scala:61:40, :77:24
-      if (do_enq != do_deq)	// src/main/scala/chisel3/util/Decoupled.scala:263:27, :264:27, :276:15
-        maybe_full <= do_enq;	// src/main/scala/chisel3/util/Decoupled.scala:259:27, :263:27
-    end
-  end // always @(posedge)
-  `ifdef ENABLE_INITIAL_REG_	// src/main/scala/chisel3/util/Decoupled.scala:243:7
-    `ifdef FIRRTL_BEFORE_INITIAL	// src/main/scala/chisel3/util/Decoupled.scala:243:7
-      `FIRRTL_BEFORE_INITIAL	// src/main/scala/chisel3/util/Decoupled.scala:243:7
-    `endif // FIRRTL_BEFORE_INITIAL
-    logic [31:0] _RANDOM[0:0];	// src/main/scala/chisel3/util/Decoupled.scala:243:7
-    initial begin	// src/main/scala/chisel3/util/Decoupled.scala:243:7
-      `ifdef INIT_RANDOM_PROLOG_	// src/main/scala/chisel3/util/Decoupled.scala:243:7
-        `INIT_RANDOM_PROLOG_	// src/main/scala/chisel3/util/Decoupled.scala:243:7
-      `endif // INIT_RANDOM_PROLOG_
-      `ifdef RANDOMIZE_REG_INIT	// src/main/scala/chisel3/util/Decoupled.scala:243:7
-        _RANDOM[/*Zero width*/ 1'b0] = `RANDOM;	// src/main/scala/chisel3/util/Decoupled.scala:243:7
-        enq_ptr_value = _RANDOM[/*Zero width*/ 1'b0][0];	// src/main/scala/chisel3/util/Counter.scala:61:40, src/main/scala/chisel3/util/Decoupled.scala:243:7
-        deq_ptr_value = _RANDOM[/*Zero width*/ 1'b0][1];	// src/main/scala/chisel3/util/Counter.scala:61:40, src/main/scala/chisel3/util/Decoupled.scala:243:7
-        maybe_full = _RANDOM[/*Zero width*/ 1'b0][2];	// src/main/scala/chisel3/util/Counter.scala:61:40, src/main/scala/chisel3/util/Decoupled.scala:243:7, :259:27
-      `endif // RANDOMIZE_REG_INIT
-    end // initial
-    `ifdef FIRRTL_AFTER_INITIAL	// src/main/scala/chisel3/util/Decoupled.scala:243:7
-      `FIRRTL_AFTER_INITIAL	// src/main/scala/chisel3/util/Decoupled.scala:243:7
-    `endif // FIRRTL_AFTER_INITIAL
-  `endif // ENABLE_INITIAL_REG_
-  ram_2x2 ram_ext (	// src/main/scala/chisel3/util/Decoupled.scala:256:91
-    .R0_addr (deq_ptr_value),	// src/main/scala/chisel3/util/Counter.scala:61:40
-    .R0_en   (1'h1),	// src/main/scala/chisel3/util/Decoupled.scala:243:7
-    .R0_clk  (clock),
-    .W0_addr (enq_ptr_value),	// src/main/scala/chisel3/util/Counter.scala:61:40
-    .W0_en   (do_enq),	// src/main/scala/chisel3/util/Decoupled.scala:263:27
-    .W0_clk  (clock),
-    .W0_data (io_enq_bits),
-    .R0_data (_ram_ext_R0_data)
-  );
-  assign io_enq_ready = ~full;	// src/main/scala/chisel3/util/Decoupled.scala:243:7, :262:24, :286:19
-  assign io_deq_valid = _io_deq_valid_output;	// src/main/scala/chisel3/util/Decoupled.scala:243:7, :285:16, :297:{24,39}
-  assign io_deq_bits = empty ? io_enq_bits : _ram_ext_R0_data;	// src/main/scala/chisel3/util/Decoupled.scala:243:7, :256:91, :261:25, :293:17, :298:17, :299:19
 endmodule
 
 module Queue2_UInt1();	// src/main/scala/chisel3/util/Decoupled.scala:243:7
@@ -147059,28 +146672,17 @@ module AXI4Xbar(	// src/main/scala/amba/axi4/Xbar.scala:60:9
   input  [2:0]  auto_anon_in_ar_bits_prot,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
   input  [3:0]  auto_anon_in_ar_bits_qos,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
   input         auto_anon_in_r_ready,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-                auto_anon_out_1_aw_ready,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-                auto_anon_out_1_w_ready,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-                auto_anon_out_1_b_valid,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [3:0]  auto_anon_out_1_b_bits_id,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [1:0]  auto_anon_out_1_b_bits_resp,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input         auto_anon_out_1_ar_ready,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-                auto_anon_out_1_r_valid,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [3:0]  auto_anon_out_1_r_bits_id,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [63:0] auto_anon_out_1_r_bits_data,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [1:0]  auto_anon_out_1_r_bits_resp,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input         auto_anon_out_1_r_bits_last,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-                auto_anon_out_0_aw_ready,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-                auto_anon_out_0_w_ready,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-                auto_anon_out_0_b_valid,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [3:0]  auto_anon_out_0_b_bits_id,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [1:0]  auto_anon_out_0_b_bits_resp,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input         auto_anon_out_0_ar_ready,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-                auto_anon_out_0_r_valid,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [3:0]  auto_anon_out_0_r_bits_id,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [63:0] auto_anon_out_0_r_bits_data,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input  [1:0]  auto_anon_out_0_r_bits_resp,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  input         auto_anon_out_0_r_bits_last,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+                auto_anon_out_aw_ready,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+                auto_anon_out_w_ready,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+                auto_anon_out_b_valid,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  input  [3:0]  auto_anon_out_b_bits_id,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  input  [1:0]  auto_anon_out_b_bits_resp,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  input         auto_anon_out_ar_ready,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+                auto_anon_out_r_valid,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  input  [3:0]  auto_anon_out_r_bits_id,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  input  [63:0] auto_anon_out_r_bits_data,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  input  [1:0]  auto_anon_out_r_bits_resp,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  input         auto_anon_out_r_bits_last,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
   output        auto_anon_in_aw_ready,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
                 auto_anon_in_w_ready,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
                 auto_anon_in_b_valid,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
@@ -147092,65 +146694,34 @@ module AXI4Xbar(	// src/main/scala/amba/axi4/Xbar.scala:60:9
   output [63:0] auto_anon_in_r_bits_data,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
   output [1:0]  auto_anon_in_r_bits_resp,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
   output        auto_anon_in_r_bits_last,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-                auto_anon_out_1_aw_valid,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [3:0]  auto_anon_out_1_aw_bits_id,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [31:0] auto_anon_out_1_aw_bits_addr,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [7:0]  auto_anon_out_1_aw_bits_len,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [2:0]  auto_anon_out_1_aw_bits_size,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [1:0]  auto_anon_out_1_aw_bits_burst,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output        auto_anon_out_1_aw_bits_lock,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [3:0]  auto_anon_out_1_aw_bits_cache,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [2:0]  auto_anon_out_1_aw_bits_prot,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [3:0]  auto_anon_out_1_aw_bits_qos,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output        auto_anon_out_1_w_valid,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [63:0] auto_anon_out_1_w_bits_data,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [7:0]  auto_anon_out_1_w_bits_strb,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output        auto_anon_out_1_w_bits_last,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-                auto_anon_out_1_b_ready,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-                auto_anon_out_1_ar_valid,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [3:0]  auto_anon_out_1_ar_bits_id,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [31:0] auto_anon_out_1_ar_bits_addr,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [7:0]  auto_anon_out_1_ar_bits_len,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [2:0]  auto_anon_out_1_ar_bits_size,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [1:0]  auto_anon_out_1_ar_bits_burst,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output        auto_anon_out_1_ar_bits_lock,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [3:0]  auto_anon_out_1_ar_bits_cache,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [2:0]  auto_anon_out_1_ar_bits_prot,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [3:0]  auto_anon_out_1_ar_bits_qos,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output        auto_anon_out_1_r_ready,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-                auto_anon_out_0_aw_valid,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [3:0]  auto_anon_out_0_aw_bits_id,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [31:0] auto_anon_out_0_aw_bits_addr,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [7:0]  auto_anon_out_0_aw_bits_len,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [2:0]  auto_anon_out_0_aw_bits_size,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [1:0]  auto_anon_out_0_aw_bits_burst,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output        auto_anon_out_0_aw_bits_lock,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [3:0]  auto_anon_out_0_aw_bits_cache,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [2:0]  auto_anon_out_0_aw_bits_prot,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [3:0]  auto_anon_out_0_aw_bits_qos,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output        auto_anon_out_0_w_valid,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [63:0] auto_anon_out_0_w_bits_data,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [7:0]  auto_anon_out_0_w_bits_strb,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output        auto_anon_out_0_w_bits_last,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-                auto_anon_out_0_b_ready,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-                auto_anon_out_0_ar_valid,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [3:0]  auto_anon_out_0_ar_bits_id,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [31:0] auto_anon_out_0_ar_bits_addr,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [7:0]  auto_anon_out_0_ar_bits_len,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [2:0]  auto_anon_out_0_ar_bits_size,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [1:0]  auto_anon_out_0_ar_bits_burst,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output        auto_anon_out_0_ar_bits_lock,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [3:0]  auto_anon_out_0_ar_bits_cache,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [2:0]  auto_anon_out_0_ar_bits_prot,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output [3:0]  auto_anon_out_0_ar_bits_qos,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
-  output        auto_anon_out_0_r_ready	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+                auto_anon_out_aw_valid,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  output [3:0]  auto_anon_out_aw_bits_id,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  output [31:0] auto_anon_out_aw_bits_addr,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  output [7:0]  auto_anon_out_aw_bits_len,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  output [2:0]  auto_anon_out_aw_bits_size,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  output [1:0]  auto_anon_out_aw_bits_burst,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  output        auto_anon_out_aw_bits_lock,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  output [3:0]  auto_anon_out_aw_bits_cache,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  output [2:0]  auto_anon_out_aw_bits_prot,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  output [3:0]  auto_anon_out_aw_bits_qos,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  output        auto_anon_out_w_valid,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  output [63:0] auto_anon_out_w_bits_data,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  output [7:0]  auto_anon_out_w_bits_strb,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  output        auto_anon_out_w_bits_last,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+                auto_anon_out_b_ready,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+                auto_anon_out_ar_valid,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  output [3:0]  auto_anon_out_ar_bits_id,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  output [31:0] auto_anon_out_ar_bits_addr,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  output [7:0]  auto_anon_out_ar_bits_len,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  output [2:0]  auto_anon_out_ar_bits_size,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  output [1:0]  auto_anon_out_ar_bits_burst,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  output        auto_anon_out_ar_bits_lock,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  output [3:0]  auto_anon_out_ar_bits_cache,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  output [2:0]  auto_anon_out_ar_bits_prot,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  output [3:0]  auto_anon_out_ar_bits_qos,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
+  output        auto_anon_out_r_ready	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
 );
 
-  wire [3:0]  anonIn_r_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire [3:0]  anonIn_b_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire        _awIn_0_io_enq_ready;	// src/main/scala/amba/axi4/Xbar.scala:74:47
-  wire        _awIn_0_io_deq_valid;	// src/main/scala/amba/axi4/Xbar.scala:74:47
-  wire [1:0]  _awIn_0_io_deq_bits;	// src/main/scala/amba/axi4/Xbar.scala:74:47
   wire        anonIn_aw_valid = auto_anon_in_aw_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
   wire [3:0]  anonIn_aw_bits_id = auto_anon_in_aw_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
   wire [31:0] anonIn_aw_bits_addr = auto_anon_in_aw_bits_addr;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
@@ -147177,38 +146748,28 @@ module AXI4Xbar(	// src/main/scala/amba/axi4/Xbar.scala:60:9
   wire [2:0]  anonIn_ar_bits_prot = auto_anon_in_ar_bits_prot;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
   wire [3:0]  anonIn_ar_bits_qos = auto_anon_in_ar_bits_qos;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
   wire        anonIn_r_ready = auto_anon_in_r_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire        anonOut_aw_ready = auto_anon_out_0_aw_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-  wire        anonOut_w_ready = auto_anon_out_0_w_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-  wire        anonOut_b_valid = auto_anon_out_0_b_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-  wire [3:0]  anonOut_b_bits_id = auto_anon_out_0_b_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-  wire [1:0]  anonOut_b_bits_resp = auto_anon_out_0_b_bits_resp;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-  wire        anonOut_ar_ready = auto_anon_out_0_ar_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-  wire        anonOut_r_valid = auto_anon_out_0_r_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-  wire [3:0]  anonOut_r_bits_id = auto_anon_out_0_r_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-  wire [63:0] anonOut_r_bits_data = auto_anon_out_0_r_bits_data;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-  wire [1:0]  anonOut_r_bits_resp = auto_anon_out_0_r_bits_resp;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-  wire        anonOut_r_bits_last = auto_anon_out_0_r_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-  wire        x1_anonOut_aw_ready = auto_anon_out_1_aw_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-  wire        x1_anonOut_w_ready = auto_anon_out_1_w_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-  wire        x1_anonOut_b_valid = auto_anon_out_1_b_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-  wire [3:0]  x1_anonOut_b_bits_id = auto_anon_out_1_b_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-  wire [1:0]  x1_anonOut_b_bits_resp = auto_anon_out_1_b_bits_resp;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-  wire        x1_anonOut_ar_ready = auto_anon_out_1_ar_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-  wire        x1_anonOut_r_valid = auto_anon_out_1_r_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-  wire [3:0]  x1_anonOut_r_bits_id = auto_anon_out_1_r_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-  wire [63:0] x1_anonOut_r_bits_data = auto_anon_out_1_r_bits_data;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-  wire [1:0]  x1_anonOut_r_bits_resp = auto_anon_out_1_r_bits_resp;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-  wire        x1_anonOut_r_bits_last = auto_anon_out_1_r_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-  wire        requestROI_0_0 = 1'h1;	// src/main/scala/amba/axi4/Xbar.scala:278:25, src/main/scala/diplomacy/Parameters.scala:56:48
-  wire        requestROI_1_0 = 1'h1;	// src/main/scala/amba/axi4/Xbar.scala:278:25, src/main/scala/diplomacy/Parameters.scala:56:48
-  wire        requestBOI_0_0 = 1'h1;	// src/main/scala/amba/axi4/Xbar.scala:278:25, src/main/scala/diplomacy/Parameters.scala:56:48
-  wire        requestBOI_1_0 = 1'h1;	// src/main/scala/amba/axi4/Xbar.scala:278:25, src/main/scala/diplomacy/Parameters.scala:56:48
-  wire        awOut_0_io_enq_bits_readys_0 = 1'h1;	// src/main/scala/amba/axi4/Xbar.scala:278:25, src/main/scala/diplomacy/Parameters.scala:56:48
-  wire        readys_0 = 1'h1;	// src/main/scala/amba/axi4/Xbar.scala:278:25, src/main/scala/diplomacy/Parameters.scala:56:48
-  wire        awOut_1_io_enq_bits_readys_0 = 1'h1;	// src/main/scala/amba/axi4/Xbar.scala:278:25, src/main/scala/diplomacy/Parameters.scala:56:48
-  wire        readys_1_0 = 1'h1;	// src/main/scala/amba/axi4/Xbar.scala:278:25, src/main/scala/diplomacy/Parameters.scala:56:48
+  wire        anonOut_aw_ready = auto_anon_out_aw_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+  wire        anonOut_w_ready = auto_anon_out_w_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+  wire        anonOut_b_valid = auto_anon_out_b_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+  wire [3:0]  anonOut_b_bits_id = auto_anon_out_b_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+  wire [1:0]  anonOut_b_bits_resp = auto_anon_out_b_bits_resp;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+  wire        anonOut_ar_ready = auto_anon_out_ar_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+  wire        anonOut_r_valid = auto_anon_out_r_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+  wire [3:0]  anonOut_r_bits_id = auto_anon_out_r_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+  wire [63:0] anonOut_r_bits_data = auto_anon_out_r_bits_data;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+  wire [1:0]  anonOut_r_bits_resp = auto_anon_out_r_bits_resp;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+  wire        anonOut_r_bits_last = auto_anon_out_r_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+  wire        requestARIO_0_0 = 1'h1;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :77:48
+  wire        requestAWIO_0_0 = 1'h1;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :78:48
+  wire        requestROI_0_0 = 1'h1;	// src/main/scala/amba/axi4/Xbar.scala:60:9, src/main/scala/diplomacy/Parameters.scala:56:48
+  wire        requestBOI_0_0 = 1'h1;	// src/main/scala/amba/axi4/Xbar.scala:60:9, src/main/scala/diplomacy/Parameters.scala:56:48
+  wire        in_0_aw_ready;	// src/main/scala/amba/axi4/Xbar.scala:90:18
+  wire        awOut_0_io_enq_bits_readys_0 = 1'h1;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :278:25
+  wire        readys_0 = 1'h1;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :278:25
+  wire        readys_1_0 = 1'h1;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :278:25
+  wire        readys_2_0 = 1'h1;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :278:25
+  wire        in_0_aw_valid = anonIn_aw_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
   wire [3:0]  in_0_aw_bits_id = anonIn_aw_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
-  wire [3:0]  awSel_shiftAmount = anonIn_aw_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/chisel3/util/OneHot.scala:64:49
   wire [31:0] in_0_aw_bits_addr = anonIn_aw_bits_addr;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
   wire [7:0]  in_0_aw_bits_len = anonIn_aw_bits_len;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
   wire [2:0]  in_0_aw_bits_size = anonIn_aw_bits_size;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
@@ -147217,6 +146778,8 @@ module AXI4Xbar(	// src/main/scala/amba/axi4/Xbar.scala:60:9
   wire [3:0]  in_0_aw_bits_cache = anonIn_aw_bits_cache;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
   wire [2:0]  in_0_aw_bits_prot = anonIn_aw_bits_prot;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
   wire [3:0]  in_0_aw_bits_qos = anonIn_aw_bits_qos;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
+  wire        in_0_w_ready;	// src/main/scala/amba/axi4/Xbar.scala:90:18
+  wire        in_0_w_valid = anonIn_w_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
   wire [63:0] in_0_w_bits_data = anonIn_w_bits_data;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
   wire [7:0]  in_0_w_bits_strb = anonIn_w_bits_strb;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
   wire        in_0_w_bits_last = anonIn_w_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
@@ -147224,9 +146787,9 @@ module AXI4Xbar(	// src/main/scala/amba/axi4/Xbar.scala:60:9
   wire        in_0_b_valid;	// src/main/scala/amba/axi4/Xbar.scala:90:18
   wire [3:0]  in_0_b_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:90:18
   wire [1:0]  in_0_b_bits_resp;	// src/main/scala/amba/axi4/Xbar.scala:90:18
-  wire [3:0]  bSel_shiftAmount = anonIn_b_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/chisel3/util/OneHot.scala:64:49
+  wire        in_0_ar_ready;	// src/main/scala/amba/axi4/Xbar.scala:90:18
+  wire        in_0_ar_valid = anonIn_ar_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
   wire [3:0]  in_0_ar_bits_id = anonIn_ar_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
-  wire [3:0]  arSel_shiftAmount = anonIn_ar_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/chisel3/util/OneHot.scala:64:49
   wire [31:0] in_0_ar_bits_addr = anonIn_ar_bits_addr;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
   wire [7:0]  in_0_ar_bits_len = anonIn_ar_bits_len;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
   wire [2:0]  in_0_ar_bits_size = anonIn_ar_bits_size;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
@@ -147239,7 +146802,6 @@ module AXI4Xbar(	// src/main/scala/amba/axi4/Xbar.scala:60:9
   wire        in_0_r_valid;	// src/main/scala/amba/axi4/Xbar.scala:90:18
   wire [3:0]  in_0_r_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:90:18
   wire [63:0] in_0_r_bits_data;	// src/main/scala/amba/axi4/Xbar.scala:90:18
-  wire [3:0]  rSel_shiftAmount = anonIn_r_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/chisel3/util/OneHot.scala:64:49
   wire [1:0]  in_0_r_bits_resp;	// src/main/scala/amba/axi4/Xbar.scala:90:18
   wire        in_0_r_bits_last;	// src/main/scala/amba/axi4/Xbar.scala:90:18
   wire        out_0_aw_ready = anonOut_aw_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
@@ -147281,418 +146843,55 @@ module AXI4Xbar(	// src/main/scala/amba/axi4/Xbar.scala:60:9
   wire [63:0] out_0_r_bits_data = anonOut_r_bits_data;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
   wire [1:0]  out_0_r_bits_resp = anonOut_r_bits_resp;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
   wire        out_0_r_bits_last = anonOut_r_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        out_1_aw_ready = x1_anonOut_aw_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        out_1_aw_valid;	// src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [3:0]  out_1_aw_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [31:0] out_1_aw_bits_addr;	// src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [7:0]  out_1_aw_bits_len;	// src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [2:0]  out_1_aw_bits_size;	// src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [1:0]  out_1_aw_bits_burst;	// src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        out_1_aw_bits_lock;	// src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [3:0]  out_1_aw_bits_cache;	// src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [2:0]  out_1_aw_bits_prot;	// src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [3:0]  out_1_aw_bits_qos;	// src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        out_1_w_ready = x1_anonOut_w_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        out_1_w_valid;	// src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [63:0] out_1_w_bits_data;	// src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [7:0]  out_1_w_bits_strb;	// src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        out_1_w_bits_last;	// src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        out_1_b_ready;	// src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        out_1_b_valid = x1_anonOut_b_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [3:0]  requestBOI_uncommonBits_1 = x1_anonOut_b_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/diplomacy/Parameters.scala:52:56
-  wire [3:0]  out_1_b_bits_id = x1_anonOut_b_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [1:0]  out_1_b_bits_resp = x1_anonOut_b_bits_resp;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        out_1_ar_ready = x1_anonOut_ar_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        out_1_ar_valid;	// src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [3:0]  out_1_ar_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [31:0] out_1_ar_bits_addr;	// src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [7:0]  out_1_ar_bits_len;	// src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [2:0]  out_1_ar_bits_size;	// src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [1:0]  out_1_ar_bits_burst;	// src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        out_1_ar_bits_lock;	// src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [3:0]  out_1_ar_bits_cache;	// src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [2:0]  out_1_ar_bits_prot;	// src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [3:0]  out_1_ar_bits_qos;	// src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        out_1_r_ready;	// src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        out_1_r_valid = x1_anonOut_r_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [3:0]  requestROI_uncommonBits_1 = x1_anonOut_r_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/diplomacy/Parameters.scala:52:56
-  wire [3:0]  out_1_r_bits_id = x1_anonOut_r_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [63:0] out_1_r_bits_data = x1_anonOut_r_bits_data;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [1:0]  out_1_r_bits_resp = x1_anonOut_r_bits_resp;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        out_1_r_bits_last = x1_anonOut_r_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        requestARIO_0_1 = anonIn_ar_bits_addr[15];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:77:48, src/main/scala/diplomacy/Parameters.scala:137:{41,46}
-  wire        requestARIO_0_0 = ~requestARIO_0_1;	// src/main/scala/amba/axi4/Xbar.scala:77:48, src/main/scala/diplomacy/Parameters.scala:137:59
-  wire        arTag = requestARIO_0_1;	// src/main/scala/amba/axi4/Xbar.scala:77:48, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        requestAWIO_0_1 = anonIn_aw_bits_addr[15];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:78:48, src/main/scala/diplomacy/Parameters.scala:137:{41,46}
-  wire        requestAWIO_0_0 = ~requestAWIO_0_1;	// src/main/scala/amba/axi4/Xbar.scala:78:48, src/main/scala/diplomacy/Parameters.scala:137:59
-  wire        awTag = requestAWIO_0_1;	// src/main/scala/amba/axi4/Xbar.scala:78:48, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        requestWIO_0_0 = _awIn_0_io_deq_bits[0];	// src/main/scala/amba/axi4/Xbar.scala:74:47, :84:73
-  wire        requestWIO_0_1 = _awIn_0_io_deq_bits[1];	// src/main/scala/amba/axi4/Xbar.scala:74:47, :84:73
+  wire        portsAWOI_filtered_0_ready;	// src/main/scala/amba/axi4/Xbar.scala:249:24
+  wire        anonIn_aw_ready = in_0_aw_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
+  wire        portsAWOI_filtered_0_valid = in_0_aw_valid;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
   wire [3:0]  portsAWOI_filtered_0_bits_id = in_0_aw_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
-  wire [3:0]  portsAWOI_filtered_1_bits_id = in_0_aw_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
   wire [31:0] portsAWOI_filtered_0_bits_addr = in_0_aw_bits_addr;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
-  wire [31:0] portsAWOI_filtered_1_bits_addr = in_0_aw_bits_addr;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
   wire [7:0]  portsAWOI_filtered_0_bits_len = in_0_aw_bits_len;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
-  wire [7:0]  portsAWOI_filtered_1_bits_len = in_0_aw_bits_len;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
   wire [2:0]  portsAWOI_filtered_0_bits_size = in_0_aw_bits_size;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
-  wire [2:0]  portsAWOI_filtered_1_bits_size = in_0_aw_bits_size;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
   wire [1:0]  portsAWOI_filtered_0_bits_burst = in_0_aw_bits_burst;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
-  wire [1:0]  portsAWOI_filtered_1_bits_burst = in_0_aw_bits_burst;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
   wire        portsAWOI_filtered_0_bits_lock = in_0_aw_bits_lock;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
-  wire        portsAWOI_filtered_1_bits_lock = in_0_aw_bits_lock;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
   wire [3:0]  portsAWOI_filtered_0_bits_cache = in_0_aw_bits_cache;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
-  wire [3:0]  portsAWOI_filtered_1_bits_cache = in_0_aw_bits_cache;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
   wire [2:0]  portsAWOI_filtered_0_bits_prot = in_0_aw_bits_prot;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
-  wire [2:0]  portsAWOI_filtered_1_bits_prot = in_0_aw_bits_prot;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
   wire [3:0]  portsAWOI_filtered_0_bits_qos = in_0_aw_bits_qos;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
-  wire [3:0]  portsAWOI_filtered_1_bits_qos = in_0_aw_bits_qos;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
+  wire        portsWOI_filtered_0_ready;	// src/main/scala/amba/axi4/Xbar.scala:249:24
+  wire        anonIn_w_ready = in_0_w_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
+  wire        portsWOI_filtered_0_valid = in_0_w_valid;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
   wire [63:0] portsWOI_filtered_0_bits_data = in_0_w_bits_data;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
-  wire [63:0] portsWOI_filtered_1_bits_data = in_0_w_bits_data;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
   wire [7:0]  portsWOI_filtered_0_bits_strb = in_0_w_bits_strb;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
-  wire [7:0]  portsWOI_filtered_1_bits_strb = in_0_w_bits_strb;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
   wire        portsWOI_filtered_0_bits_last = in_0_w_bits_last;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
-  wire        portsWOI_filtered_1_bits_last = in_0_w_bits_last;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
+  wire        portsBIO_filtered_0_ready = in_0_b_ready;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
+  wire        portsBIO_filtered_0_valid;	// src/main/scala/amba/axi4/Xbar.scala:249:24
   wire        anonIn_b_valid = in_0_b_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
-  assign anonIn_b_bits_id = in_0_b_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
+  wire [3:0]  portsBIO_filtered_0_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:249:24
+  wire [3:0]  anonIn_b_bits_id = in_0_b_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
+  wire [1:0]  portsBIO_filtered_0_bits_resp;	// src/main/scala/amba/axi4/Xbar.scala:249:24
   wire [1:0]  anonIn_b_bits_resp = in_0_b_bits_resp;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
+  wire        portsAROI_filtered_0_ready;	// src/main/scala/amba/axi4/Xbar.scala:249:24
+  wire        anonIn_ar_ready = in_0_ar_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
+  wire        portsAROI_filtered_0_valid = in_0_ar_valid;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
   wire [3:0]  portsAROI_filtered_0_bits_id = in_0_ar_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
-  wire [3:0]  portsAROI_filtered_1_bits_id = in_0_ar_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
   wire [31:0] portsAROI_filtered_0_bits_addr = in_0_ar_bits_addr;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
-  wire [31:0] portsAROI_filtered_1_bits_addr = in_0_ar_bits_addr;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
   wire [7:0]  portsAROI_filtered_0_bits_len = in_0_ar_bits_len;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
-  wire [7:0]  portsAROI_filtered_1_bits_len = in_0_ar_bits_len;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
   wire [2:0]  portsAROI_filtered_0_bits_size = in_0_ar_bits_size;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
-  wire [2:0]  portsAROI_filtered_1_bits_size = in_0_ar_bits_size;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
   wire [1:0]  portsAROI_filtered_0_bits_burst = in_0_ar_bits_burst;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
-  wire [1:0]  portsAROI_filtered_1_bits_burst = in_0_ar_bits_burst;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
   wire        portsAROI_filtered_0_bits_lock = in_0_ar_bits_lock;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
-  wire        portsAROI_filtered_1_bits_lock = in_0_ar_bits_lock;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
   wire [3:0]  portsAROI_filtered_0_bits_cache = in_0_ar_bits_cache;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
-  wire [3:0]  portsAROI_filtered_1_bits_cache = in_0_ar_bits_cache;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
   wire [2:0]  portsAROI_filtered_0_bits_prot = in_0_ar_bits_prot;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
-  wire [2:0]  portsAROI_filtered_1_bits_prot = in_0_ar_bits_prot;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
   wire [3:0]  portsAROI_filtered_0_bits_qos = in_0_ar_bits_qos;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
-  wire [3:0]  portsAROI_filtered_1_bits_qos = in_0_ar_bits_qos;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
+  wire        portsRIO_filtered_0_ready = in_0_r_ready;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
+  wire        portsRIO_filtered_0_valid;	// src/main/scala/amba/axi4/Xbar.scala:249:24
   wire        anonIn_r_valid = in_0_r_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
-  assign anonIn_r_bits_id = in_0_r_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
+  wire [3:0]  portsRIO_filtered_0_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:249:24
+  wire [3:0]  anonIn_r_bits_id = in_0_r_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
+  wire [63:0] portsRIO_filtered_0_bits_data;	// src/main/scala/amba/axi4/Xbar.scala:249:24
   wire [63:0] anonIn_r_bits_data = in_0_r_bits_data;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
+  wire [1:0]  portsRIO_filtered_0_bits_resp;	// src/main/scala/amba/axi4/Xbar.scala:249:24
   wire [1:0]  anonIn_r_bits_resp = in_0_r_bits_resp;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
+  wire        portsRIO_filtered_0_bits_last;	// src/main/scala/amba/axi4/Xbar.scala:249:24
   wire        anonIn_r_bits_last = in_0_r_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18
-  wire [15:0] arSel = 16'h1 << arSel_shiftAmount;	// src/main/scala/chisel3/util/OneHot.scala:64:49, :65:{12,27}
-  wire [15:0] awSel = 16'h1 << awSel_shiftAmount;	// src/main/scala/chisel3/util/OneHot.scala:64:49, :65:{12,27}
-  wire [15:0] rSel = 16'h1 << rSel_shiftAmount;	// src/main/scala/chisel3/util/OneHot.scala:64:49, :65:{12,27}
-  wire [15:0] bSel = 16'h1 << bSel_shiftAmount;	// src/main/scala/chisel3/util/OneHot.scala:64:49, :65:{12,27}
-  wire        anonIn_ar_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire        _arFIFOMap_15_T_1 = anonIn_ar_ready & anonIn_ar_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/chisel3/util/Decoupled.scala:51:35
-  wire        _arFIFOMap_0_T_2 = arSel[0] & _arFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:143:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _arFIFOMap_15_T_4 = anonIn_r_ready & anonIn_r_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/chisel3/util/Decoupled.scala:51:35
-  wire        _arFIFOMap_0_T_6 = rSel[0] & _arFIFOMap_15_T_4 & anonIn_r_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:144:{19,43}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  arFIFOMap_0_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         arFIFOMap_0_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _arFIFOMap_0_T_22 = arFIFOMap_0_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        arFIFOMap_0_portMatch = arFIFOMap_0_last == arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        arFIFOMap_0 =
-    (arFIFOMap_0_count == 3'h0 | arFIFOMap_0_portMatch) & _arFIFOMap_0_T_22;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :111:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        anonIn_aw_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
-  wire        _awFIFOMap_15_T_1 = anonIn_aw_ready & anonIn_aw_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/chisel3/util/Decoupled.scala:51:35
-  wire        _awFIFOMap_0_T_2 = awSel[0] & _awFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:147:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _awFIFOMap_15_T_4 = anonIn_b_ready & anonIn_b_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/chisel3/util/Decoupled.scala:51:35
-  wire        _awFIFOMap_0_T_5 = bSel[0] & _awFIFOMap_15_T_4;	// src/main/scala/amba/axi4/Xbar.scala:148:{19,24}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  awFIFOMap_0_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         awFIFOMap_0_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _awFIFOMap_0_T_21 = awFIFOMap_0_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        awFIFOMap_0_portMatch = awFIFOMap_0_last == awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        awFIFOMap_0 =
-    (awFIFOMap_0_count == 3'h0 | awFIFOMap_0_portMatch) & _awFIFOMap_0_T_21;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :112:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _arFIFOMap_1_T_2 = arSel[1] & _arFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:143:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _arFIFOMap_1_T_6 = rSel[1] & _arFIFOMap_15_T_4 & anonIn_r_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:144:{19,43}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  arFIFOMap_1_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         arFIFOMap_1_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _arFIFOMap_1_T_22 = arFIFOMap_1_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        arFIFOMap_1_portMatch = arFIFOMap_1_last == arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        arFIFOMap_1 =
-    (arFIFOMap_1_count == 3'h0 | arFIFOMap_1_portMatch) & _arFIFOMap_1_T_22;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :111:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _awFIFOMap_1_T_2 = awSel[1] & _awFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:147:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _awFIFOMap_1_T_5 = bSel[1] & _awFIFOMap_15_T_4;	// src/main/scala/amba/axi4/Xbar.scala:148:{19,24}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  awFIFOMap_1_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         awFIFOMap_1_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _awFIFOMap_1_T_21 = awFIFOMap_1_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        awFIFOMap_1_portMatch = awFIFOMap_1_last == awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        awFIFOMap_1 =
-    (awFIFOMap_1_count == 3'h0 | awFIFOMap_1_portMatch) & _awFIFOMap_1_T_21;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :112:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _arFIFOMap_2_T_2 = arSel[2] & _arFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:143:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _arFIFOMap_2_T_6 = rSel[2] & _arFIFOMap_15_T_4 & anonIn_r_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:144:{19,43}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  arFIFOMap_2_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         arFIFOMap_2_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _arFIFOMap_2_T_22 = arFIFOMap_2_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        arFIFOMap_2_portMatch = arFIFOMap_2_last == arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        arFIFOMap_2 =
-    (arFIFOMap_2_count == 3'h0 | arFIFOMap_2_portMatch) & _arFIFOMap_2_T_22;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :111:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _awFIFOMap_2_T_2 = awSel[2] & _awFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:147:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _awFIFOMap_2_T_5 = bSel[2] & _awFIFOMap_15_T_4;	// src/main/scala/amba/axi4/Xbar.scala:148:{19,24}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  awFIFOMap_2_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         awFIFOMap_2_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _awFIFOMap_2_T_21 = awFIFOMap_2_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        awFIFOMap_2_portMatch = awFIFOMap_2_last == awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        awFIFOMap_2 =
-    (awFIFOMap_2_count == 3'h0 | awFIFOMap_2_portMatch) & _awFIFOMap_2_T_21;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :112:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _arFIFOMap_3_T_2 = arSel[3] & _arFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:143:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _arFIFOMap_3_T_6 = rSel[3] & _arFIFOMap_15_T_4 & anonIn_r_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:144:{19,43}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  arFIFOMap_3_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         arFIFOMap_3_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _arFIFOMap_3_T_22 = arFIFOMap_3_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        arFIFOMap_3_portMatch = arFIFOMap_3_last == arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        arFIFOMap_3 =
-    (arFIFOMap_3_count == 3'h0 | arFIFOMap_3_portMatch) & _arFIFOMap_3_T_22;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :111:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _awFIFOMap_3_T_2 = awSel[3] & _awFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:147:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _awFIFOMap_3_T_5 = bSel[3] & _awFIFOMap_15_T_4;	// src/main/scala/amba/axi4/Xbar.scala:148:{19,24}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  awFIFOMap_3_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         awFIFOMap_3_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _awFIFOMap_3_T_21 = awFIFOMap_3_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        awFIFOMap_3_portMatch = awFIFOMap_3_last == awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        awFIFOMap_3 =
-    (awFIFOMap_3_count == 3'h0 | awFIFOMap_3_portMatch) & _awFIFOMap_3_T_21;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :112:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _arFIFOMap_4_T_2 = arSel[4] & _arFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:143:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _arFIFOMap_4_T_6 = rSel[4] & _arFIFOMap_15_T_4 & anonIn_r_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:144:{19,43}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  arFIFOMap_4_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         arFIFOMap_4_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _arFIFOMap_4_T_22 = arFIFOMap_4_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        arFIFOMap_4_portMatch = arFIFOMap_4_last == arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        arFIFOMap_4 =
-    (arFIFOMap_4_count == 3'h0 | arFIFOMap_4_portMatch) & _arFIFOMap_4_T_22;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :111:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _awFIFOMap_4_T_2 = awSel[4] & _awFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:147:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _awFIFOMap_4_T_5 = bSel[4] & _awFIFOMap_15_T_4;	// src/main/scala/amba/axi4/Xbar.scala:148:{19,24}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  awFIFOMap_4_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         awFIFOMap_4_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _awFIFOMap_4_T_21 = awFIFOMap_4_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        awFIFOMap_4_portMatch = awFIFOMap_4_last == awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        awFIFOMap_4 =
-    (awFIFOMap_4_count == 3'h0 | awFIFOMap_4_portMatch) & _awFIFOMap_4_T_21;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :112:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _arFIFOMap_5_T_2 = arSel[5] & _arFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:143:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _arFIFOMap_5_T_6 = rSel[5] & _arFIFOMap_15_T_4 & anonIn_r_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:144:{19,43}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  arFIFOMap_5_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         arFIFOMap_5_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _arFIFOMap_5_T_22 = arFIFOMap_5_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        arFIFOMap_5_portMatch = arFIFOMap_5_last == arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        arFIFOMap_5 =
-    (arFIFOMap_5_count == 3'h0 | arFIFOMap_5_portMatch) & _arFIFOMap_5_T_22;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :111:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _awFIFOMap_5_T_2 = awSel[5] & _awFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:147:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _awFIFOMap_5_T_5 = bSel[5] & _awFIFOMap_15_T_4;	// src/main/scala/amba/axi4/Xbar.scala:148:{19,24}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  awFIFOMap_5_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         awFIFOMap_5_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _awFIFOMap_5_T_21 = awFIFOMap_5_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        awFIFOMap_5_portMatch = awFIFOMap_5_last == awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        awFIFOMap_5 =
-    (awFIFOMap_5_count == 3'h0 | awFIFOMap_5_portMatch) & _awFIFOMap_5_T_21;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :112:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _arFIFOMap_6_T_2 = arSel[6] & _arFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:143:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _arFIFOMap_6_T_6 = rSel[6] & _arFIFOMap_15_T_4 & anonIn_r_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:144:{19,43}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  arFIFOMap_6_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         arFIFOMap_6_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _arFIFOMap_6_T_22 = arFIFOMap_6_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        arFIFOMap_6_portMatch = arFIFOMap_6_last == arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        arFIFOMap_6 =
-    (arFIFOMap_6_count == 3'h0 | arFIFOMap_6_portMatch) & _arFIFOMap_6_T_22;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :111:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _awFIFOMap_6_T_2 = awSel[6] & _awFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:147:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _awFIFOMap_6_T_5 = bSel[6] & _awFIFOMap_15_T_4;	// src/main/scala/amba/axi4/Xbar.scala:148:{19,24}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  awFIFOMap_6_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         awFIFOMap_6_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _awFIFOMap_6_T_21 = awFIFOMap_6_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        awFIFOMap_6_portMatch = awFIFOMap_6_last == awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        awFIFOMap_6 =
-    (awFIFOMap_6_count == 3'h0 | awFIFOMap_6_portMatch) & _awFIFOMap_6_T_21;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :112:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _arFIFOMap_7_T_2 = arSel[7] & _arFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:143:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _arFIFOMap_7_T_6 = rSel[7] & _arFIFOMap_15_T_4 & anonIn_r_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:144:{19,43}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  arFIFOMap_7_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         arFIFOMap_7_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _arFIFOMap_7_T_22 = arFIFOMap_7_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        arFIFOMap_7_portMatch = arFIFOMap_7_last == arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        arFIFOMap_7 =
-    (arFIFOMap_7_count == 3'h0 | arFIFOMap_7_portMatch) & _arFIFOMap_7_T_22;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :111:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _awFIFOMap_7_T_2 = awSel[7] & _awFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:147:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _awFIFOMap_7_T_5 = bSel[7] & _awFIFOMap_15_T_4;	// src/main/scala/amba/axi4/Xbar.scala:148:{19,24}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  awFIFOMap_7_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         awFIFOMap_7_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _awFIFOMap_7_T_21 = awFIFOMap_7_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        awFIFOMap_7_portMatch = awFIFOMap_7_last == awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        awFIFOMap_7 =
-    (awFIFOMap_7_count == 3'h0 | awFIFOMap_7_portMatch) & _awFIFOMap_7_T_21;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :112:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _arFIFOMap_8_T_2 = arSel[8] & _arFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:143:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _arFIFOMap_8_T_6 = rSel[8] & _arFIFOMap_15_T_4 & anonIn_r_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:144:{19,43}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  arFIFOMap_8_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         arFIFOMap_8_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _arFIFOMap_8_T_22 = arFIFOMap_8_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        arFIFOMap_8_portMatch = arFIFOMap_8_last == arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        arFIFOMap_8 =
-    (arFIFOMap_8_count == 3'h0 | arFIFOMap_8_portMatch) & _arFIFOMap_8_T_22;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :111:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _awFIFOMap_8_T_2 = awSel[8] & _awFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:147:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _awFIFOMap_8_T_5 = bSel[8] & _awFIFOMap_15_T_4;	// src/main/scala/amba/axi4/Xbar.scala:148:{19,24}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  awFIFOMap_8_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         awFIFOMap_8_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _awFIFOMap_8_T_21 = awFIFOMap_8_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        awFIFOMap_8_portMatch = awFIFOMap_8_last == awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        awFIFOMap_8 =
-    (awFIFOMap_8_count == 3'h0 | awFIFOMap_8_portMatch) & _awFIFOMap_8_T_21;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :112:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _arFIFOMap_9_T_2 = arSel[9] & _arFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:143:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _arFIFOMap_9_T_6 = rSel[9] & _arFIFOMap_15_T_4 & anonIn_r_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:144:{19,43}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  arFIFOMap_9_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         arFIFOMap_9_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _arFIFOMap_9_T_22 = arFIFOMap_9_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        arFIFOMap_9_portMatch = arFIFOMap_9_last == arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        arFIFOMap_9 =
-    (arFIFOMap_9_count == 3'h0 | arFIFOMap_9_portMatch) & _arFIFOMap_9_T_22;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :111:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _awFIFOMap_9_T_2 = awSel[9] & _awFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:147:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _awFIFOMap_9_T_5 = bSel[9] & _awFIFOMap_15_T_4;	// src/main/scala/amba/axi4/Xbar.scala:148:{19,24}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  awFIFOMap_9_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         awFIFOMap_9_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _awFIFOMap_9_T_21 = awFIFOMap_9_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        awFIFOMap_9_portMatch = awFIFOMap_9_last == awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        awFIFOMap_9 =
-    (awFIFOMap_9_count == 3'h0 | awFIFOMap_9_portMatch) & _awFIFOMap_9_T_21;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :112:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _arFIFOMap_10_T_2 = arSel[10] & _arFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:143:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _arFIFOMap_10_T_6 = rSel[10] & _arFIFOMap_15_T_4 & anonIn_r_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:144:{19,43}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  arFIFOMap_10_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         arFIFOMap_10_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _arFIFOMap_10_T_22 = arFIFOMap_10_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        arFIFOMap_10_portMatch = arFIFOMap_10_last == arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        arFIFOMap_10 =
-    (arFIFOMap_10_count == 3'h0 | arFIFOMap_10_portMatch) & _arFIFOMap_10_T_22;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :111:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _awFIFOMap_10_T_2 = awSel[10] & _awFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:147:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _awFIFOMap_10_T_5 = bSel[10] & _awFIFOMap_15_T_4;	// src/main/scala/amba/axi4/Xbar.scala:148:{19,24}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  awFIFOMap_10_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         awFIFOMap_10_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _awFIFOMap_10_T_21 = awFIFOMap_10_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        awFIFOMap_10_portMatch = awFIFOMap_10_last == awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        awFIFOMap_10 =
-    (awFIFOMap_10_count == 3'h0 | awFIFOMap_10_portMatch) & _awFIFOMap_10_T_21;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :112:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _arFIFOMap_11_T_2 = arSel[11] & _arFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:143:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _arFIFOMap_11_T_6 = rSel[11] & _arFIFOMap_15_T_4 & anonIn_r_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:144:{19,43}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  arFIFOMap_11_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         arFIFOMap_11_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _arFIFOMap_11_T_22 = arFIFOMap_11_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        arFIFOMap_11_portMatch = arFIFOMap_11_last == arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        arFIFOMap_11 =
-    (arFIFOMap_11_count == 3'h0 | arFIFOMap_11_portMatch) & _arFIFOMap_11_T_22;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :111:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _awFIFOMap_11_T_2 = awSel[11] & _awFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:147:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _awFIFOMap_11_T_5 = bSel[11] & _awFIFOMap_15_T_4;	// src/main/scala/amba/axi4/Xbar.scala:148:{19,24}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  awFIFOMap_11_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         awFIFOMap_11_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _awFIFOMap_11_T_21 = awFIFOMap_11_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        awFIFOMap_11_portMatch = awFIFOMap_11_last == awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        awFIFOMap_11 =
-    (awFIFOMap_11_count == 3'h0 | awFIFOMap_11_portMatch) & _awFIFOMap_11_T_21;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :112:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _arFIFOMap_12_T_2 = arSel[12] & _arFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:143:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _arFIFOMap_12_T_6 = rSel[12] & _arFIFOMap_15_T_4 & anonIn_r_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:144:{19,43}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  arFIFOMap_12_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         arFIFOMap_12_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _arFIFOMap_12_T_22 = arFIFOMap_12_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        arFIFOMap_12_portMatch = arFIFOMap_12_last == arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        arFIFOMap_12 =
-    (arFIFOMap_12_count == 3'h0 | arFIFOMap_12_portMatch) & _arFIFOMap_12_T_22;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :111:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _awFIFOMap_12_T_2 = awSel[12] & _awFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:147:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _awFIFOMap_12_T_5 = bSel[12] & _awFIFOMap_15_T_4;	// src/main/scala/amba/axi4/Xbar.scala:148:{19,24}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  awFIFOMap_12_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         awFIFOMap_12_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _awFIFOMap_12_T_21 = awFIFOMap_12_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        awFIFOMap_12_portMatch = awFIFOMap_12_last == awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        awFIFOMap_12 =
-    (awFIFOMap_12_count == 3'h0 | awFIFOMap_12_portMatch) & _awFIFOMap_12_T_21;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :112:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _arFIFOMap_13_T_2 = arSel[13] & _arFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:143:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _arFIFOMap_13_T_6 = rSel[13] & _arFIFOMap_15_T_4 & anonIn_r_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:144:{19,43}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  arFIFOMap_13_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         arFIFOMap_13_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _arFIFOMap_13_T_22 = arFIFOMap_13_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        arFIFOMap_13_portMatch = arFIFOMap_13_last == arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        arFIFOMap_13 =
-    (arFIFOMap_13_count == 3'h0 | arFIFOMap_13_portMatch) & _arFIFOMap_13_T_22;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :111:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _awFIFOMap_13_T_2 = awSel[13] & _awFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:147:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _awFIFOMap_13_T_5 = bSel[13] & _awFIFOMap_15_T_4;	// src/main/scala/amba/axi4/Xbar.scala:148:{19,24}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  awFIFOMap_13_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         awFIFOMap_13_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _awFIFOMap_13_T_21 = awFIFOMap_13_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        awFIFOMap_13_portMatch = awFIFOMap_13_last == awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        awFIFOMap_13 =
-    (awFIFOMap_13_count == 3'h0 | awFIFOMap_13_portMatch) & _awFIFOMap_13_T_21;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :112:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _arFIFOMap_14_T_2 = arSel[14] & _arFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:143:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _arFIFOMap_14_T_6 = rSel[14] & _arFIFOMap_15_T_4 & anonIn_r_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:144:{19,43}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  arFIFOMap_14_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         arFIFOMap_14_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _arFIFOMap_14_T_22 = arFIFOMap_14_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        arFIFOMap_14_portMatch = arFIFOMap_14_last == arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        arFIFOMap_14 =
-    (arFIFOMap_14_count == 3'h0 | arFIFOMap_14_portMatch) & _arFIFOMap_14_T_22;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :111:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _awFIFOMap_14_T_2 = awSel[14] & _awFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:147:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _awFIFOMap_14_T_5 = bSel[14] & _awFIFOMap_15_T_4;	// src/main/scala/amba/axi4/Xbar.scala:148:{19,24}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  awFIFOMap_14_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         awFIFOMap_14_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _awFIFOMap_14_T_21 = awFIFOMap_14_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        awFIFOMap_14_portMatch = awFIFOMap_14_last == awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        awFIFOMap_14 =
-    (awFIFOMap_14_count == 3'h0 | awFIFOMap_14_portMatch) & _awFIFOMap_14_T_21;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :112:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _arFIFOMap_15_T_2 = arSel[15] & _arFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:143:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _arFIFOMap_15_T_6 = rSel[15] & _arFIFOMap_15_T_4 & anonIn_r_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:144:{19,43}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  arFIFOMap_15_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         arFIFOMap_15_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _arFIFOMap_15_T_22 = arFIFOMap_15_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        arFIFOMap_15_portMatch = arFIFOMap_15_last == arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        arFIFOMap_15 =
-    (arFIFOMap_15_count == 3'h0 | arFIFOMap_15_portMatch) & _arFIFOMap_15_T_22;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :111:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire        _awFIFOMap_15_T_2 = awSel[15] & _awFIFOMap_15_T_1;	// src/main/scala/amba/axi4/Xbar.scala:147:{20,25}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  wire        _awFIFOMap_15_T_5 = bSel[15] & _awFIFOMap_15_T_4;	// src/main/scala/amba/axi4/Xbar.scala:148:{19,24}, src/main/scala/chisel3/util/Decoupled.scala:51:35, src/main/scala/chisel3/util/OneHot.scala:65:27
-  reg  [2:0]  awFIFOMap_15_count;	// src/main/scala/amba/axi4/Xbar.scala:128:34
-  reg         awFIFOMap_15_last;	// src/main/scala/amba/axi4/Xbar.scala:129:29
-  wire        _awFIFOMap_15_T_21 = awFIFOMap_15_count != 3'h7;	// src/main/scala/amba/axi4/Xbar.scala:128:34, :132:43
-  wire        awFIFOMap_15_portMatch = awFIFOMap_15_last == awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, :135:71, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-  wire        awFIFOMap_15 =
-    (awFIFOMap_15_count == 3'h0 | awFIFOMap_15_portMatch) & _awFIFOMap_15_T_21;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :112:36, :128:34, :132:43, :135:71, :136:{22,30,44}
-  wire [15:0] _GEN =
-    {{arFIFOMap_15},
-     {arFIFOMap_14},
-     {arFIFOMap_13},
-     {arFIFOMap_12},
-     {arFIFOMap_11},
-     {arFIFOMap_10},
-     {arFIFOMap_9},
-     {arFIFOMap_8},
-     {arFIFOMap_7},
-     {arFIFOMap_6},
-     {arFIFOMap_5},
-     {arFIFOMap_4},
-     {arFIFOMap_3},
-     {arFIFOMap_2},
-     {arFIFOMap_1},
-     {arFIFOMap_0}};	// src/main/scala/amba/axi4/Xbar.scala:111:36, :153:45
-  wire        in_0_ar_ready;	// src/main/scala/amba/axi4/Xbar.scala:90:18
-  wire        in_0_ar_valid = anonIn_ar_valid & _GEN[anonIn_ar_bits_id];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18, :153:45
-  assign anonIn_ar_ready = in_0_ar_ready & _GEN[anonIn_ar_bits_id];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18, :153:45, :154:45
-  reg         latched;	// src/main/scala/amba/axi4/Xbar.scala:161:30
-  wire        _anonIn_aw_ready_T = latched | _awIn_0_io_enq_ready;	// src/main/scala/amba/axi4/Xbar.scala:74:47, :161:30, :162:57
-  wire [15:0] _GEN_0 =
-    {{awFIFOMap_15},
-     {awFIFOMap_14},
-     {awFIFOMap_13},
-     {awFIFOMap_12},
-     {awFIFOMap_11},
-     {awFIFOMap_10},
-     {awFIFOMap_9},
-     {awFIFOMap_8},
-     {awFIFOMap_7},
-     {awFIFOMap_6},
-     {awFIFOMap_5},
-     {awFIFOMap_4},
-     {awFIFOMap_3},
-     {awFIFOMap_2},
-     {awFIFOMap_1},
-     {awFIFOMap_0}};	// src/main/scala/amba/axi4/Xbar.scala:112:36, :162:82
-  wire        in_0_aw_ready;	// src/main/scala/amba/axi4/Xbar.scala:90:18
-  wire        in_0_aw_valid =
-    anonIn_aw_valid & _anonIn_aw_ready_T & _GEN_0[anonIn_aw_bits_id];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18, :162:{57,82}
-  assign anonIn_aw_ready = in_0_aw_ready & _anonIn_aw_ready_T & _GEN_0[anonIn_aw_bits_id];	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18, :162:{57,82}, :163:82
-  wire        _awIn_0_io_enq_valid_T_1 = anonIn_aw_valid & ~latched;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:161:30, :164:{51,54}
-  wire        in_0_w_ready;	// src/main/scala/amba/axi4/Xbar.scala:90:18
-  wire        in_0_w_valid = anonIn_w_valid & _awIn_0_io_deq_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:74:47, :90:18, :169:43
-  wire        anonIn_w_ready = in_0_w_ready & _awIn_0_io_deq_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:74:47, :90:18, :170:43
-  wire        portsAWOI_filtered_0_ready = out_0_aw_ready;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  wire        portsAWOI_filtered_0_valid;	// src/main/scala/amba/axi4/Xbar.scala:249:24
+  assign portsAWOI_filtered_0_ready = out_0_aw_ready;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
   wire        anonOut_aw_valid = out_0_aw_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
   wire [3:0]  anonOut_aw_bits_id = out_0_aw_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
   wire [31:0] anonOut_aw_bits_addr = out_0_aw_bits_addr;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
@@ -147703,19 +146902,16 @@ module AXI4Xbar(	// src/main/scala/amba/axi4/Xbar.scala:60:9
   wire [3:0]  anonOut_aw_bits_cache = out_0_aw_bits_cache;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
   wire [2:0]  anonOut_aw_bits_prot = out_0_aw_bits_prot;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
   wire [3:0]  anonOut_aw_bits_qos = out_0_aw_bits_qos;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        portsWOI_filtered_0_ready = out_0_w_ready;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  wire        portsWOI_filtered_0_valid;	// src/main/scala/amba/axi4/Xbar.scala:249:24
+  assign portsWOI_filtered_0_ready = out_0_w_ready;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
   wire        anonOut_w_valid = out_0_w_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
   wire [63:0] anonOut_w_bits_data = out_0_w_bits_data;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
   wire [7:0]  anonOut_w_bits_strb = out_0_w_bits_strb;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
   wire        anonOut_w_bits_last = out_0_w_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        portsBIO_filtered_0_ready;	// src/main/scala/amba/axi4/Xbar.scala:249:24
   wire        anonOut_b_ready = out_0_b_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        portsBIO_filtered_0_valid = out_0_b_valid;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  wire [3:0]  portsBIO_filtered_0_bits_id = out_0_b_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  wire [1:0]  portsBIO_filtered_0_bits_resp = out_0_b_bits_resp;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  wire        portsAROI_filtered_0_ready = out_0_ar_ready;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  wire        portsAROI_filtered_0_valid;	// src/main/scala/amba/axi4/Xbar.scala:249:24
+  assign portsBIO_filtered_0_valid = out_0_b_valid;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
+  assign portsBIO_filtered_0_bits_id = out_0_b_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
+  assign portsBIO_filtered_0_bits_resp = out_0_b_bits_resp;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
+  assign portsAROI_filtered_0_ready = out_0_ar_ready;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
   wire        anonOut_ar_valid = out_0_ar_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
   wire [3:0]  anonOut_ar_bits_id = out_0_ar_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
   wire [31:0] anonOut_ar_bits_addr = out_0_ar_bits_addr;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
@@ -147726,55 +146922,13 @@ module AXI4Xbar(	// src/main/scala/amba/axi4/Xbar.scala:60:9
   wire [3:0]  anonOut_ar_bits_cache = out_0_ar_bits_cache;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
   wire [2:0]  anonOut_ar_bits_prot = out_0_ar_bits_prot;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
   wire [3:0]  anonOut_ar_bits_qos = out_0_ar_bits_qos;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        portsRIO_filtered_0_ready;	// src/main/scala/amba/axi4/Xbar.scala:249:24
   wire        anonOut_r_ready = out_0_r_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        portsRIO_filtered_0_valid = out_0_r_valid;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  wire [3:0]  portsRIO_filtered_0_bits_id = out_0_r_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  wire [63:0] portsRIO_filtered_0_bits_data = out_0_r_bits_data;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  wire [1:0]  portsRIO_filtered_0_bits_resp = out_0_r_bits_resp;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  wire        portsRIO_filtered_0_bits_last = out_0_r_bits_last;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  wire        portsAWOI_filtered_1_ready = out_1_aw_ready;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  wire        portsAWOI_filtered_1_valid;	// src/main/scala/amba/axi4/Xbar.scala:249:24
-  wire        x1_anonOut_aw_valid = out_1_aw_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [3:0]  x1_anonOut_aw_bits_id = out_1_aw_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [31:0] x1_anonOut_aw_bits_addr = out_1_aw_bits_addr;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [7:0]  x1_anonOut_aw_bits_len = out_1_aw_bits_len;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [2:0]  x1_anonOut_aw_bits_size = out_1_aw_bits_size;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [1:0]  x1_anonOut_aw_bits_burst = out_1_aw_bits_burst;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        x1_anonOut_aw_bits_lock = out_1_aw_bits_lock;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [3:0]  x1_anonOut_aw_bits_cache = out_1_aw_bits_cache;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [2:0]  x1_anonOut_aw_bits_prot = out_1_aw_bits_prot;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [3:0]  x1_anonOut_aw_bits_qos = out_1_aw_bits_qos;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        portsWOI_filtered_1_ready = out_1_w_ready;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  wire        portsWOI_filtered_1_valid;	// src/main/scala/amba/axi4/Xbar.scala:249:24
-  wire        x1_anonOut_w_valid = out_1_w_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [63:0] x1_anonOut_w_bits_data = out_1_w_bits_data;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [7:0]  x1_anonOut_w_bits_strb = out_1_w_bits_strb;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        x1_anonOut_w_bits_last = out_1_w_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        portsBIO_filtered_1_0_ready;	// src/main/scala/amba/axi4/Xbar.scala:249:24
-  wire        x1_anonOut_b_ready = out_1_b_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        portsBIO_filtered_1_0_valid = out_1_b_valid;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  wire [3:0]  portsBIO_filtered_1_0_bits_id = out_1_b_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  wire [1:0]  portsBIO_filtered_1_0_bits_resp = out_1_b_bits_resp;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  wire        portsAROI_filtered_1_ready = out_1_ar_ready;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  wire        portsAROI_filtered_1_valid;	// src/main/scala/amba/axi4/Xbar.scala:249:24
-  wire        x1_anonOut_ar_valid = out_1_ar_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [3:0]  x1_anonOut_ar_bits_id = out_1_ar_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [31:0] x1_anonOut_ar_bits_addr = out_1_ar_bits_addr;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [7:0]  x1_anonOut_ar_bits_len = out_1_ar_bits_len;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [2:0]  x1_anonOut_ar_bits_size = out_1_ar_bits_size;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [1:0]  x1_anonOut_ar_bits_burst = out_1_ar_bits_burst;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        x1_anonOut_ar_bits_lock = out_1_ar_bits_lock;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [3:0]  x1_anonOut_ar_bits_cache = out_1_ar_bits_cache;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [2:0]  x1_anonOut_ar_bits_prot = out_1_ar_bits_prot;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire [3:0]  x1_anonOut_ar_bits_qos = out_1_ar_bits_qos;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        portsRIO_filtered_1_0_ready;	// src/main/scala/amba/axi4/Xbar.scala:249:24
-  wire        x1_anonOut_r_ready = out_1_r_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:178:19
-  wire        portsRIO_filtered_1_0_valid = out_1_r_valid;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  wire [3:0]  portsRIO_filtered_1_0_bits_id = out_1_r_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  wire [63:0] portsRIO_filtered_1_0_bits_data = out_1_r_bits_data;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  wire [1:0]  portsRIO_filtered_1_0_bits_resp = out_1_r_bits_resp;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  wire        portsRIO_filtered_1_0_bits_last = out_1_r_bits_last;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
+  assign portsRIO_filtered_0_valid = out_0_r_valid;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
+  assign portsRIO_filtered_0_bits_id = out_0_r_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
+  assign portsRIO_filtered_0_bits_data = out_0_r_bits_data;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
+  assign portsRIO_filtered_0_bits_resp = out_0_r_bits_resp;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
+  assign portsRIO_filtered_0_bits_last = out_0_r_bits_last;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
+  assign in_0_ar_ready = portsAROI_filtered_0_ready;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
   assign out_0_ar_valid = portsAROI_filtered_0_valid;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
   wire        winner_0 = portsAROI_filtered_0_valid;	// src/main/scala/amba/axi4/Xbar.scala:249:24, :280:25
   assign out_0_ar_bits_id = portsAROI_filtered_0_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
@@ -147786,22 +146940,7 @@ module AXI4Xbar(	// src/main/scala/amba/axi4/Xbar.scala:60:9
   assign out_0_ar_bits_cache = portsAROI_filtered_0_bits_cache;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
   assign out_0_ar_bits_prot = portsAROI_filtered_0_bits_prot;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
   assign out_0_ar_bits_qos = portsAROI_filtered_0_bits_qos;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign out_1_ar_valid = portsAROI_filtered_1_valid;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  wire        winner_1_0 = portsAROI_filtered_1_valid;	// src/main/scala/amba/axi4/Xbar.scala:249:24, :280:25
-  assign out_1_ar_bits_id = portsAROI_filtered_1_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign out_1_ar_bits_addr = portsAROI_filtered_1_bits_addr;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign out_1_ar_bits_len = portsAROI_filtered_1_bits_len;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign out_1_ar_bits_size = portsAROI_filtered_1_bits_size;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign out_1_ar_bits_burst = portsAROI_filtered_1_bits_burst;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign out_1_ar_bits_lock = portsAROI_filtered_1_bits_lock;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign out_1_ar_bits_cache = portsAROI_filtered_1_bits_cache;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign out_1_ar_bits_prot = portsAROI_filtered_1_bits_prot;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign out_1_ar_bits_qos = portsAROI_filtered_1_bits_qos;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign portsAROI_filtered_0_valid = in_0_ar_valid & requestARIO_0_0;	// src/main/scala/amba/axi4/Xbar.scala:77:48, :90:18, :249:24, :252:40
-  assign portsAROI_filtered_1_valid = in_0_ar_valid & requestARIO_0_1;	// src/main/scala/amba/axi4/Xbar.scala:77:48, :90:18, :249:24, :252:40
-  assign in_0_ar_ready =
-    requestARIO_0_0 & portsAROI_filtered_0_ready | requestARIO_0_1
-    & portsAROI_filtered_1_ready;	// src/main/scala/amba/axi4/Xbar.scala:77:48, :90:18, :249:24, src/main/scala/chisel3/util/Mux.scala:30:73
+  assign in_0_aw_ready = portsAWOI_filtered_0_ready;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
   assign out_0_aw_valid = portsAWOI_filtered_0_valid;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
   wire        awOut_0_io_enq_bits_winner_0 = portsAWOI_filtered_0_valid;	// src/main/scala/amba/axi4/Xbar.scala:249:24, :280:25
   assign out_0_aw_bits_id = portsAWOI_filtered_0_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
@@ -147813,39 +146952,23 @@ module AXI4Xbar(	// src/main/scala/amba/axi4/Xbar.scala:60:9
   assign out_0_aw_bits_cache = portsAWOI_filtered_0_bits_cache;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
   assign out_0_aw_bits_prot = portsAWOI_filtered_0_bits_prot;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
   assign out_0_aw_bits_qos = portsAWOI_filtered_0_bits_qos;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign out_1_aw_valid = portsAWOI_filtered_1_valid;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  wire        awOut_1_io_enq_bits_winner_0 = portsAWOI_filtered_1_valid;	// src/main/scala/amba/axi4/Xbar.scala:249:24, :280:25
-  assign out_1_aw_bits_id = portsAWOI_filtered_1_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign out_1_aw_bits_addr = portsAWOI_filtered_1_bits_addr;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign out_1_aw_bits_len = portsAWOI_filtered_1_bits_len;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign out_1_aw_bits_size = portsAWOI_filtered_1_bits_size;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign out_1_aw_bits_burst = portsAWOI_filtered_1_bits_burst;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign out_1_aw_bits_lock = portsAWOI_filtered_1_bits_lock;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign out_1_aw_bits_cache = portsAWOI_filtered_1_bits_cache;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign out_1_aw_bits_prot = portsAWOI_filtered_1_bits_prot;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign out_1_aw_bits_qos = portsAWOI_filtered_1_bits_qos;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign portsAWOI_filtered_0_valid = in_0_aw_valid & requestAWIO_0_0;	// src/main/scala/amba/axi4/Xbar.scala:78:48, :90:18, :249:24, :252:40
-  assign portsAWOI_filtered_1_valid = in_0_aw_valid & requestAWIO_0_1;	// src/main/scala/amba/axi4/Xbar.scala:78:48, :90:18, :249:24, :252:40
-  assign in_0_aw_ready =
-    requestAWIO_0_0 & portsAWOI_filtered_0_ready | requestAWIO_0_1
-    & portsAWOI_filtered_1_ready;	// src/main/scala/amba/axi4/Xbar.scala:78:48, :90:18, :249:24, src/main/scala/chisel3/util/Mux.scala:30:73
+  assign in_0_w_ready = portsWOI_filtered_0_ready;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
   assign out_0_w_valid = portsWOI_filtered_0_valid;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
   assign out_0_w_bits_data = portsWOI_filtered_0_bits_data;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
   assign out_0_w_bits_strb = portsWOI_filtered_0_bits_strb;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
   assign out_0_w_bits_last = portsWOI_filtered_0_bits_last;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign out_1_w_valid = portsWOI_filtered_1_valid;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign out_1_w_bits_data = portsWOI_filtered_1_bits_data;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign out_1_w_bits_strb = portsWOI_filtered_1_bits_strb;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign out_1_w_bits_last = portsWOI_filtered_1_bits_last;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign portsWOI_filtered_0_valid = in_0_w_valid & requestWIO_0_0;	// src/main/scala/amba/axi4/Xbar.scala:84:73, :90:18, :249:24, :252:40
-  assign portsWOI_filtered_1_valid = in_0_w_valid & requestWIO_0_1;	// src/main/scala/amba/axi4/Xbar.scala:84:73, :90:18, :249:24, :252:40
-  assign in_0_w_ready =
-    requestWIO_0_0 & portsWOI_filtered_0_ready | requestWIO_0_1
-    & portsWOI_filtered_1_ready;	// src/main/scala/amba/axi4/Xbar.scala:84:73, :90:18, :249:24, src/main/scala/chisel3/util/Mux.scala:30:73
   assign out_0_r_ready = portsRIO_filtered_0_ready;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign out_1_r_ready = portsRIO_filtered_1_0_ready;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
+  assign in_0_r_valid = portsRIO_filtered_0_valid;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
+  wire        winner_1_0 = portsRIO_filtered_0_valid;	// src/main/scala/amba/axi4/Xbar.scala:249:24, :280:25
+  assign in_0_r_bits_id = portsRIO_filtered_0_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
+  assign in_0_r_bits_data = portsRIO_filtered_0_bits_data;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
+  assign in_0_r_bits_resp = portsRIO_filtered_0_bits_resp;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
+  assign in_0_r_bits_last = portsRIO_filtered_0_bits_last;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
   assign out_0_b_ready = portsBIO_filtered_0_ready;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
-  assign out_1_b_ready = portsBIO_filtered_1_0_ready;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24
+  assign in_0_b_valid = portsBIO_filtered_0_valid;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
+  wire        winner_2_0 = portsBIO_filtered_0_valid;	// src/main/scala/amba/axi4/Xbar.scala:249:24, :280:25
+  assign in_0_b_bits_id = portsBIO_filtered_0_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
+  assign in_0_b_bits_resp = portsBIO_filtered_0_bits_resp;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24
   reg         awOut_0_io_enq_bits_idle;	// src/main/scala/amba/axi4/Xbar.scala:272:23
   reg         awOut_0_io_enq_bits_state_0;	// src/main/scala/amba/axi4/Xbar.scala:291:24
   wire        awOut_0_io_enq_bits_muxState_0 =
@@ -147853,453 +146976,12 @@ module AXI4Xbar(	// src/main/scala/amba/axi4/Xbar.scala:60:9
   reg         idle;	// src/main/scala/amba/axi4/Xbar.scala:272:23
   reg         state_0;	// src/main/scala/amba/axi4/Xbar.scala:291:24
   wire        muxState_0 = idle ? winner_0 : state_0;	// src/main/scala/amba/axi4/Xbar.scala:272:23, :280:25, :291:24, :292:23
-  reg         awOut_1_io_enq_bits_idle;	// src/main/scala/amba/axi4/Xbar.scala:272:23
-  reg         awOut_1_io_enq_bits_state_0;	// src/main/scala/amba/axi4/Xbar.scala:291:24
-  wire        awOut_1_io_enq_bits_muxState_0 =
-    awOut_1_io_enq_bits_idle ? awOut_1_io_enq_bits_winner_0 : awOut_1_io_enq_bits_state_0;	// src/main/scala/amba/axi4/Xbar.scala:272:23, :280:25, :291:24, :292:23
   reg         idle_1;	// src/main/scala/amba/axi4/Xbar.scala:272:23
   reg         state_1_0;	// src/main/scala/amba/axi4/Xbar.scala:291:24
   wire        muxState_1_0 = idle_1 ? winner_1_0 : state_1_0;	// src/main/scala/amba/axi4/Xbar.scala:272:23, :280:25, :291:24, :292:23
   reg         idle_2;	// src/main/scala/amba/axi4/Xbar.scala:272:23
-  wire        anyValid = portsRIO_filtered_0_valid | portsRIO_filtered_1_0_valid;	// src/main/scala/amba/axi4/Xbar.scala:249:24, :276:36
-  wire [1:0]  readys_valid = {portsRIO_filtered_1_0_valid, portsRIO_filtered_0_valid};	// src/main/scala/amba/axi4/Xbar.scala:249:24, :278:49, src/main/scala/tilelink/Arbiter.scala:21:23
-  reg  [1:0]  readys_mask;	// src/main/scala/tilelink/Arbiter.scala:23:23
-  wire [3:0]  readys_filter = {readys_valid & ~readys_mask, readys_valid};	// src/main/scala/tilelink/Arbiter.scala:21:23, :23:23, :24:{21,28,30}
-  wire [3:0]  readys_unready =
-    {readys_mask[1],
-     readys_filter[3] | readys_mask[0],
-     readys_filter[2:1] | readys_filter[3:2]};	// src/main/scala/tilelink/Arbiter.scala:23:23, :24:21, :25:58, src/main/scala/util/package.scala:262:{43,48}
-  wire [1:0]  readys_readys = ~(readys_unready[3:2] & readys_unready[1:0]);	// src/main/scala/tilelink/Arbiter.scala:25:58, :26:{18,29,39,48}
-  wire        readys_2_0 = readys_readys[0];	// src/main/scala/amba/axi4/Xbar.scala:278:{25,73}, src/main/scala/tilelink/Arbiter.scala:26:18
-  wire        readys_2_1 = readys_readys[1];	// src/main/scala/amba/axi4/Xbar.scala:278:{25,73}, src/main/scala/tilelink/Arbiter.scala:26:18
-  wire        winner_2_0 = readys_2_0 & portsRIO_filtered_0_valid;	// src/main/scala/amba/axi4/Xbar.scala:249:24, :278:25, :280:{25,67}
-  wire        winner_2_1 = readys_2_1 & portsRIO_filtered_1_0_valid;	// src/main/scala/amba/axi4/Xbar.scala:249:24, :278:25, :280:{25,67}
-  wire        prefixOR_1 = winner_2_0;	// src/main/scala/amba/axi4/Xbar.scala:280:25, :285:46
-  reg         state_2_0;	// src/main/scala/amba/axi4/Xbar.scala:291:24
-  reg         state_2_1;	// src/main/scala/amba/axi4/Xbar.scala:291:24
-  wire        muxState_2_0 = idle_2 ? winner_2_0 : state_2_0;	// src/main/scala/amba/axi4/Xbar.scala:272:23, :280:25, :291:24, :292:23
-  wire        muxState_2_1 = idle_2 ? winner_2_1 : state_2_1;	// src/main/scala/amba/axi4/Xbar.scala:272:23, :280:25, :291:24, :292:23
-  wire        allowed_0 = idle_2 ? readys_2_0 : state_2_0;	// src/main/scala/amba/axi4/Xbar.scala:272:23, :278:25, :291:24, :300:24
-  wire        allowed_1 = idle_2 ? readys_2_1 : state_2_1;	// src/main/scala/amba/axi4/Xbar.scala:272:23, :278:25, :291:24, :300:24
-  assign portsRIO_filtered_0_ready = in_0_r_ready & allowed_0;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24, :300:24, :302:31
-  assign portsRIO_filtered_1_0_ready = in_0_r_ready & allowed_1;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24, :300:24, :302:31
-  assign in_0_r_valid =
-    idle_2
-      ? anyValid
-      : state_2_0 & portsRIO_filtered_0_valid | state_2_1 & portsRIO_filtered_1_0_valid;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24, :272:23, :276:36, :291:24, :308:22, src/main/scala/chisel3/util/Mux.scala:30:73
-  assign in_0_r_bits_last =
-    muxState_2_0 & portsRIO_filtered_0_bits_last | muxState_2_1
-    & portsRIO_filtered_1_0_bits_last;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24, :292:23, src/main/scala/chisel3/util/Mux.scala:30:73
-  assign in_0_r_bits_resp =
-    (muxState_2_0 ? portsRIO_filtered_0_bits_resp : 2'h0)
-    | (muxState_2_1 ? portsRIO_filtered_1_0_bits_resp : 2'h0);	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24, :292:23, src/main/scala/chisel3/util/Mux.scala:30:73
-  assign in_0_r_bits_data =
-    (muxState_2_0 ? portsRIO_filtered_0_bits_data : 64'h0)
-    | (muxState_2_1 ? portsRIO_filtered_1_0_bits_data : 64'h0);	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24, :292:23, src/main/scala/chisel3/util/Mux.scala:30:73
-  assign in_0_r_bits_id =
-    (muxState_2_0 ? portsRIO_filtered_0_bits_id : 4'h0)
-    | (muxState_2_1 ? portsRIO_filtered_1_0_bits_id : 4'h0);	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24, :292:23, src/main/scala/chisel3/util/Mux.scala:30:73
-  reg         idle_3;	// src/main/scala/amba/axi4/Xbar.scala:272:23
-  wire        anyValid_1 = portsBIO_filtered_0_valid | portsBIO_filtered_1_0_valid;	// src/main/scala/amba/axi4/Xbar.scala:249:24, :276:36
-  wire [1:0]  readys_valid_1 = {portsBIO_filtered_1_0_valid, portsBIO_filtered_0_valid};	// src/main/scala/amba/axi4/Xbar.scala:249:24, :278:49, src/main/scala/tilelink/Arbiter.scala:21:23
-  reg  [1:0]  readys_mask_1;	// src/main/scala/tilelink/Arbiter.scala:23:23
-  wire [3:0]  readys_filter_1 = {readys_valid_1 & ~readys_mask_1, readys_valid_1};	// src/main/scala/tilelink/Arbiter.scala:21:23, :23:23, :24:{21,28,30}
-  wire [3:0]  readys_unready_1 =
-    {readys_mask_1[1],
-     readys_filter_1[3] | readys_mask_1[0],
-     readys_filter_1[2:1] | readys_filter_1[3:2]};	// src/main/scala/tilelink/Arbiter.scala:23:23, :24:21, :25:58, src/main/scala/util/package.scala:262:{43,48}
-  wire [1:0]  readys_readys_1 = ~(readys_unready_1[3:2] & readys_unready_1[1:0]);	// src/main/scala/tilelink/Arbiter.scala:25:58, :26:{18,29,39,48}
-  wire        readys_3_0 = readys_readys_1[0];	// src/main/scala/amba/axi4/Xbar.scala:278:{25,73}, src/main/scala/tilelink/Arbiter.scala:26:18
-  wire        readys_3_1 = readys_readys_1[1];	// src/main/scala/amba/axi4/Xbar.scala:278:{25,73}, src/main/scala/tilelink/Arbiter.scala:26:18
-  wire        winner_3_0 = readys_3_0 & portsBIO_filtered_0_valid;	// src/main/scala/amba/axi4/Xbar.scala:249:24, :278:25, :280:{25,67}
-  wire        winner_3_1 = readys_3_1 & portsBIO_filtered_1_0_valid;	// src/main/scala/amba/axi4/Xbar.scala:249:24, :278:25, :280:{25,67}
-  wire        prefixOR_1_1 = winner_3_0;	// src/main/scala/amba/axi4/Xbar.scala:280:25, :285:46
-  `ifndef SYNTHESIS	// src/main/scala/amba/axi4/Xbar.scala:131:22
-    always @(posedge clock) begin	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      if (~reset & ~(~_arFIFOMap_0_T_6 | (|arFIFOMap_0_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :144:43
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_arFIFOMap_0_T_2 | _arFIFOMap_0_T_22)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :143:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_awFIFOMap_0_T_5 | (|awFIFOMap_0_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :148:24
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_awFIFOMap_0_T_2 | _awFIFOMap_0_T_21)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :147:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_arFIFOMap_1_T_6 | (|arFIFOMap_1_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :144:43
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_arFIFOMap_1_T_2 | _arFIFOMap_1_T_22)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :143:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_awFIFOMap_1_T_5 | (|awFIFOMap_1_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :148:24
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_awFIFOMap_1_T_2 | _awFIFOMap_1_T_21)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :147:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_arFIFOMap_2_T_6 | (|arFIFOMap_2_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :144:43
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_arFIFOMap_2_T_2 | _arFIFOMap_2_T_22)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :143:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_awFIFOMap_2_T_5 | (|awFIFOMap_2_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :148:24
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_awFIFOMap_2_T_2 | _awFIFOMap_2_T_21)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :147:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_arFIFOMap_3_T_6 | (|arFIFOMap_3_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :144:43
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_arFIFOMap_3_T_2 | _arFIFOMap_3_T_22)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :143:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_awFIFOMap_3_T_5 | (|awFIFOMap_3_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :148:24
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_awFIFOMap_3_T_2 | _awFIFOMap_3_T_21)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :147:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_arFIFOMap_4_T_6 | (|arFIFOMap_4_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :144:43
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_arFIFOMap_4_T_2 | _arFIFOMap_4_T_22)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :143:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_awFIFOMap_4_T_5 | (|awFIFOMap_4_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :148:24
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_awFIFOMap_4_T_2 | _awFIFOMap_4_T_21)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :147:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_arFIFOMap_5_T_6 | (|arFIFOMap_5_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :144:43
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_arFIFOMap_5_T_2 | _arFIFOMap_5_T_22)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :143:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_awFIFOMap_5_T_5 | (|awFIFOMap_5_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :148:24
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_awFIFOMap_5_T_2 | _awFIFOMap_5_T_21)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :147:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_arFIFOMap_6_T_6 | (|arFIFOMap_6_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :144:43
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_arFIFOMap_6_T_2 | _arFIFOMap_6_T_22)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :143:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_awFIFOMap_6_T_5 | (|awFIFOMap_6_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :148:24
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_awFIFOMap_6_T_2 | _awFIFOMap_6_T_21)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :147:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_arFIFOMap_7_T_6 | (|arFIFOMap_7_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :144:43
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_arFIFOMap_7_T_2 | _arFIFOMap_7_T_22)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :143:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_awFIFOMap_7_T_5 | (|awFIFOMap_7_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :148:24
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_awFIFOMap_7_T_2 | _awFIFOMap_7_T_21)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :147:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_arFIFOMap_8_T_6 | (|arFIFOMap_8_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :144:43
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_arFIFOMap_8_T_2 | _arFIFOMap_8_T_22)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :143:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_awFIFOMap_8_T_5 | (|awFIFOMap_8_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :148:24
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_awFIFOMap_8_T_2 | _awFIFOMap_8_T_21)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :147:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_arFIFOMap_9_T_6 | (|arFIFOMap_9_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :144:43
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_arFIFOMap_9_T_2 | _arFIFOMap_9_T_22)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :143:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_awFIFOMap_9_T_5 | (|awFIFOMap_9_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :148:24
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_awFIFOMap_9_T_2 | _awFIFOMap_9_T_21)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :147:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_arFIFOMap_10_T_6 | (|arFIFOMap_10_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :144:43
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_arFIFOMap_10_T_2 | _arFIFOMap_10_T_22)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :143:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_awFIFOMap_10_T_5 | (|awFIFOMap_10_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :148:24
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_awFIFOMap_10_T_2 | _awFIFOMap_10_T_21)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :147:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_arFIFOMap_11_T_6 | (|arFIFOMap_11_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :144:43
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_arFIFOMap_11_T_2 | _arFIFOMap_11_T_22)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :143:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_awFIFOMap_11_T_5 | (|awFIFOMap_11_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :148:24
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_awFIFOMap_11_T_2 | _awFIFOMap_11_T_21)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :147:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_arFIFOMap_12_T_6 | (|arFIFOMap_12_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :144:43
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_arFIFOMap_12_T_2 | _arFIFOMap_12_T_22)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :143:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_awFIFOMap_12_T_5 | (|awFIFOMap_12_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :148:24
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_awFIFOMap_12_T_2 | _awFIFOMap_12_T_21)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :147:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_arFIFOMap_13_T_6 | (|arFIFOMap_13_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :144:43
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_arFIFOMap_13_T_2 | _arFIFOMap_13_T_22)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :143:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_awFIFOMap_13_T_5 | (|awFIFOMap_13_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :148:24
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_awFIFOMap_13_T_2 | _awFIFOMap_13_T_21)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :147:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_arFIFOMap_14_T_6 | (|arFIFOMap_14_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :144:43
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_arFIFOMap_14_T_2 | _arFIFOMap_14_T_22)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :143:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_awFIFOMap_14_T_5 | (|awFIFOMap_14_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :148:24
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_awFIFOMap_14_T_2 | _awFIFOMap_14_T_21)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :147:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_arFIFOMap_15_T_6 | (|arFIFOMap_15_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :144:43
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_arFIFOMap_15_T_2 | _arFIFOMap_15_T_22)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :143:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
-      if (~reset & ~(~_awFIFOMap_15_T_5 | (|awFIFOMap_15_count))) begin	// src/main/scala/amba/axi4/Xbar.scala:128:34, :131:{22,23,34,43}, :148:24
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $error("Assertion failed\n    at Xbar.scala:131 assert (!resp_fire || count =/= 0.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:131:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:131:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:131:22
-      end
-      if (~reset & ~(~_awFIFOMap_15_T_2 | _awFIFOMap_15_T_21)) begin	// src/main/scala/amba/axi4/Xbar.scala:132:{22,23,34,43}, :147:25
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $error("Assertion failed\n    at Xbar.scala:132 assert (!req_fire  || count =/= flight.U)\n");	// src/main/scala/amba/axi4/Xbar.scala:132:22
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:132:22
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:132:22
-      end
+  `ifndef SYNTHESIS	// src/main/scala/amba/axi4/Xbar.scala:288:12
+    always @(posedge clock) begin	// src/main/scala/amba/axi4/Xbar.scala:288:12
       if (~reset & ~(~portsAWOI_filtered_0_valid | awOut_0_io_enq_bits_winner_0)) begin	// src/main/scala/amba/axi4/Xbar.scala:249:24, :280:25, :288:{12,13,23}
         if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:288:12
           $error("Assertion failed\n    at Xbar.scala:288 assert (!anyValid || winner.reduce(_||_))\n");	// src/main/scala/amba/axi4/Xbar.scala:288:12
@@ -148312,49 +146994,13 @@ module AXI4Xbar(	// src/main/scala/amba/axi4/Xbar.scala:60:9
         if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:288:12
           $fatal;	// src/main/scala/amba/axi4/Xbar.scala:288:12
       end
-      if (~reset & ~(~portsAWOI_filtered_1_valid | awOut_1_io_enq_bits_winner_0)) begin	// src/main/scala/amba/axi4/Xbar.scala:249:24, :280:25, :288:{12,13,23}
+      if (~reset & ~(~portsRIO_filtered_0_valid | winner_1_0)) begin	// src/main/scala/amba/axi4/Xbar.scala:249:24, :280:25, :288:{12,13,23}
         if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:288:12
           $error("Assertion failed\n    at Xbar.scala:288 assert (!anyValid || winner.reduce(_||_))\n");	// src/main/scala/amba/axi4/Xbar.scala:288:12
         if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:288:12
           $fatal;	// src/main/scala/amba/axi4/Xbar.scala:288:12
       end
-      if (~reset & ~(~portsAROI_filtered_1_valid | winner_1_0)) begin	// src/main/scala/amba/axi4/Xbar.scala:249:24, :280:25, :288:{12,13,23}
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:288:12
-          $error("Assertion failed\n    at Xbar.scala:288 assert (!anyValid || winner.reduce(_||_))\n");	// src/main/scala/amba/axi4/Xbar.scala:288:12
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:288:12
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:288:12
-      end
-      if (~reset & readys_valid != readys_valid) begin	// src/main/scala/tilelink/Arbiter.scala:21:23, :22:{12,19}
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/tilelink/Arbiter.scala:22:12
-          $error("Assertion failed\n    at Arbiter.scala:22 assert (valid === valids)\n");	// src/main/scala/tilelink/Arbiter.scala:22:12
-        if (`STOP_COND_)	// src/main/scala/tilelink/Arbiter.scala:22:12
-          $fatal;	// src/main/scala/tilelink/Arbiter.scala:22:12
-      end
-      if (~reset & ~(~prefixOR_1 | ~winner_2_1)) begin	// src/main/scala/amba/axi4/Xbar.scala:280:25, :285:46, :286:{11,54,57,60}, :288:12
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:286:11
-          $error("Assertion failed\n    at Xbar.scala:286 assert((prefixOR zip winner) map { case (p,w) => !p || !w } reduce {_ && _})\n");	// src/main/scala/amba/axi4/Xbar.scala:286:11
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:286:11
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:286:11
-      end
-      if (~reset & ~(~anyValid | winner_2_0 | winner_2_1)) begin	// src/main/scala/amba/axi4/Xbar.scala:276:36, :280:25, :288:{12,13,23}
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:288:12
-          $error("Assertion failed\n    at Xbar.scala:288 assert (!anyValid || winner.reduce(_||_))\n");	// src/main/scala/amba/axi4/Xbar.scala:288:12
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:288:12
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:288:12
-      end
-      if (~reset & readys_valid_1 != readys_valid_1) begin	// src/main/scala/tilelink/Arbiter.scala:21:23, :22:{12,19}
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/tilelink/Arbiter.scala:22:12
-          $error("Assertion failed\n    at Arbiter.scala:22 assert (valid === valids)\n");	// src/main/scala/tilelink/Arbiter.scala:22:12
-        if (`STOP_COND_)	// src/main/scala/tilelink/Arbiter.scala:22:12
-          $fatal;	// src/main/scala/tilelink/Arbiter.scala:22:12
-      end
-      if (~reset & ~(~prefixOR_1_1 | ~winner_3_1)) begin	// src/main/scala/amba/axi4/Xbar.scala:280:25, :285:46, :286:{11,54,57,60}, :288:12
-        if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:286:11
-          $error("Assertion failed\n    at Xbar.scala:286 assert((prefixOR zip winner) map { case (p,w) => !p || !w } reduce {_ && _})\n");	// src/main/scala/amba/axi4/Xbar.scala:286:11
-        if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:286:11
-          $fatal;	// src/main/scala/amba/axi4/Xbar.scala:286:11
-      end
-      if (~reset & ~(~anyValid_1 | winner_3_0 | winner_3_1)) begin	// src/main/scala/amba/axi4/Xbar.scala:276:36, :280:25, :288:{12,13,23}
+      if (~reset & ~(~portsBIO_filtered_0_valid | winner_2_0)) begin	// src/main/scala/amba/axi4/Xbar.scala:249:24, :280:25, :288:{12,13,23}
         if (`ASSERT_VERBOSE_COND_)	// src/main/scala/amba/axi4/Xbar.scala:288:12
           $error("Assertion failed\n    at Xbar.scala:288 assert (!anyValid || winner.reduce(_||_))\n");	// src/main/scala/amba/axi4/Xbar.scala:288:12
         if (`STOP_COND_)	// src/main/scala/amba/axi4/Xbar.scala:288:12
@@ -148362,346 +147008,59 @@ module AXI4Xbar(	// src/main/scala/amba/axi4/Xbar.scala:60:9
       end
     end // always @(posedge)
   `endif // not def SYNTHESIS
-  reg         state_3_0;	// src/main/scala/amba/axi4/Xbar.scala:291:24
-  reg         state_3_1;	// src/main/scala/amba/axi4/Xbar.scala:291:24
-  wire        muxState_3_0 = idle_3 ? winner_3_0 : state_3_0;	// src/main/scala/amba/axi4/Xbar.scala:272:23, :280:25, :291:24, :292:23
-  wire        muxState_3_1 = idle_3 ? winner_3_1 : state_3_1;	// src/main/scala/amba/axi4/Xbar.scala:272:23, :280:25, :291:24, :292:23
-  wire        allowed_1_0 = idle_3 ? readys_3_0 : state_3_0;	// src/main/scala/amba/axi4/Xbar.scala:272:23, :278:25, :291:24, :300:24
-  wire        allowed_1_1 = idle_3 ? readys_3_1 : state_3_1;	// src/main/scala/amba/axi4/Xbar.scala:272:23, :278:25, :291:24, :300:24
-  assign portsBIO_filtered_0_ready = in_0_b_ready & allowed_1_0;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24, :300:24, :302:31
-  assign portsBIO_filtered_1_0_ready = in_0_b_ready & allowed_1_1;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24, :300:24, :302:31
-  assign in_0_b_valid =
-    idle_3
-      ? anyValid_1
-      : state_3_0 & portsBIO_filtered_0_valid | state_3_1 & portsBIO_filtered_1_0_valid;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24, :272:23, :276:36, :291:24, :308:22, src/main/scala/chisel3/util/Mux.scala:30:73
-  assign in_0_b_bits_resp =
-    (muxState_3_0 ? portsBIO_filtered_0_bits_resp : 2'h0)
-    | (muxState_3_1 ? portsBIO_filtered_1_0_bits_resp : 2'h0);	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24, :292:23, src/main/scala/chisel3/util/Mux.scala:30:73
-  assign in_0_b_bits_id =
-    (muxState_3_0 ? portsBIO_filtered_0_bits_id : 4'h0)
-    | (muxState_3_1 ? portsBIO_filtered_1_0_bits_id : 4'h0);	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24, :292:23, src/main/scala/chisel3/util/Mux.scala:30:73
-  wire [1:0]  _readys_mask_T = readys_readys & readys_valid;	// src/main/scala/tilelink/Arbiter.scala:21:23, :26:18, :28:29
-  wire [1:0]  _readys_mask_T_5 = readys_readys_1 & readys_valid_1;	// src/main/scala/tilelink/Arbiter.scala:21:23, :26:18, :28:29
+  reg         state_2_0;	// src/main/scala/amba/axi4/Xbar.scala:291:24
+  wire        muxState_2_0 = idle_2 ? winner_2_0 : state_2_0;	// src/main/scala/amba/axi4/Xbar.scala:272:23, :280:25, :291:24, :292:23
   always @(posedge clock) begin	// src/main/scala/amba/axi4/Xbar.scala:60:9
     if (reset) begin	// src/main/scala/amba/axi4/Xbar.scala:60:9
-      arFIFOMap_0_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      awFIFOMap_0_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      arFIFOMap_1_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      awFIFOMap_1_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      arFIFOMap_2_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      awFIFOMap_2_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      arFIFOMap_3_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      awFIFOMap_3_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      arFIFOMap_4_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      awFIFOMap_4_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      arFIFOMap_5_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      awFIFOMap_5_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      arFIFOMap_6_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      awFIFOMap_6_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      arFIFOMap_7_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      awFIFOMap_7_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      arFIFOMap_8_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      awFIFOMap_8_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      arFIFOMap_9_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      awFIFOMap_9_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      arFIFOMap_10_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      awFIFOMap_10_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      arFIFOMap_11_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      awFIFOMap_11_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      arFIFOMap_12_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      awFIFOMap_12_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      arFIFOMap_13_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      awFIFOMap_13_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      arFIFOMap_14_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      awFIFOMap_14_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      arFIFOMap_15_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      awFIFOMap_15_count <= 3'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-      latched <= 1'h0;	// src/main/scala/amba/axi4/Xbar.scala:161:30, src/main/scala/diplomacy/Parameters.scala:137:31
-      awOut_0_io_enq_bits_idle <= 1'h1;	// src/main/scala/amba/axi4/Xbar.scala:272:23, :278:25, src/main/scala/diplomacy/Parameters.scala:56:48
-      awOut_0_io_enq_bits_state_0 <= 1'h0;	// src/main/scala/amba/axi4/Xbar.scala:291:24, src/main/scala/diplomacy/Parameters.scala:137:31
-      idle <= 1'h1;	// src/main/scala/amba/axi4/Xbar.scala:272:23, :278:25, src/main/scala/diplomacy/Parameters.scala:56:48
-      state_0 <= 1'h0;	// src/main/scala/amba/axi4/Xbar.scala:291:24, src/main/scala/diplomacy/Parameters.scala:137:31
-      awOut_1_io_enq_bits_idle <= 1'h1;	// src/main/scala/amba/axi4/Xbar.scala:272:23, :278:25, src/main/scala/diplomacy/Parameters.scala:56:48
-      awOut_1_io_enq_bits_state_0 <= 1'h0;	// src/main/scala/amba/axi4/Xbar.scala:291:24, src/main/scala/diplomacy/Parameters.scala:137:31
-      idle_1 <= 1'h1;	// src/main/scala/amba/axi4/Xbar.scala:272:23, :278:25, src/main/scala/diplomacy/Parameters.scala:56:48
-      state_1_0 <= 1'h0;	// src/main/scala/amba/axi4/Xbar.scala:291:24, src/main/scala/diplomacy/Parameters.scala:137:31
-      idle_2 <= 1'h1;	// src/main/scala/amba/axi4/Xbar.scala:272:23, :278:25, src/main/scala/diplomacy/Parameters.scala:56:48
-      readys_mask <= 2'h3;	// src/main/scala/tilelink/Arbiter.scala:23:23
-      state_2_0 <= 1'h0;	// src/main/scala/amba/axi4/Xbar.scala:291:24, src/main/scala/diplomacy/Parameters.scala:137:31
-      state_2_1 <= 1'h0;	// src/main/scala/amba/axi4/Xbar.scala:291:24, src/main/scala/diplomacy/Parameters.scala:137:31
-      idle_3 <= 1'h1;	// src/main/scala/amba/axi4/Xbar.scala:272:23, :278:25, src/main/scala/diplomacy/Parameters.scala:56:48
-      readys_mask_1 <= 2'h3;	// src/main/scala/tilelink/Arbiter.scala:23:23
-      state_3_0 <= 1'h0;	// src/main/scala/amba/axi4/Xbar.scala:291:24, src/main/scala/diplomacy/Parameters.scala:137:31
-      state_3_1 <= 1'h0;	// src/main/scala/amba/axi4/Xbar.scala:291:24, src/main/scala/diplomacy/Parameters.scala:137:31
+      awOut_0_io_enq_bits_idle <= 1'h1;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :272:23
+      awOut_0_io_enq_bits_state_0 <= 1'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :291:24
+      idle <= 1'h1;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :272:23
+      state_0 <= 1'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :291:24
+      idle_1 <= 1'h1;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :272:23
+      state_1_0 <= 1'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :291:24
+      idle_2 <= 1'h1;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :272:23
+      state_2_0 <= 1'h0;	// src/main/scala/amba/axi4/Xbar.scala:60:9, :291:24
     end
     else begin	// src/main/scala/amba/axi4/Xbar.scala:60:9
-      arFIFOMap_0_count <=
-        arFIFOMap_0_count + {2'h0, _arFIFOMap_0_T_2} - {2'h0, _arFIFOMap_0_T_6};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :143:25, :144:43, src/main/scala/chisel3/util/Mux.scala:30:73
-      awFIFOMap_0_count <=
-        awFIFOMap_0_count + {2'h0, _awFIFOMap_0_T_2} - {2'h0, _awFIFOMap_0_T_5};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :147:25, :148:24, src/main/scala/chisel3/util/Mux.scala:30:73
-      arFIFOMap_1_count <=
-        arFIFOMap_1_count + {2'h0, _arFIFOMap_1_T_2} - {2'h0, _arFIFOMap_1_T_6};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :143:25, :144:43, src/main/scala/chisel3/util/Mux.scala:30:73
-      awFIFOMap_1_count <=
-        awFIFOMap_1_count + {2'h0, _awFIFOMap_1_T_2} - {2'h0, _awFIFOMap_1_T_5};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :147:25, :148:24, src/main/scala/chisel3/util/Mux.scala:30:73
-      arFIFOMap_2_count <=
-        arFIFOMap_2_count + {2'h0, _arFIFOMap_2_T_2} - {2'h0, _arFIFOMap_2_T_6};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :143:25, :144:43, src/main/scala/chisel3/util/Mux.scala:30:73
-      awFIFOMap_2_count <=
-        awFIFOMap_2_count + {2'h0, _awFIFOMap_2_T_2} - {2'h0, _awFIFOMap_2_T_5};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :147:25, :148:24, src/main/scala/chisel3/util/Mux.scala:30:73
-      arFIFOMap_3_count <=
-        arFIFOMap_3_count + {2'h0, _arFIFOMap_3_T_2} - {2'h0, _arFIFOMap_3_T_6};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :143:25, :144:43, src/main/scala/chisel3/util/Mux.scala:30:73
-      awFIFOMap_3_count <=
-        awFIFOMap_3_count + {2'h0, _awFIFOMap_3_T_2} - {2'h0, _awFIFOMap_3_T_5};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :147:25, :148:24, src/main/scala/chisel3/util/Mux.scala:30:73
-      arFIFOMap_4_count <=
-        arFIFOMap_4_count + {2'h0, _arFIFOMap_4_T_2} - {2'h0, _arFIFOMap_4_T_6};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :143:25, :144:43, src/main/scala/chisel3/util/Mux.scala:30:73
-      awFIFOMap_4_count <=
-        awFIFOMap_4_count + {2'h0, _awFIFOMap_4_T_2} - {2'h0, _awFIFOMap_4_T_5};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :147:25, :148:24, src/main/scala/chisel3/util/Mux.scala:30:73
-      arFIFOMap_5_count <=
-        arFIFOMap_5_count + {2'h0, _arFIFOMap_5_T_2} - {2'h0, _arFIFOMap_5_T_6};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :143:25, :144:43, src/main/scala/chisel3/util/Mux.scala:30:73
-      awFIFOMap_5_count <=
-        awFIFOMap_5_count + {2'h0, _awFIFOMap_5_T_2} - {2'h0, _awFIFOMap_5_T_5};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :147:25, :148:24, src/main/scala/chisel3/util/Mux.scala:30:73
-      arFIFOMap_6_count <=
-        arFIFOMap_6_count + {2'h0, _arFIFOMap_6_T_2} - {2'h0, _arFIFOMap_6_T_6};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :143:25, :144:43, src/main/scala/chisel3/util/Mux.scala:30:73
-      awFIFOMap_6_count <=
-        awFIFOMap_6_count + {2'h0, _awFIFOMap_6_T_2} - {2'h0, _awFIFOMap_6_T_5};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :147:25, :148:24, src/main/scala/chisel3/util/Mux.scala:30:73
-      arFIFOMap_7_count <=
-        arFIFOMap_7_count + {2'h0, _arFIFOMap_7_T_2} - {2'h0, _arFIFOMap_7_T_6};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :143:25, :144:43, src/main/scala/chisel3/util/Mux.scala:30:73
-      awFIFOMap_7_count <=
-        awFIFOMap_7_count + {2'h0, _awFIFOMap_7_T_2} - {2'h0, _awFIFOMap_7_T_5};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :147:25, :148:24, src/main/scala/chisel3/util/Mux.scala:30:73
-      arFIFOMap_8_count <=
-        arFIFOMap_8_count + {2'h0, _arFIFOMap_8_T_2} - {2'h0, _arFIFOMap_8_T_6};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :143:25, :144:43, src/main/scala/chisel3/util/Mux.scala:30:73
-      awFIFOMap_8_count <=
-        awFIFOMap_8_count + {2'h0, _awFIFOMap_8_T_2} - {2'h0, _awFIFOMap_8_T_5};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :147:25, :148:24, src/main/scala/chisel3/util/Mux.scala:30:73
-      arFIFOMap_9_count <=
-        arFIFOMap_9_count + {2'h0, _arFIFOMap_9_T_2} - {2'h0, _arFIFOMap_9_T_6};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :143:25, :144:43, src/main/scala/chisel3/util/Mux.scala:30:73
-      awFIFOMap_9_count <=
-        awFIFOMap_9_count + {2'h0, _awFIFOMap_9_T_2} - {2'h0, _awFIFOMap_9_T_5};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :147:25, :148:24, src/main/scala/chisel3/util/Mux.scala:30:73
-      arFIFOMap_10_count <=
-        arFIFOMap_10_count + {2'h0, _arFIFOMap_10_T_2} - {2'h0, _arFIFOMap_10_T_6};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :143:25, :144:43, src/main/scala/chisel3/util/Mux.scala:30:73
-      awFIFOMap_10_count <=
-        awFIFOMap_10_count + {2'h0, _awFIFOMap_10_T_2} - {2'h0, _awFIFOMap_10_T_5};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :147:25, :148:24, src/main/scala/chisel3/util/Mux.scala:30:73
-      arFIFOMap_11_count <=
-        arFIFOMap_11_count + {2'h0, _arFIFOMap_11_T_2} - {2'h0, _arFIFOMap_11_T_6};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :143:25, :144:43, src/main/scala/chisel3/util/Mux.scala:30:73
-      awFIFOMap_11_count <=
-        awFIFOMap_11_count + {2'h0, _awFIFOMap_11_T_2} - {2'h0, _awFIFOMap_11_T_5};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :147:25, :148:24, src/main/scala/chisel3/util/Mux.scala:30:73
-      arFIFOMap_12_count <=
-        arFIFOMap_12_count + {2'h0, _arFIFOMap_12_T_2} - {2'h0, _arFIFOMap_12_T_6};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :143:25, :144:43, src/main/scala/chisel3/util/Mux.scala:30:73
-      awFIFOMap_12_count <=
-        awFIFOMap_12_count + {2'h0, _awFIFOMap_12_T_2} - {2'h0, _awFIFOMap_12_T_5};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :147:25, :148:24, src/main/scala/chisel3/util/Mux.scala:30:73
-      arFIFOMap_13_count <=
-        arFIFOMap_13_count + {2'h0, _arFIFOMap_13_T_2} - {2'h0, _arFIFOMap_13_T_6};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :143:25, :144:43, src/main/scala/chisel3/util/Mux.scala:30:73
-      awFIFOMap_13_count <=
-        awFIFOMap_13_count + {2'h0, _awFIFOMap_13_T_2} - {2'h0, _awFIFOMap_13_T_5};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :147:25, :148:24, src/main/scala/chisel3/util/Mux.scala:30:73
-      arFIFOMap_14_count <=
-        arFIFOMap_14_count + {2'h0, _arFIFOMap_14_T_2} - {2'h0, _arFIFOMap_14_T_6};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :143:25, :144:43, src/main/scala/chisel3/util/Mux.scala:30:73
-      awFIFOMap_14_count <=
-        awFIFOMap_14_count + {2'h0, _awFIFOMap_14_T_2} - {2'h0, _awFIFOMap_14_T_5};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :147:25, :148:24, src/main/scala/chisel3/util/Mux.scala:30:73
-      arFIFOMap_15_count <=
-        arFIFOMap_15_count + {2'h0, _arFIFOMap_15_T_2} - {2'h0, _arFIFOMap_15_T_6};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :143:25, :144:43, src/main/scala/chisel3/util/Mux.scala:30:73
-      awFIFOMap_15_count <=
-        awFIFOMap_15_count + {2'h0, _awFIFOMap_15_T_2} - {2'h0, _awFIFOMap_15_T_5};	// src/main/scala/amba/axi4/Xbar.scala:128:34, :130:{30,48}, :147:25, :148:24, src/main/scala/chisel3/util/Mux.scala:30:73
-      latched <=
-        ~(in_0_aw_ready & in_0_aw_valid)
-        & (_awIn_0_io_enq_ready & _awIn_0_io_enq_valid_T_1 | latched);	// src/main/scala/amba/axi4/Xbar.scala:74:47, :90:18, :161:30, :164:51, :165:{36,46}, :166:{30,40}, src/main/scala/chisel3/util/Decoupled.scala:51:35
       awOut_0_io_enq_bits_idle <=
         out_0_aw_ready & out_0_aw_valid | ~portsAWOI_filtered_0_valid
         & awOut_0_io_enq_bits_idle;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24, :272:23, :296:{21,28}, :297:{22,29}, src/main/scala/chisel3/util/Decoupled.scala:51:35
       awOut_0_io_enq_bits_state_0 <= awOut_0_io_enq_bits_muxState_0;	// src/main/scala/amba/axi4/Xbar.scala:291:24, :292:23
       idle <= out_0_ar_ready & out_0_ar_valid | ~portsAROI_filtered_0_valid & idle;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24, :272:23, :296:{21,28}, :297:{22,29}, src/main/scala/chisel3/util/Decoupled.scala:51:35
       state_0 <= muxState_0;	// src/main/scala/amba/axi4/Xbar.scala:291:24, :292:23
-      awOut_1_io_enq_bits_idle <=
-        out_1_aw_ready & out_1_aw_valid | ~portsAWOI_filtered_1_valid
-        & awOut_1_io_enq_bits_idle;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24, :272:23, :296:{21,28}, :297:{22,29}, src/main/scala/chisel3/util/Decoupled.scala:51:35
-      awOut_1_io_enq_bits_state_0 <= awOut_1_io_enq_bits_muxState_0;	// src/main/scala/amba/axi4/Xbar.scala:291:24, :292:23
-      idle_1 <= out_1_ar_ready & out_1_ar_valid | ~portsAROI_filtered_1_valid & idle_1;	// src/main/scala/amba/axi4/Xbar.scala:178:19, :249:24, :272:23, :296:{21,28}, :297:{22,29}, src/main/scala/chisel3/util/Decoupled.scala:51:35
+      idle_1 <= in_0_r_ready & in_0_r_valid | ~portsRIO_filtered_0_valid & idle_1;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24, :272:23, :296:{21,28}, :297:{22,29}, src/main/scala/chisel3/util/Decoupled.scala:51:35
       state_1_0 <= muxState_1_0;	// src/main/scala/amba/axi4/Xbar.scala:291:24, :292:23
-      idle_2 <= in_0_r_ready & in_0_r_valid | ~anyValid & idle_2;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :272:23, :276:36, :296:{21,28}, :297:{22,29}, src/main/scala/chisel3/util/Decoupled.scala:51:35
-      if (idle_2 & (|readys_valid))	// src/main/scala/amba/axi4/Xbar.scala:272:23, src/main/scala/tilelink/Arbiter.scala:21:23, :27:{18,27}
-        readys_mask <= _readys_mask_T | {_readys_mask_T[0], 1'h0};	// src/main/scala/diplomacy/Parameters.scala:137:31, src/main/scala/tilelink/Arbiter.scala:23:23, :28:29, src/main/scala/util/package.scala:253:{43,53}
+      idle_2 <= in_0_b_ready & in_0_b_valid | ~portsBIO_filtered_0_valid & idle_2;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :249:24, :272:23, :296:{21,28}, :297:{22,29}, src/main/scala/chisel3/util/Decoupled.scala:51:35
       state_2_0 <= muxState_2_0;	// src/main/scala/amba/axi4/Xbar.scala:291:24, :292:23
-      state_2_1 <= muxState_2_1;	// src/main/scala/amba/axi4/Xbar.scala:291:24, :292:23
-      idle_3 <= in_0_b_ready & in_0_b_valid | ~anyValid_1 & idle_3;	// src/main/scala/amba/axi4/Xbar.scala:90:18, :272:23, :276:36, :296:{21,28}, :297:{22,29}, src/main/scala/chisel3/util/Decoupled.scala:51:35
-      if (idle_3 & (|readys_valid_1))	// src/main/scala/amba/axi4/Xbar.scala:272:23, src/main/scala/tilelink/Arbiter.scala:21:23, :27:{18,27}
-        readys_mask_1 <= _readys_mask_T_5 | {_readys_mask_T_5[0], 1'h0};	// src/main/scala/diplomacy/Parameters.scala:137:31, src/main/scala/tilelink/Arbiter.scala:23:23, :28:29, src/main/scala/util/package.scala:253:{43,53}
-      state_3_0 <= muxState_3_0;	// src/main/scala/amba/axi4/Xbar.scala:291:24, :292:23
-      state_3_1 <= muxState_3_1;	// src/main/scala/amba/axi4/Xbar.scala:291:24, :292:23
     end
-    if (_arFIFOMap_0_T_2)	// src/main/scala/amba/axi4/Xbar.scala:143:25
-      arFIFOMap_0_last <= arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_awFIFOMap_0_T_2)	// src/main/scala/amba/axi4/Xbar.scala:147:25
-      awFIFOMap_0_last <= awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_arFIFOMap_1_T_2)	// src/main/scala/amba/axi4/Xbar.scala:143:25
-      arFIFOMap_1_last <= arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_awFIFOMap_1_T_2)	// src/main/scala/amba/axi4/Xbar.scala:147:25
-      awFIFOMap_1_last <= awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_arFIFOMap_2_T_2)	// src/main/scala/amba/axi4/Xbar.scala:143:25
-      arFIFOMap_2_last <= arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_awFIFOMap_2_T_2)	// src/main/scala/amba/axi4/Xbar.scala:147:25
-      awFIFOMap_2_last <= awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_arFIFOMap_3_T_2)	// src/main/scala/amba/axi4/Xbar.scala:143:25
-      arFIFOMap_3_last <= arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_awFIFOMap_3_T_2)	// src/main/scala/amba/axi4/Xbar.scala:147:25
-      awFIFOMap_3_last <= awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_arFIFOMap_4_T_2)	// src/main/scala/amba/axi4/Xbar.scala:143:25
-      arFIFOMap_4_last <= arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_awFIFOMap_4_T_2)	// src/main/scala/amba/axi4/Xbar.scala:147:25
-      awFIFOMap_4_last <= awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_arFIFOMap_5_T_2)	// src/main/scala/amba/axi4/Xbar.scala:143:25
-      arFIFOMap_5_last <= arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_awFIFOMap_5_T_2)	// src/main/scala/amba/axi4/Xbar.scala:147:25
-      awFIFOMap_5_last <= awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_arFIFOMap_6_T_2)	// src/main/scala/amba/axi4/Xbar.scala:143:25
-      arFIFOMap_6_last <= arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_awFIFOMap_6_T_2)	// src/main/scala/amba/axi4/Xbar.scala:147:25
-      awFIFOMap_6_last <= awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_arFIFOMap_7_T_2)	// src/main/scala/amba/axi4/Xbar.scala:143:25
-      arFIFOMap_7_last <= arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_awFIFOMap_7_T_2)	// src/main/scala/amba/axi4/Xbar.scala:147:25
-      awFIFOMap_7_last <= awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_arFIFOMap_8_T_2)	// src/main/scala/amba/axi4/Xbar.scala:143:25
-      arFIFOMap_8_last <= arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_awFIFOMap_8_T_2)	// src/main/scala/amba/axi4/Xbar.scala:147:25
-      awFIFOMap_8_last <= awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_arFIFOMap_9_T_2)	// src/main/scala/amba/axi4/Xbar.scala:143:25
-      arFIFOMap_9_last <= arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_awFIFOMap_9_T_2)	// src/main/scala/amba/axi4/Xbar.scala:147:25
-      awFIFOMap_9_last <= awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_arFIFOMap_10_T_2)	// src/main/scala/amba/axi4/Xbar.scala:143:25
-      arFIFOMap_10_last <= arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_awFIFOMap_10_T_2)	// src/main/scala/amba/axi4/Xbar.scala:147:25
-      awFIFOMap_10_last <= awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_arFIFOMap_11_T_2)	// src/main/scala/amba/axi4/Xbar.scala:143:25
-      arFIFOMap_11_last <= arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_awFIFOMap_11_T_2)	// src/main/scala/amba/axi4/Xbar.scala:147:25
-      awFIFOMap_11_last <= awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_arFIFOMap_12_T_2)	// src/main/scala/amba/axi4/Xbar.scala:143:25
-      arFIFOMap_12_last <= arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_awFIFOMap_12_T_2)	// src/main/scala/amba/axi4/Xbar.scala:147:25
-      awFIFOMap_12_last <= awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_arFIFOMap_13_T_2)	// src/main/scala/amba/axi4/Xbar.scala:143:25
-      arFIFOMap_13_last <= arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_awFIFOMap_13_T_2)	// src/main/scala/amba/axi4/Xbar.scala:147:25
-      awFIFOMap_13_last <= awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_arFIFOMap_14_T_2)	// src/main/scala/amba/axi4/Xbar.scala:143:25
-      arFIFOMap_14_last <= arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_awFIFOMap_14_T_2)	// src/main/scala/amba/axi4/Xbar.scala:147:25
-      awFIFOMap_14_last <= awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_arFIFOMap_15_T_2)	// src/main/scala/amba/axi4/Xbar.scala:143:25
-      arFIFOMap_15_last <= arTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
-    if (_awFIFOMap_15_T_2)	// src/main/scala/amba/axi4/Xbar.scala:147:25
-      awFIFOMap_15_last <= awTag;	// src/main/scala/amba/axi4/Xbar.scala:129:29, src/main/scala/chisel3/util/CircuitMath.scala:28:8
   end // always @(posedge)
   `ifdef ENABLE_INITIAL_REG_	// src/main/scala/amba/axi4/Xbar.scala:60:9
     `ifdef FIRRTL_BEFORE_INITIAL	// src/main/scala/amba/axi4/Xbar.scala:60:9
       `FIRRTL_BEFORE_INITIAL	// src/main/scala/amba/axi4/Xbar.scala:60:9
     `endif // FIRRTL_BEFORE_INITIAL
-    logic [31:0] _RANDOM[0:4];	// src/main/scala/amba/axi4/Xbar.scala:60:9
+    logic [31:0] _RANDOM[0:0];	// src/main/scala/amba/axi4/Xbar.scala:60:9
     initial begin	// src/main/scala/amba/axi4/Xbar.scala:60:9
       `ifdef INIT_RANDOM_PROLOG_	// src/main/scala/amba/axi4/Xbar.scala:60:9
         `INIT_RANDOM_PROLOG_	// src/main/scala/amba/axi4/Xbar.scala:60:9
       `endif // INIT_RANDOM_PROLOG_
       `ifdef RANDOMIZE_REG_INIT	// src/main/scala/amba/axi4/Xbar.scala:60:9
-        for (logic [2:0] i = 3'h0; i < 3'h5; i += 3'h1) begin
-          _RANDOM[i] = `RANDOM;	// src/main/scala/amba/axi4/Xbar.scala:60:9
-        end	// src/main/scala/amba/axi4/Xbar.scala:60:9
-        arFIFOMap_0_count = _RANDOM[3'h0][2:0];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        arFIFOMap_0_last = _RANDOM[3'h0][3];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        awFIFOMap_0_count = _RANDOM[3'h0][6:4];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        awFIFOMap_0_last = _RANDOM[3'h0][7];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        arFIFOMap_1_count = _RANDOM[3'h0][10:8];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        arFIFOMap_1_last = _RANDOM[3'h0][11];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        awFIFOMap_1_count = _RANDOM[3'h0][14:12];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        awFIFOMap_1_last = _RANDOM[3'h0][15];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        arFIFOMap_2_count = _RANDOM[3'h0][18:16];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        arFIFOMap_2_last = _RANDOM[3'h0][19];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        awFIFOMap_2_count = _RANDOM[3'h0][22:20];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        awFIFOMap_2_last = _RANDOM[3'h0][23];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        arFIFOMap_3_count = _RANDOM[3'h0][26:24];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        arFIFOMap_3_last = _RANDOM[3'h0][27];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        awFIFOMap_3_count = _RANDOM[3'h0][30:28];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        awFIFOMap_3_last = _RANDOM[3'h0][31];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        arFIFOMap_4_count = _RANDOM[3'h1][2:0];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        arFIFOMap_4_last = _RANDOM[3'h1][3];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        awFIFOMap_4_count = _RANDOM[3'h1][6:4];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        awFIFOMap_4_last = _RANDOM[3'h1][7];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        arFIFOMap_5_count = _RANDOM[3'h1][10:8];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        arFIFOMap_5_last = _RANDOM[3'h1][11];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        awFIFOMap_5_count = _RANDOM[3'h1][14:12];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        awFIFOMap_5_last = _RANDOM[3'h1][15];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        arFIFOMap_6_count = _RANDOM[3'h1][18:16];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        arFIFOMap_6_last = _RANDOM[3'h1][19];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        awFIFOMap_6_count = _RANDOM[3'h1][22:20];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        awFIFOMap_6_last = _RANDOM[3'h1][23];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        arFIFOMap_7_count = _RANDOM[3'h1][26:24];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        arFIFOMap_7_last = _RANDOM[3'h1][27];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        awFIFOMap_7_count = _RANDOM[3'h1][30:28];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        awFIFOMap_7_last = _RANDOM[3'h1][31];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        arFIFOMap_8_count = _RANDOM[3'h2][2:0];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        arFIFOMap_8_last = _RANDOM[3'h2][3];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        awFIFOMap_8_count = _RANDOM[3'h2][6:4];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        awFIFOMap_8_last = _RANDOM[3'h2][7];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        arFIFOMap_9_count = _RANDOM[3'h2][10:8];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        arFIFOMap_9_last = _RANDOM[3'h2][11];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        awFIFOMap_9_count = _RANDOM[3'h2][14:12];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        awFIFOMap_9_last = _RANDOM[3'h2][15];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        arFIFOMap_10_count = _RANDOM[3'h2][18:16];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        arFIFOMap_10_last = _RANDOM[3'h2][19];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        awFIFOMap_10_count = _RANDOM[3'h2][22:20];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        awFIFOMap_10_last = _RANDOM[3'h2][23];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        arFIFOMap_11_count = _RANDOM[3'h2][26:24];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        arFIFOMap_11_last = _RANDOM[3'h2][27];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        awFIFOMap_11_count = _RANDOM[3'h2][30:28];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        awFIFOMap_11_last = _RANDOM[3'h2][31];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        arFIFOMap_12_count = _RANDOM[3'h3][2:0];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        arFIFOMap_12_last = _RANDOM[3'h3][3];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        awFIFOMap_12_count = _RANDOM[3'h3][6:4];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        awFIFOMap_12_last = _RANDOM[3'h3][7];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        arFIFOMap_13_count = _RANDOM[3'h3][10:8];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        arFIFOMap_13_last = _RANDOM[3'h3][11];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        awFIFOMap_13_count = _RANDOM[3'h3][14:12];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        awFIFOMap_13_last = _RANDOM[3'h3][15];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        arFIFOMap_14_count = _RANDOM[3'h3][18:16];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        arFIFOMap_14_last = _RANDOM[3'h3][19];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        awFIFOMap_14_count = _RANDOM[3'h3][22:20];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        awFIFOMap_14_last = _RANDOM[3'h3][23];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        arFIFOMap_15_count = _RANDOM[3'h3][26:24];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        arFIFOMap_15_last = _RANDOM[3'h3][27];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        awFIFOMap_15_count = _RANDOM[3'h3][30:28];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34
-        awFIFOMap_15_last = _RANDOM[3'h3][31];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :128:34, :129:29
-        latched = _RANDOM[3'h4][0];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :161:30
-        awOut_0_io_enq_bits_idle = _RANDOM[3'h4][1];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :161:30, :272:23
-        awOut_0_io_enq_bits_state_0 = _RANDOM[3'h4][2];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :161:30, :291:24
-        idle = _RANDOM[3'h4][3];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :161:30, :272:23
-        state_0 = _RANDOM[3'h4][4];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :161:30, :291:24
-        awOut_1_io_enq_bits_idle = _RANDOM[3'h4][5];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :161:30, :272:23
-        awOut_1_io_enq_bits_state_0 = _RANDOM[3'h4][6];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :161:30, :291:24
-        idle_1 = _RANDOM[3'h4][7];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :161:30, :272:23
-        state_1_0 = _RANDOM[3'h4][8];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :161:30, :291:24
-        idle_2 = _RANDOM[3'h4][9];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :161:30, :272:23
-        readys_mask = _RANDOM[3'h4][11:10];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :161:30, src/main/scala/tilelink/Arbiter.scala:23:23
-        state_2_0 = _RANDOM[3'h4][12];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :161:30, :291:24
-        state_2_1 = _RANDOM[3'h4][13];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :161:30, :291:24
-        idle_3 = _RANDOM[3'h4][14];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :161:30, :272:23
-        readys_mask_1 = _RANDOM[3'h4][16:15];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :161:30, src/main/scala/tilelink/Arbiter.scala:23:23
-        state_3_0 = _RANDOM[3'h4][17];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :161:30, :291:24
-        state_3_1 = _RANDOM[3'h4][18];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :161:30, :291:24
+        _RANDOM[/*Zero width*/ 1'b0] = `RANDOM;	// src/main/scala/amba/axi4/Xbar.scala:60:9
+        awOut_0_io_enq_bits_idle = _RANDOM[/*Zero width*/ 1'b0][0];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :272:23
+        awOut_0_io_enq_bits_state_0 = _RANDOM[/*Zero width*/ 1'b0][1];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :272:23, :291:24
+        idle = _RANDOM[/*Zero width*/ 1'b0][2];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :272:23
+        state_0 = _RANDOM[/*Zero width*/ 1'b0][3];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :272:23, :291:24
+        idle_1 = _RANDOM[/*Zero width*/ 1'b0][4];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :272:23
+        state_1_0 = _RANDOM[/*Zero width*/ 1'b0][5];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :272:23, :291:24
+        idle_2 = _RANDOM[/*Zero width*/ 1'b0][6];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :272:23
+        state_2_0 = _RANDOM[/*Zero width*/ 1'b0][7];	// src/main/scala/amba/axi4/Xbar.scala:60:9, :272:23, :291:24
       `endif // RANDOMIZE_REG_INIT
     end // initial
     `ifdef FIRRTL_AFTER_INITIAL	// src/main/scala/amba/axi4/Xbar.scala:60:9
       `FIRRTL_AFTER_INITIAL	// src/main/scala/amba/axi4/Xbar.scala:60:9
     `endif // FIRRTL_AFTER_INITIAL
   `endif // ENABLE_INITIAL_REG_
-  Queue2_UInt2 awIn_0 (	// src/main/scala/amba/axi4/Xbar.scala:74:47
-    .clock        (clock),
-    .reset        (reset),
-    .io_enq_valid (_awIn_0_io_enq_valid_T_1),	// src/main/scala/amba/axi4/Xbar.scala:164:51
-    .io_enq_bits  ({requestAWIO_0_1, requestAWIO_0_0}),	// src/main/scala/amba/axi4/Xbar.scala:78:48, :83:75
-    .io_deq_ready (anonIn_w_valid & anonIn_w_bits_last & in_0_w_ready),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:90:18, :171:74
-    .io_enq_ready (_awIn_0_io_enq_ready),
-    .io_deq_valid (_awIn_0_io_deq_valid),
-    .io_deq_bits  (_awIn_0_io_deq_bits)
-  );
+  Queue2_UInt1 awIn_0 ();	// src/main/scala/amba/axi4/Xbar.scala:74:47
   Queue2_UInt1 awOut_0 ();	// src/main/scala/amba/axi4/Xbar.scala:75:47
-  Queue2_UInt1 awOut_1 ();	// src/main/scala/amba/axi4/Xbar.scala:75:47
   assign auto_anon_in_aw_ready = anonIn_aw_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:60:9
   assign auto_anon_in_w_ready = anonIn_w_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:60:9
   assign auto_anon_in_b_valid = anonIn_b_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:60:9
@@ -148713,58 +147072,32 @@ module AXI4Xbar(	// src/main/scala/amba/axi4/Xbar.scala:60:9
   assign auto_anon_in_r_bits_data = anonIn_r_bits_data;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:60:9
   assign auto_anon_in_r_bits_resp = anonIn_r_bits_resp;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:60:9
   assign auto_anon_in_r_bits_last = anonIn_r_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_1_aw_valid = x1_anonOut_aw_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_1_aw_bits_id = x1_anonOut_aw_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_1_aw_bits_addr = x1_anonOut_aw_bits_addr;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_1_aw_bits_len = x1_anonOut_aw_bits_len;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_1_aw_bits_size = x1_anonOut_aw_bits_size;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_1_aw_bits_burst = x1_anonOut_aw_bits_burst;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_1_aw_bits_lock = x1_anonOut_aw_bits_lock;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_1_aw_bits_cache = x1_anonOut_aw_bits_cache;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_1_aw_bits_prot = x1_anonOut_aw_bits_prot;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_1_aw_bits_qos = x1_anonOut_aw_bits_qos;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_1_w_valid = x1_anonOut_w_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_1_w_bits_data = x1_anonOut_w_bits_data;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_1_w_bits_strb = x1_anonOut_w_bits_strb;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_1_w_bits_last = x1_anonOut_w_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_1_b_ready = x1_anonOut_b_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_1_ar_valid = x1_anonOut_ar_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_1_ar_bits_id = x1_anonOut_ar_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_1_ar_bits_addr = x1_anonOut_ar_bits_addr;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_1_ar_bits_len = x1_anonOut_ar_bits_len;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_1_ar_bits_size = x1_anonOut_ar_bits_size;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_1_ar_bits_burst = x1_anonOut_ar_bits_burst;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_1_ar_bits_lock = x1_anonOut_ar_bits_lock;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_1_ar_bits_cache = x1_anonOut_ar_bits_cache;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_1_ar_bits_prot = x1_anonOut_ar_bits_prot;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_1_ar_bits_qos = x1_anonOut_ar_bits_qos;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_1_r_ready = x1_anonOut_r_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_0_aw_valid = anonOut_aw_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_0_aw_bits_id = anonOut_aw_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_0_aw_bits_addr = anonOut_aw_bits_addr;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_0_aw_bits_len = anonOut_aw_bits_len;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_0_aw_bits_size = anonOut_aw_bits_size;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_0_aw_bits_burst = anonOut_aw_bits_burst;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_0_aw_bits_lock = anonOut_aw_bits_lock;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_0_aw_bits_cache = anonOut_aw_bits_cache;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_0_aw_bits_prot = anonOut_aw_bits_prot;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_0_aw_bits_qos = anonOut_aw_bits_qos;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_0_w_valid = anonOut_w_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_0_w_bits_data = anonOut_w_bits_data;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_0_w_bits_strb = anonOut_w_bits_strb;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_0_w_bits_last = anonOut_w_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_0_b_ready = anonOut_b_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_0_ar_valid = anonOut_ar_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_0_ar_bits_id = anonOut_ar_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_0_ar_bits_addr = anonOut_ar_bits_addr;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_0_ar_bits_len = anonOut_ar_bits_len;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_0_ar_bits_size = anonOut_ar_bits_size;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_0_ar_bits_burst = anonOut_ar_bits_burst;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_0_ar_bits_lock = anonOut_ar_bits_lock;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_0_ar_bits_cache = anonOut_ar_bits_cache;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_0_ar_bits_prot = anonOut_ar_bits_prot;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_0_ar_bits_qos = anonOut_ar_bits_qos;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
-  assign auto_anon_out_0_r_ready = anonOut_r_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
+  assign auto_anon_out_aw_valid = anonOut_aw_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
+  assign auto_anon_out_aw_bits_id = anonOut_aw_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
+  assign auto_anon_out_aw_bits_addr = anonOut_aw_bits_addr;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
+  assign auto_anon_out_aw_bits_len = anonOut_aw_bits_len;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
+  assign auto_anon_out_aw_bits_size = anonOut_aw_bits_size;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
+  assign auto_anon_out_aw_bits_burst = anonOut_aw_bits_burst;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
+  assign auto_anon_out_aw_bits_lock = anonOut_aw_bits_lock;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
+  assign auto_anon_out_aw_bits_cache = anonOut_aw_bits_cache;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
+  assign auto_anon_out_aw_bits_prot = anonOut_aw_bits_prot;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
+  assign auto_anon_out_aw_bits_qos = anonOut_aw_bits_qos;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
+  assign auto_anon_out_w_valid = anonOut_w_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
+  assign auto_anon_out_w_bits_data = anonOut_w_bits_data;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
+  assign auto_anon_out_w_bits_strb = anonOut_w_bits_strb;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
+  assign auto_anon_out_w_bits_last = anonOut_w_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
+  assign auto_anon_out_b_ready = anonOut_b_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
+  assign auto_anon_out_ar_valid = anonOut_ar_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
+  assign auto_anon_out_ar_bits_id = anonOut_ar_bits_id;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
+  assign auto_anon_out_ar_bits_addr = anonOut_ar_bits_addr;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
+  assign auto_anon_out_ar_bits_len = anonOut_ar_bits_len;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
+  assign auto_anon_out_ar_bits_size = anonOut_ar_bits_size;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
+  assign auto_anon_out_ar_bits_burst = anonOut_ar_bits_burst;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
+  assign auto_anon_out_ar_bits_lock = anonOut_ar_bits_lock;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
+  assign auto_anon_out_ar_bits_cache = anonOut_ar_bits_cache;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
+  assign auto_anon_out_ar_bits_prot = anonOut_ar_bits_prot;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
+  assign auto_anon_out_ar_bits_qos = anonOut_ar_bits_qos;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
+  assign auto_anon_out_r_ready = anonOut_r_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Xbar.scala:60:9
 endmodule
 
 // VCS coverage exclude_file
@@ -150296,84 +148629,6 @@ module SimAXIMem(	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/L
   wire        nodeOut_b_valid;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
   wire        nodeOut_w_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
   wire        nodeOut_aw_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-  wire        _axi4frag_1_auto_in_aw_ready;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire        _axi4frag_1_auto_in_w_ready;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire        _axi4frag_1_auto_in_b_valid;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire [3:0]  _axi4frag_1_auto_in_b_bits_id;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire [1:0]  _axi4frag_1_auto_in_b_bits_resp;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire        _axi4frag_1_auto_in_ar_ready;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire        _axi4frag_1_auto_in_r_valid;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire [3:0]  _axi4frag_1_auto_in_r_bits_id;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire [63:0] _axi4frag_1_auto_in_r_bits_data;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire [1:0]  _axi4frag_1_auto_in_r_bits_resp;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire        _axi4frag_1_auto_in_r_bits_last;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire        _axi4frag_1_auto_out_aw_valid;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire [3:0]  _axi4frag_1_auto_out_aw_bits_id;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire [31:0] _axi4frag_1_auto_out_aw_bits_addr;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire [2:0]  _axi4frag_1_auto_out_aw_bits_size;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire [1:0]  _axi4frag_1_auto_out_aw_bits_burst;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire        _axi4frag_1_auto_out_aw_bits_lock;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire [3:0]  _axi4frag_1_auto_out_aw_bits_cache;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire [2:0]  _axi4frag_1_auto_out_aw_bits_prot;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire [3:0]  _axi4frag_1_auto_out_aw_bits_qos;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire        _axi4frag_1_auto_out_aw_bits_echo_real_last;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire        _axi4frag_1_auto_out_w_valid;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire [63:0] _axi4frag_1_auto_out_w_bits_data;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire [7:0]  _axi4frag_1_auto_out_w_bits_strb;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire        _axi4frag_1_auto_out_w_bits_last;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire        _axi4frag_1_auto_out_b_ready;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire        _axi4frag_1_auto_out_ar_valid;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire [3:0]  _axi4frag_1_auto_out_ar_bits_id;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire [31:0] _axi4frag_1_auto_out_ar_bits_addr;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire [2:0]  _axi4frag_1_auto_out_ar_bits_size;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire [1:0]  _axi4frag_1_auto_out_ar_bits_burst;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire        _axi4frag_1_auto_out_ar_bits_lock;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire [3:0]  _axi4frag_1_auto_out_ar_bits_cache;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire [2:0]  _axi4frag_1_auto_out_ar_bits_prot;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire [3:0]  _axi4frag_1_auto_out_ar_bits_qos;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire        _axi4frag_1_auto_out_ar_bits_echo_real_last;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire        _axi4frag_1_auto_out_r_ready;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-  wire        _axi4buf_1_auto_in_aw_ready;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire        _axi4buf_1_auto_in_w_ready;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire        _axi4buf_1_auto_in_b_valid;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire [3:0]  _axi4buf_1_auto_in_b_bits_id;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire [1:0]  _axi4buf_1_auto_in_b_bits_resp;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire        _axi4buf_1_auto_in_b_bits_echo_real_last;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire        _axi4buf_1_auto_in_ar_ready;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire        _axi4buf_1_auto_in_r_valid;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire [3:0]  _axi4buf_1_auto_in_r_bits_id;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire [63:0] _axi4buf_1_auto_in_r_bits_data;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire [1:0]  _axi4buf_1_auto_in_r_bits_resp;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire        _axi4buf_1_auto_in_r_bits_echo_real_last;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire        _axi4buf_1_auto_in_r_bits_last;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire        _axi4buf_1_auto_out_aw_valid;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire [3:0]  _axi4buf_1_auto_out_aw_bits_id;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire [31:0] _axi4buf_1_auto_out_aw_bits_addr;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire [7:0]  _axi4buf_1_auto_out_aw_bits_len;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire [2:0]  _axi4buf_1_auto_out_aw_bits_size;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire [1:0]  _axi4buf_1_auto_out_aw_bits_burst;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire        _axi4buf_1_auto_out_aw_bits_lock;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire [3:0]  _axi4buf_1_auto_out_aw_bits_cache;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire [2:0]  _axi4buf_1_auto_out_aw_bits_prot;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire [3:0]  _axi4buf_1_auto_out_aw_bits_qos;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire        _axi4buf_1_auto_out_aw_bits_echo_real_last;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire        _axi4buf_1_auto_out_w_valid;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire [63:0] _axi4buf_1_auto_out_w_bits_data;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire [7:0]  _axi4buf_1_auto_out_w_bits_strb;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire        _axi4buf_1_auto_out_w_bits_last;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire        _axi4buf_1_auto_out_b_ready;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire        _axi4buf_1_auto_out_ar_valid;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire [3:0]  _axi4buf_1_auto_out_ar_bits_id;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire [31:0] _axi4buf_1_auto_out_ar_bits_addr;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire [7:0]  _axi4buf_1_auto_out_ar_bits_len;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire [2:0]  _axi4buf_1_auto_out_ar_bits_size;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire [1:0]  _axi4buf_1_auto_out_ar_bits_burst;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire        _axi4buf_1_auto_out_ar_bits_lock;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire [3:0]  _axi4buf_1_auto_out_ar_bits_cache;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire [2:0]  _axi4buf_1_auto_out_ar_bits_prot;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire [3:0]  _axi4buf_1_auto_out_ar_bits_qos;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire        _axi4buf_1_auto_out_ar_bits_echo_real_last;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire        _axi4buf_1_auto_out_r_ready;	// src/main/scala/amba/axi4/Buffer.scala:68:29
   wire        _axi4frag_auto_in_aw_ready;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
   wire        _axi4frag_auto_in_w_ready;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
   wire        _axi4frag_auto_in_b_valid;	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
@@ -150452,70 +148707,32 @@ module SimAXIMem(	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/L
   wire [3:0]  _axi4buf_auto_out_ar_bits_qos;	// src/main/scala/amba/axi4/Buffer.scala:68:29
   wire        _axi4buf_auto_out_ar_bits_echo_real_last;	// src/main/scala/amba/axi4/Buffer.scala:68:29
   wire        _axi4buf_auto_out_r_ready;	// src/main/scala/amba/axi4/Buffer.scala:68:29
-  wire        _axi4xbar_auto_anon_out_1_aw_valid;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [3:0]  _axi4xbar_auto_anon_out_1_aw_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [31:0] _axi4xbar_auto_anon_out_1_aw_bits_addr;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [7:0]  _axi4xbar_auto_anon_out_1_aw_bits_len;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [2:0]  _axi4xbar_auto_anon_out_1_aw_bits_size;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [1:0]  _axi4xbar_auto_anon_out_1_aw_bits_burst;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire        _axi4xbar_auto_anon_out_1_aw_bits_lock;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [3:0]  _axi4xbar_auto_anon_out_1_aw_bits_cache;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [2:0]  _axi4xbar_auto_anon_out_1_aw_bits_prot;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [3:0]  _axi4xbar_auto_anon_out_1_aw_bits_qos;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire        _axi4xbar_auto_anon_out_1_w_valid;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [63:0] _axi4xbar_auto_anon_out_1_w_bits_data;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [7:0]  _axi4xbar_auto_anon_out_1_w_bits_strb;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire        _axi4xbar_auto_anon_out_1_w_bits_last;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire        _axi4xbar_auto_anon_out_1_b_ready;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire        _axi4xbar_auto_anon_out_1_ar_valid;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [3:0]  _axi4xbar_auto_anon_out_1_ar_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [31:0] _axi4xbar_auto_anon_out_1_ar_bits_addr;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [7:0]  _axi4xbar_auto_anon_out_1_ar_bits_len;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [2:0]  _axi4xbar_auto_anon_out_1_ar_bits_size;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [1:0]  _axi4xbar_auto_anon_out_1_ar_bits_burst;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire        _axi4xbar_auto_anon_out_1_ar_bits_lock;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [3:0]  _axi4xbar_auto_anon_out_1_ar_bits_cache;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [2:0]  _axi4xbar_auto_anon_out_1_ar_bits_prot;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [3:0]  _axi4xbar_auto_anon_out_1_ar_bits_qos;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire        _axi4xbar_auto_anon_out_1_r_ready;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire        _axi4xbar_auto_anon_out_0_aw_valid;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [3:0]  _axi4xbar_auto_anon_out_0_aw_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [31:0] _axi4xbar_auto_anon_out_0_aw_bits_addr;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [7:0]  _axi4xbar_auto_anon_out_0_aw_bits_len;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [2:0]  _axi4xbar_auto_anon_out_0_aw_bits_size;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [1:0]  _axi4xbar_auto_anon_out_0_aw_bits_burst;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire        _axi4xbar_auto_anon_out_0_aw_bits_lock;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [3:0]  _axi4xbar_auto_anon_out_0_aw_bits_cache;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [2:0]  _axi4xbar_auto_anon_out_0_aw_bits_prot;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [3:0]  _axi4xbar_auto_anon_out_0_aw_bits_qos;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire        _axi4xbar_auto_anon_out_0_w_valid;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [63:0] _axi4xbar_auto_anon_out_0_w_bits_data;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [7:0]  _axi4xbar_auto_anon_out_0_w_bits_strb;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire        _axi4xbar_auto_anon_out_0_w_bits_last;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire        _axi4xbar_auto_anon_out_0_b_ready;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire        _axi4xbar_auto_anon_out_0_ar_valid;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [3:0]  _axi4xbar_auto_anon_out_0_ar_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [31:0] _axi4xbar_auto_anon_out_0_ar_bits_addr;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [7:0]  _axi4xbar_auto_anon_out_0_ar_bits_len;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [2:0]  _axi4xbar_auto_anon_out_0_ar_bits_size;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [1:0]  _axi4xbar_auto_anon_out_0_ar_bits_burst;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire        _axi4xbar_auto_anon_out_0_ar_bits_lock;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [3:0]  _axi4xbar_auto_anon_out_0_ar_bits_cache;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [2:0]  _axi4xbar_auto_anon_out_0_ar_bits_prot;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire [3:0]  _axi4xbar_auto_anon_out_0_ar_bits_qos;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire        _axi4xbar_auto_anon_out_0_r_ready;	// src/main/scala/amba/axi4/Xbar.scala:241:30
-  wire        _srams_1_auto_in_aw_ready;	// src/main/scala/system/SimAXIMem.scala:22:15
-  wire        _srams_1_auto_in_w_ready;	// src/main/scala/system/SimAXIMem.scala:22:15
-  wire        _srams_1_auto_in_b_valid;	// src/main/scala/system/SimAXIMem.scala:22:15
-  wire [3:0]  _srams_1_auto_in_b_bits_id;	// src/main/scala/system/SimAXIMem.scala:22:15
-  wire [1:0]  _srams_1_auto_in_b_bits_resp;	// src/main/scala/system/SimAXIMem.scala:22:15
-  wire        _srams_1_auto_in_b_bits_echo_real_last;	// src/main/scala/system/SimAXIMem.scala:22:15
-  wire        _srams_1_auto_in_ar_ready;	// src/main/scala/system/SimAXIMem.scala:22:15
-  wire        _srams_1_auto_in_r_valid;	// src/main/scala/system/SimAXIMem.scala:22:15
-  wire [3:0]  _srams_1_auto_in_r_bits_id;	// src/main/scala/system/SimAXIMem.scala:22:15
-  wire [63:0] _srams_1_auto_in_r_bits_data;	// src/main/scala/system/SimAXIMem.scala:22:15
-  wire [1:0]  _srams_1_auto_in_r_bits_resp;	// src/main/scala/system/SimAXIMem.scala:22:15
-  wire        _srams_1_auto_in_r_bits_echo_real_last;	// src/main/scala/system/SimAXIMem.scala:22:15
+  wire        _axi4xbar_auto_anon_out_aw_valid;	// src/main/scala/amba/axi4/Xbar.scala:241:30
+  wire [3:0]  _axi4xbar_auto_anon_out_aw_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:241:30
+  wire [31:0] _axi4xbar_auto_anon_out_aw_bits_addr;	// src/main/scala/amba/axi4/Xbar.scala:241:30
+  wire [7:0]  _axi4xbar_auto_anon_out_aw_bits_len;	// src/main/scala/amba/axi4/Xbar.scala:241:30
+  wire [2:0]  _axi4xbar_auto_anon_out_aw_bits_size;	// src/main/scala/amba/axi4/Xbar.scala:241:30
+  wire [1:0]  _axi4xbar_auto_anon_out_aw_bits_burst;	// src/main/scala/amba/axi4/Xbar.scala:241:30
+  wire        _axi4xbar_auto_anon_out_aw_bits_lock;	// src/main/scala/amba/axi4/Xbar.scala:241:30
+  wire [3:0]  _axi4xbar_auto_anon_out_aw_bits_cache;	// src/main/scala/amba/axi4/Xbar.scala:241:30
+  wire [2:0]  _axi4xbar_auto_anon_out_aw_bits_prot;	// src/main/scala/amba/axi4/Xbar.scala:241:30
+  wire [3:0]  _axi4xbar_auto_anon_out_aw_bits_qos;	// src/main/scala/amba/axi4/Xbar.scala:241:30
+  wire        _axi4xbar_auto_anon_out_w_valid;	// src/main/scala/amba/axi4/Xbar.scala:241:30
+  wire [63:0] _axi4xbar_auto_anon_out_w_bits_data;	// src/main/scala/amba/axi4/Xbar.scala:241:30
+  wire [7:0]  _axi4xbar_auto_anon_out_w_bits_strb;	// src/main/scala/amba/axi4/Xbar.scala:241:30
+  wire        _axi4xbar_auto_anon_out_w_bits_last;	// src/main/scala/amba/axi4/Xbar.scala:241:30
+  wire        _axi4xbar_auto_anon_out_b_ready;	// src/main/scala/amba/axi4/Xbar.scala:241:30
+  wire        _axi4xbar_auto_anon_out_ar_valid;	// src/main/scala/amba/axi4/Xbar.scala:241:30
+  wire [3:0]  _axi4xbar_auto_anon_out_ar_bits_id;	// src/main/scala/amba/axi4/Xbar.scala:241:30
+  wire [31:0] _axi4xbar_auto_anon_out_ar_bits_addr;	// src/main/scala/amba/axi4/Xbar.scala:241:30
+  wire [7:0]  _axi4xbar_auto_anon_out_ar_bits_len;	// src/main/scala/amba/axi4/Xbar.scala:241:30
+  wire [2:0]  _axi4xbar_auto_anon_out_ar_bits_size;	// src/main/scala/amba/axi4/Xbar.scala:241:30
+  wire [1:0]  _axi4xbar_auto_anon_out_ar_bits_burst;	// src/main/scala/amba/axi4/Xbar.scala:241:30
+  wire        _axi4xbar_auto_anon_out_ar_bits_lock;	// src/main/scala/amba/axi4/Xbar.scala:241:30
+  wire [3:0]  _axi4xbar_auto_anon_out_ar_bits_cache;	// src/main/scala/amba/axi4/Xbar.scala:241:30
+  wire [2:0]  _axi4xbar_auto_anon_out_ar_bits_prot;	// src/main/scala/amba/axi4/Xbar.scala:241:30
+  wire [3:0]  _axi4xbar_auto_anon_out_ar_bits_qos;	// src/main/scala/amba/axi4/Xbar.scala:241:30
+  wire        _axi4xbar_auto_anon_out_r_ready;	// src/main/scala/amba/axi4/Xbar.scala:241:30
   wire        _srams_auto_in_aw_ready;	// src/main/scala/system/SimAXIMem.scala:22:15
   wire        _srams_auto_in_w_ready;	// src/main/scala/system/SimAXIMem.scala:22:15
   wire        _srams_auto_in_b_valid;	// src/main/scala/system/SimAXIMem.scala:22:15
@@ -150598,164 +148815,83 @@ module SimAXIMem(	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/L
     .auto_in_r_bits_resp            (_srams_auto_in_r_bits_resp),
     .auto_in_r_bits_echo_real_last  (_srams_auto_in_r_bits_echo_real_last)
   );
-  AXI4RAM_1 srams_1 (	// src/main/scala/system/SimAXIMem.scala:22:15
-    .clock                          (clock),
-    .reset                          (reset),
-    .auto_in_aw_valid               (_axi4buf_1_auto_out_aw_valid),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_aw_bits_id             (_axi4buf_1_auto_out_aw_bits_id),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_aw_bits_addr           (_axi4buf_1_auto_out_aw_bits_addr),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_aw_bits_len            (_axi4buf_1_auto_out_aw_bits_len),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_aw_bits_size           (_axi4buf_1_auto_out_aw_bits_size),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_aw_bits_burst          (_axi4buf_1_auto_out_aw_bits_burst),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_aw_bits_lock           (_axi4buf_1_auto_out_aw_bits_lock),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_aw_bits_cache          (_axi4buf_1_auto_out_aw_bits_cache),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_aw_bits_prot           (_axi4buf_1_auto_out_aw_bits_prot),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_aw_bits_qos            (_axi4buf_1_auto_out_aw_bits_qos),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_aw_bits_echo_real_last (_axi4buf_1_auto_out_aw_bits_echo_real_last),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_w_valid                (_axi4buf_1_auto_out_w_valid),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_w_bits_data            (_axi4buf_1_auto_out_w_bits_data),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_w_bits_strb            (_axi4buf_1_auto_out_w_bits_strb),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_w_bits_last            (_axi4buf_1_auto_out_w_bits_last),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_b_ready                (_axi4buf_1_auto_out_b_ready),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_ar_valid               (_axi4buf_1_auto_out_ar_valid),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_ar_bits_id             (_axi4buf_1_auto_out_ar_bits_id),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_ar_bits_addr           (_axi4buf_1_auto_out_ar_bits_addr),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_ar_bits_len            (_axi4buf_1_auto_out_ar_bits_len),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_ar_bits_size           (_axi4buf_1_auto_out_ar_bits_size),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_ar_bits_burst          (_axi4buf_1_auto_out_ar_bits_burst),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_ar_bits_lock           (_axi4buf_1_auto_out_ar_bits_lock),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_ar_bits_cache          (_axi4buf_1_auto_out_ar_bits_cache),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_ar_bits_prot           (_axi4buf_1_auto_out_ar_bits_prot),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_ar_bits_qos            (_axi4buf_1_auto_out_ar_bits_qos),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_ar_bits_echo_real_last (_axi4buf_1_auto_out_ar_bits_echo_real_last),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_r_ready                (_axi4buf_1_auto_out_r_ready),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_aw_ready               (_srams_1_auto_in_aw_ready),
-    .auto_in_w_ready                (_srams_1_auto_in_w_ready),
-    .auto_in_b_valid                (_srams_1_auto_in_b_valid),
-    .auto_in_b_bits_id              (_srams_1_auto_in_b_bits_id),
-    .auto_in_b_bits_resp            (_srams_1_auto_in_b_bits_resp),
-    .auto_in_b_bits_echo_real_last  (_srams_1_auto_in_b_bits_echo_real_last),
-    .auto_in_ar_ready               (_srams_1_auto_in_ar_ready),
-    .auto_in_r_valid                (_srams_1_auto_in_r_valid),
-    .auto_in_r_bits_id              (_srams_1_auto_in_r_bits_id),
-    .auto_in_r_bits_data            (_srams_1_auto_in_r_bits_data),
-    .auto_in_r_bits_resp            (_srams_1_auto_in_r_bits_resp),
-    .auto_in_r_bits_echo_real_last  (_srams_1_auto_in_r_bits_echo_real_last)
-  );
   AXI4Xbar axi4xbar (	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .clock                         (clock),
-    .reset                         (reset),
-    .auto_anon_in_aw_valid         (nodeOut_aw_valid),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-    .auto_anon_in_aw_bits_id       (nodeOut_aw_bits_id),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-    .auto_anon_in_aw_bits_addr     (nodeOut_aw_bits_addr),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-    .auto_anon_in_aw_bits_len      (nodeOut_aw_bits_len),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-    .auto_anon_in_aw_bits_size     (nodeOut_aw_bits_size),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-    .auto_anon_in_aw_bits_burst    (nodeOut_aw_bits_burst),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-    .auto_anon_in_aw_bits_lock     (nodeOut_aw_bits_lock),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-    .auto_anon_in_aw_bits_cache    (nodeOut_aw_bits_cache),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-    .auto_anon_in_aw_bits_prot     (nodeOut_aw_bits_prot),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-    .auto_anon_in_aw_bits_qos      (nodeOut_aw_bits_qos),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-    .auto_anon_in_w_valid          (nodeOut_w_valid),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-    .auto_anon_in_w_bits_data      (nodeOut_w_bits_data),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-    .auto_anon_in_w_bits_strb      (nodeOut_w_bits_strb),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-    .auto_anon_in_w_bits_last      (nodeOut_w_bits_last),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-    .auto_anon_in_b_ready          (nodeOut_b_ready),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-    .auto_anon_in_ar_valid         (nodeOut_ar_valid),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-    .auto_anon_in_ar_bits_id       (nodeOut_ar_bits_id),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-    .auto_anon_in_ar_bits_addr     (nodeOut_ar_bits_addr),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-    .auto_anon_in_ar_bits_len      (nodeOut_ar_bits_len),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-    .auto_anon_in_ar_bits_size     (nodeOut_ar_bits_size),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-    .auto_anon_in_ar_bits_burst    (nodeOut_ar_bits_burst),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-    .auto_anon_in_ar_bits_lock     (nodeOut_ar_bits_lock),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-    .auto_anon_in_ar_bits_cache    (nodeOut_ar_bits_cache),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-    .auto_anon_in_ar_bits_prot     (nodeOut_ar_bits_prot),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-    .auto_anon_in_ar_bits_qos      (nodeOut_ar_bits_qos),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-    .auto_anon_in_r_ready          (nodeOut_r_ready),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-    .auto_anon_out_1_aw_ready      (_axi4frag_1_auto_in_aw_ready),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_anon_out_1_w_ready       (_axi4frag_1_auto_in_w_ready),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_anon_out_1_b_valid       (_axi4frag_1_auto_in_b_valid),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_anon_out_1_b_bits_id     (_axi4frag_1_auto_in_b_bits_id),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_anon_out_1_b_bits_resp   (_axi4frag_1_auto_in_b_bits_resp),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_anon_out_1_ar_ready      (_axi4frag_1_auto_in_ar_ready),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_anon_out_1_r_valid       (_axi4frag_1_auto_in_r_valid),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_anon_out_1_r_bits_id     (_axi4frag_1_auto_in_r_bits_id),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_anon_out_1_r_bits_data   (_axi4frag_1_auto_in_r_bits_data),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_anon_out_1_r_bits_resp   (_axi4frag_1_auto_in_r_bits_resp),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_anon_out_1_r_bits_last   (_axi4frag_1_auto_in_r_bits_last),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_anon_out_0_aw_ready      (_axi4frag_auto_in_aw_ready),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_anon_out_0_w_ready       (_axi4frag_auto_in_w_ready),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_anon_out_0_b_valid       (_axi4frag_auto_in_b_valid),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_anon_out_0_b_bits_id     (_axi4frag_auto_in_b_bits_id),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_anon_out_0_b_bits_resp   (_axi4frag_auto_in_b_bits_resp),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_anon_out_0_ar_ready      (_axi4frag_auto_in_ar_ready),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_anon_out_0_r_valid       (_axi4frag_auto_in_r_valid),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_anon_out_0_r_bits_id     (_axi4frag_auto_in_r_bits_id),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_anon_out_0_r_bits_data   (_axi4frag_auto_in_r_bits_data),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_anon_out_0_r_bits_resp   (_axi4frag_auto_in_r_bits_resp),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_anon_out_0_r_bits_last   (_axi4frag_auto_in_r_bits_last),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_anon_in_aw_ready         (nodeOut_aw_ready),
-    .auto_anon_in_w_ready          (nodeOut_w_ready),
-    .auto_anon_in_b_valid          (nodeOut_b_valid),
-    .auto_anon_in_b_bits_id        (nodeOut_b_bits_id),
-    .auto_anon_in_b_bits_resp      (nodeOut_b_bits_resp),
-    .auto_anon_in_ar_ready         (nodeOut_ar_ready),
-    .auto_anon_in_r_valid          (nodeOut_r_valid),
-    .auto_anon_in_r_bits_id        (nodeOut_r_bits_id),
-    .auto_anon_in_r_bits_data      (nodeOut_r_bits_data),
-    .auto_anon_in_r_bits_resp      (nodeOut_r_bits_resp),
-    .auto_anon_in_r_bits_last      (nodeOut_r_bits_last),
-    .auto_anon_out_1_aw_valid      (_axi4xbar_auto_anon_out_1_aw_valid),
-    .auto_anon_out_1_aw_bits_id    (_axi4xbar_auto_anon_out_1_aw_bits_id),
-    .auto_anon_out_1_aw_bits_addr  (_axi4xbar_auto_anon_out_1_aw_bits_addr),
-    .auto_anon_out_1_aw_bits_len   (_axi4xbar_auto_anon_out_1_aw_bits_len),
-    .auto_anon_out_1_aw_bits_size  (_axi4xbar_auto_anon_out_1_aw_bits_size),
-    .auto_anon_out_1_aw_bits_burst (_axi4xbar_auto_anon_out_1_aw_bits_burst),
-    .auto_anon_out_1_aw_bits_lock  (_axi4xbar_auto_anon_out_1_aw_bits_lock),
-    .auto_anon_out_1_aw_bits_cache (_axi4xbar_auto_anon_out_1_aw_bits_cache),
-    .auto_anon_out_1_aw_bits_prot  (_axi4xbar_auto_anon_out_1_aw_bits_prot),
-    .auto_anon_out_1_aw_bits_qos   (_axi4xbar_auto_anon_out_1_aw_bits_qos),
-    .auto_anon_out_1_w_valid       (_axi4xbar_auto_anon_out_1_w_valid),
-    .auto_anon_out_1_w_bits_data   (_axi4xbar_auto_anon_out_1_w_bits_data),
-    .auto_anon_out_1_w_bits_strb   (_axi4xbar_auto_anon_out_1_w_bits_strb),
-    .auto_anon_out_1_w_bits_last   (_axi4xbar_auto_anon_out_1_w_bits_last),
-    .auto_anon_out_1_b_ready       (_axi4xbar_auto_anon_out_1_b_ready),
-    .auto_anon_out_1_ar_valid      (_axi4xbar_auto_anon_out_1_ar_valid),
-    .auto_anon_out_1_ar_bits_id    (_axi4xbar_auto_anon_out_1_ar_bits_id),
-    .auto_anon_out_1_ar_bits_addr  (_axi4xbar_auto_anon_out_1_ar_bits_addr),
-    .auto_anon_out_1_ar_bits_len   (_axi4xbar_auto_anon_out_1_ar_bits_len),
-    .auto_anon_out_1_ar_bits_size  (_axi4xbar_auto_anon_out_1_ar_bits_size),
-    .auto_anon_out_1_ar_bits_burst (_axi4xbar_auto_anon_out_1_ar_bits_burst),
-    .auto_anon_out_1_ar_bits_lock  (_axi4xbar_auto_anon_out_1_ar_bits_lock),
-    .auto_anon_out_1_ar_bits_cache (_axi4xbar_auto_anon_out_1_ar_bits_cache),
-    .auto_anon_out_1_ar_bits_prot  (_axi4xbar_auto_anon_out_1_ar_bits_prot),
-    .auto_anon_out_1_ar_bits_qos   (_axi4xbar_auto_anon_out_1_ar_bits_qos),
-    .auto_anon_out_1_r_ready       (_axi4xbar_auto_anon_out_1_r_ready),
-    .auto_anon_out_0_aw_valid      (_axi4xbar_auto_anon_out_0_aw_valid),
-    .auto_anon_out_0_aw_bits_id    (_axi4xbar_auto_anon_out_0_aw_bits_id),
-    .auto_anon_out_0_aw_bits_addr  (_axi4xbar_auto_anon_out_0_aw_bits_addr),
-    .auto_anon_out_0_aw_bits_len   (_axi4xbar_auto_anon_out_0_aw_bits_len),
-    .auto_anon_out_0_aw_bits_size  (_axi4xbar_auto_anon_out_0_aw_bits_size),
-    .auto_anon_out_0_aw_bits_burst (_axi4xbar_auto_anon_out_0_aw_bits_burst),
-    .auto_anon_out_0_aw_bits_lock  (_axi4xbar_auto_anon_out_0_aw_bits_lock),
-    .auto_anon_out_0_aw_bits_cache (_axi4xbar_auto_anon_out_0_aw_bits_cache),
-    .auto_anon_out_0_aw_bits_prot  (_axi4xbar_auto_anon_out_0_aw_bits_prot),
-    .auto_anon_out_0_aw_bits_qos   (_axi4xbar_auto_anon_out_0_aw_bits_qos),
-    .auto_anon_out_0_w_valid       (_axi4xbar_auto_anon_out_0_w_valid),
-    .auto_anon_out_0_w_bits_data   (_axi4xbar_auto_anon_out_0_w_bits_data),
-    .auto_anon_out_0_w_bits_strb   (_axi4xbar_auto_anon_out_0_w_bits_strb),
-    .auto_anon_out_0_w_bits_last   (_axi4xbar_auto_anon_out_0_w_bits_last),
-    .auto_anon_out_0_b_ready       (_axi4xbar_auto_anon_out_0_b_ready),
-    .auto_anon_out_0_ar_valid      (_axi4xbar_auto_anon_out_0_ar_valid),
-    .auto_anon_out_0_ar_bits_id    (_axi4xbar_auto_anon_out_0_ar_bits_id),
-    .auto_anon_out_0_ar_bits_addr  (_axi4xbar_auto_anon_out_0_ar_bits_addr),
-    .auto_anon_out_0_ar_bits_len   (_axi4xbar_auto_anon_out_0_ar_bits_len),
-    .auto_anon_out_0_ar_bits_size  (_axi4xbar_auto_anon_out_0_ar_bits_size),
-    .auto_anon_out_0_ar_bits_burst (_axi4xbar_auto_anon_out_0_ar_bits_burst),
-    .auto_anon_out_0_ar_bits_lock  (_axi4xbar_auto_anon_out_0_ar_bits_lock),
-    .auto_anon_out_0_ar_bits_cache (_axi4xbar_auto_anon_out_0_ar_bits_cache),
-    .auto_anon_out_0_ar_bits_prot  (_axi4xbar_auto_anon_out_0_ar_bits_prot),
-    .auto_anon_out_0_ar_bits_qos   (_axi4xbar_auto_anon_out_0_ar_bits_qos),
-    .auto_anon_out_0_r_ready       (_axi4xbar_auto_anon_out_0_r_ready)
+    .clock                       (clock),
+    .reset                       (reset),
+    .auto_anon_in_aw_valid       (nodeOut_aw_valid),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+    .auto_anon_in_aw_bits_id     (nodeOut_aw_bits_id),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+    .auto_anon_in_aw_bits_addr   (nodeOut_aw_bits_addr),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+    .auto_anon_in_aw_bits_len    (nodeOut_aw_bits_len),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+    .auto_anon_in_aw_bits_size   (nodeOut_aw_bits_size),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+    .auto_anon_in_aw_bits_burst  (nodeOut_aw_bits_burst),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+    .auto_anon_in_aw_bits_lock   (nodeOut_aw_bits_lock),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+    .auto_anon_in_aw_bits_cache  (nodeOut_aw_bits_cache),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+    .auto_anon_in_aw_bits_prot   (nodeOut_aw_bits_prot),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+    .auto_anon_in_aw_bits_qos    (nodeOut_aw_bits_qos),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+    .auto_anon_in_w_valid        (nodeOut_w_valid),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+    .auto_anon_in_w_bits_data    (nodeOut_w_bits_data),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+    .auto_anon_in_w_bits_strb    (nodeOut_w_bits_strb),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+    .auto_anon_in_w_bits_last    (nodeOut_w_bits_last),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+    .auto_anon_in_b_ready        (nodeOut_b_ready),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+    .auto_anon_in_ar_valid       (nodeOut_ar_valid),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+    .auto_anon_in_ar_bits_id     (nodeOut_ar_bits_id),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+    .auto_anon_in_ar_bits_addr   (nodeOut_ar_bits_addr),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+    .auto_anon_in_ar_bits_len    (nodeOut_ar_bits_len),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+    .auto_anon_in_ar_bits_size   (nodeOut_ar_bits_size),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+    .auto_anon_in_ar_bits_burst  (nodeOut_ar_bits_burst),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+    .auto_anon_in_ar_bits_lock   (nodeOut_ar_bits_lock),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+    .auto_anon_in_ar_bits_cache  (nodeOut_ar_bits_cache),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+    .auto_anon_in_ar_bits_prot   (nodeOut_ar_bits_prot),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+    .auto_anon_in_ar_bits_qos    (nodeOut_ar_bits_qos),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+    .auto_anon_in_r_ready        (nodeOut_r_ready),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
+    .auto_anon_out_aw_ready      (_axi4frag_auto_in_aw_ready),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
+    .auto_anon_out_w_ready       (_axi4frag_auto_in_w_ready),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
+    .auto_anon_out_b_valid       (_axi4frag_auto_in_b_valid),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
+    .auto_anon_out_b_bits_id     (_axi4frag_auto_in_b_bits_id),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
+    .auto_anon_out_b_bits_resp   (_axi4frag_auto_in_b_bits_resp),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
+    .auto_anon_out_ar_ready      (_axi4frag_auto_in_ar_ready),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
+    .auto_anon_out_r_valid       (_axi4frag_auto_in_r_valid),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
+    .auto_anon_out_r_bits_id     (_axi4frag_auto_in_r_bits_id),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
+    .auto_anon_out_r_bits_data   (_axi4frag_auto_in_r_bits_data),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
+    .auto_anon_out_r_bits_resp   (_axi4frag_auto_in_r_bits_resp),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
+    .auto_anon_out_r_bits_last   (_axi4frag_auto_in_r_bits_last),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
+    .auto_anon_in_aw_ready       (nodeOut_aw_ready),
+    .auto_anon_in_w_ready        (nodeOut_w_ready),
+    .auto_anon_in_b_valid        (nodeOut_b_valid),
+    .auto_anon_in_b_bits_id      (nodeOut_b_bits_id),
+    .auto_anon_in_b_bits_resp    (nodeOut_b_bits_resp),
+    .auto_anon_in_ar_ready       (nodeOut_ar_ready),
+    .auto_anon_in_r_valid        (nodeOut_r_valid),
+    .auto_anon_in_r_bits_id      (nodeOut_r_bits_id),
+    .auto_anon_in_r_bits_data    (nodeOut_r_bits_data),
+    .auto_anon_in_r_bits_resp    (nodeOut_r_bits_resp),
+    .auto_anon_in_r_bits_last    (nodeOut_r_bits_last),
+    .auto_anon_out_aw_valid      (_axi4xbar_auto_anon_out_aw_valid),
+    .auto_anon_out_aw_bits_id    (_axi4xbar_auto_anon_out_aw_bits_id),
+    .auto_anon_out_aw_bits_addr  (_axi4xbar_auto_anon_out_aw_bits_addr),
+    .auto_anon_out_aw_bits_len   (_axi4xbar_auto_anon_out_aw_bits_len),
+    .auto_anon_out_aw_bits_size  (_axi4xbar_auto_anon_out_aw_bits_size),
+    .auto_anon_out_aw_bits_burst (_axi4xbar_auto_anon_out_aw_bits_burst),
+    .auto_anon_out_aw_bits_lock  (_axi4xbar_auto_anon_out_aw_bits_lock),
+    .auto_anon_out_aw_bits_cache (_axi4xbar_auto_anon_out_aw_bits_cache),
+    .auto_anon_out_aw_bits_prot  (_axi4xbar_auto_anon_out_aw_bits_prot),
+    .auto_anon_out_aw_bits_qos   (_axi4xbar_auto_anon_out_aw_bits_qos),
+    .auto_anon_out_w_valid       (_axi4xbar_auto_anon_out_w_valid),
+    .auto_anon_out_w_bits_data   (_axi4xbar_auto_anon_out_w_bits_data),
+    .auto_anon_out_w_bits_strb   (_axi4xbar_auto_anon_out_w_bits_strb),
+    .auto_anon_out_w_bits_last   (_axi4xbar_auto_anon_out_w_bits_last),
+    .auto_anon_out_b_ready       (_axi4xbar_auto_anon_out_b_ready),
+    .auto_anon_out_ar_valid      (_axi4xbar_auto_anon_out_ar_valid),
+    .auto_anon_out_ar_bits_id    (_axi4xbar_auto_anon_out_ar_bits_id),
+    .auto_anon_out_ar_bits_addr  (_axi4xbar_auto_anon_out_ar_bits_addr),
+    .auto_anon_out_ar_bits_len   (_axi4xbar_auto_anon_out_ar_bits_len),
+    .auto_anon_out_ar_bits_size  (_axi4xbar_auto_anon_out_ar_bits_size),
+    .auto_anon_out_ar_bits_burst (_axi4xbar_auto_anon_out_ar_bits_burst),
+    .auto_anon_out_ar_bits_lock  (_axi4xbar_auto_anon_out_ar_bits_lock),
+    .auto_anon_out_ar_bits_cache (_axi4xbar_auto_anon_out_ar_bits_cache),
+    .auto_anon_out_ar_bits_prot  (_axi4xbar_auto_anon_out_ar_bits_prot),
+    .auto_anon_out_ar_bits_qos   (_axi4xbar_auto_anon_out_ar_bits_qos),
+    .auto_anon_out_r_ready       (_axi4xbar_auto_anon_out_r_ready)
   );
   AXI4Buffer_1 axi4buf (	// src/main/scala/amba/axi4/Buffer.scala:68:29
     .clock                           (clock),
@@ -150843,32 +148979,32 @@ module SimAXIMem(	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/L
   AXI4Fragmenter_1 axi4frag (	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
     .clock                           (clock),
     .reset                           (reset),
-    .auto_in_aw_valid                (_axi4xbar_auto_anon_out_0_aw_valid),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_aw_bits_id              (_axi4xbar_auto_anon_out_0_aw_bits_id),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_aw_bits_addr            (_axi4xbar_auto_anon_out_0_aw_bits_addr),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_aw_bits_len             (_axi4xbar_auto_anon_out_0_aw_bits_len),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_aw_bits_size            (_axi4xbar_auto_anon_out_0_aw_bits_size),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_aw_bits_burst           (_axi4xbar_auto_anon_out_0_aw_bits_burst),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_aw_bits_lock            (_axi4xbar_auto_anon_out_0_aw_bits_lock),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_aw_bits_cache           (_axi4xbar_auto_anon_out_0_aw_bits_cache),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_aw_bits_prot            (_axi4xbar_auto_anon_out_0_aw_bits_prot),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_aw_bits_qos             (_axi4xbar_auto_anon_out_0_aw_bits_qos),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_w_valid                 (_axi4xbar_auto_anon_out_0_w_valid),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_w_bits_data             (_axi4xbar_auto_anon_out_0_w_bits_data),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_w_bits_strb             (_axi4xbar_auto_anon_out_0_w_bits_strb),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_w_bits_last             (_axi4xbar_auto_anon_out_0_w_bits_last),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_b_ready                 (_axi4xbar_auto_anon_out_0_b_ready),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_ar_valid                (_axi4xbar_auto_anon_out_0_ar_valid),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_ar_bits_id              (_axi4xbar_auto_anon_out_0_ar_bits_id),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_ar_bits_addr            (_axi4xbar_auto_anon_out_0_ar_bits_addr),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_ar_bits_len             (_axi4xbar_auto_anon_out_0_ar_bits_len),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_ar_bits_size            (_axi4xbar_auto_anon_out_0_ar_bits_size),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_ar_bits_burst           (_axi4xbar_auto_anon_out_0_ar_bits_burst),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_ar_bits_lock            (_axi4xbar_auto_anon_out_0_ar_bits_lock),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_ar_bits_cache           (_axi4xbar_auto_anon_out_0_ar_bits_cache),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_ar_bits_prot            (_axi4xbar_auto_anon_out_0_ar_bits_prot),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_ar_bits_qos             (_axi4xbar_auto_anon_out_0_ar_bits_qos),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_r_ready                 (_axi4xbar_auto_anon_out_0_r_ready),	// src/main/scala/amba/axi4/Xbar.scala:241:30
+    .auto_in_aw_valid                (_axi4xbar_auto_anon_out_aw_valid),	// src/main/scala/amba/axi4/Xbar.scala:241:30
+    .auto_in_aw_bits_id              (_axi4xbar_auto_anon_out_aw_bits_id),	// src/main/scala/amba/axi4/Xbar.scala:241:30
+    .auto_in_aw_bits_addr            (_axi4xbar_auto_anon_out_aw_bits_addr),	// src/main/scala/amba/axi4/Xbar.scala:241:30
+    .auto_in_aw_bits_len             (_axi4xbar_auto_anon_out_aw_bits_len),	// src/main/scala/amba/axi4/Xbar.scala:241:30
+    .auto_in_aw_bits_size            (_axi4xbar_auto_anon_out_aw_bits_size),	// src/main/scala/amba/axi4/Xbar.scala:241:30
+    .auto_in_aw_bits_burst           (_axi4xbar_auto_anon_out_aw_bits_burst),	// src/main/scala/amba/axi4/Xbar.scala:241:30
+    .auto_in_aw_bits_lock            (_axi4xbar_auto_anon_out_aw_bits_lock),	// src/main/scala/amba/axi4/Xbar.scala:241:30
+    .auto_in_aw_bits_cache           (_axi4xbar_auto_anon_out_aw_bits_cache),	// src/main/scala/amba/axi4/Xbar.scala:241:30
+    .auto_in_aw_bits_prot            (_axi4xbar_auto_anon_out_aw_bits_prot),	// src/main/scala/amba/axi4/Xbar.scala:241:30
+    .auto_in_aw_bits_qos             (_axi4xbar_auto_anon_out_aw_bits_qos),	// src/main/scala/amba/axi4/Xbar.scala:241:30
+    .auto_in_w_valid                 (_axi4xbar_auto_anon_out_w_valid),	// src/main/scala/amba/axi4/Xbar.scala:241:30
+    .auto_in_w_bits_data             (_axi4xbar_auto_anon_out_w_bits_data),	// src/main/scala/amba/axi4/Xbar.scala:241:30
+    .auto_in_w_bits_strb             (_axi4xbar_auto_anon_out_w_bits_strb),	// src/main/scala/amba/axi4/Xbar.scala:241:30
+    .auto_in_w_bits_last             (_axi4xbar_auto_anon_out_w_bits_last),	// src/main/scala/amba/axi4/Xbar.scala:241:30
+    .auto_in_b_ready                 (_axi4xbar_auto_anon_out_b_ready),	// src/main/scala/amba/axi4/Xbar.scala:241:30
+    .auto_in_ar_valid                (_axi4xbar_auto_anon_out_ar_valid),	// src/main/scala/amba/axi4/Xbar.scala:241:30
+    .auto_in_ar_bits_id              (_axi4xbar_auto_anon_out_ar_bits_id),	// src/main/scala/amba/axi4/Xbar.scala:241:30
+    .auto_in_ar_bits_addr            (_axi4xbar_auto_anon_out_ar_bits_addr),	// src/main/scala/amba/axi4/Xbar.scala:241:30
+    .auto_in_ar_bits_len             (_axi4xbar_auto_anon_out_ar_bits_len),	// src/main/scala/amba/axi4/Xbar.scala:241:30
+    .auto_in_ar_bits_size            (_axi4xbar_auto_anon_out_ar_bits_size),	// src/main/scala/amba/axi4/Xbar.scala:241:30
+    .auto_in_ar_bits_burst           (_axi4xbar_auto_anon_out_ar_bits_burst),	// src/main/scala/amba/axi4/Xbar.scala:241:30
+    .auto_in_ar_bits_lock            (_axi4xbar_auto_anon_out_ar_bits_lock),	// src/main/scala/amba/axi4/Xbar.scala:241:30
+    .auto_in_ar_bits_cache           (_axi4xbar_auto_anon_out_ar_bits_cache),	// src/main/scala/amba/axi4/Xbar.scala:241:30
+    .auto_in_ar_bits_prot            (_axi4xbar_auto_anon_out_ar_bits_prot),	// src/main/scala/amba/axi4/Xbar.scala:241:30
+    .auto_in_ar_bits_qos             (_axi4xbar_auto_anon_out_ar_bits_qos),	// src/main/scala/amba/axi4/Xbar.scala:241:30
+    .auto_in_r_ready                 (_axi4xbar_auto_anon_out_r_ready),	// src/main/scala/amba/axi4/Xbar.scala:241:30
     .auto_out_aw_ready               (_axi4buf_auto_in_aw_ready),	// src/main/scala/amba/axi4/Buffer.scala:68:29
     .auto_out_w_ready                (_axi4buf_auto_in_w_ready),	// src/main/scala/amba/axi4/Buffer.scala:68:29
     .auto_out_b_valid                (_axi4buf_auto_in_b_valid),	// src/main/scala/amba/axi4/Buffer.scala:68:29
@@ -150919,169 +149055,6 @@ module SimAXIMem(	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/L
     .auto_out_ar_bits_qos            (_axi4frag_auto_out_ar_bits_qos),
     .auto_out_ar_bits_echo_real_last (_axi4frag_auto_out_ar_bits_echo_real_last),
     .auto_out_r_ready                (_axi4frag_auto_out_r_ready)
-  );
-  AXI4Buffer_1 axi4buf_1 (	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .clock                           (clock),
-    .reset                           (reset),
-    .auto_in_aw_valid                (_axi4frag_1_auto_out_aw_valid),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_in_aw_bits_id              (_axi4frag_1_auto_out_aw_bits_id),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_in_aw_bits_addr            (_axi4frag_1_auto_out_aw_bits_addr),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_in_aw_bits_size            (_axi4frag_1_auto_out_aw_bits_size),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_in_aw_bits_burst           (_axi4frag_1_auto_out_aw_bits_burst),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_in_aw_bits_lock            (_axi4frag_1_auto_out_aw_bits_lock),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_in_aw_bits_cache           (_axi4frag_1_auto_out_aw_bits_cache),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_in_aw_bits_prot            (_axi4frag_1_auto_out_aw_bits_prot),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_in_aw_bits_qos             (_axi4frag_1_auto_out_aw_bits_qos),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_in_aw_bits_echo_real_last  (_axi4frag_1_auto_out_aw_bits_echo_real_last),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_in_w_valid                 (_axi4frag_1_auto_out_w_valid),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_in_w_bits_data             (_axi4frag_1_auto_out_w_bits_data),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_in_w_bits_strb             (_axi4frag_1_auto_out_w_bits_strb),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_in_w_bits_last             (_axi4frag_1_auto_out_w_bits_last),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_in_b_ready                 (_axi4frag_1_auto_out_b_ready),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_in_ar_valid                (_axi4frag_1_auto_out_ar_valid),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_in_ar_bits_id              (_axi4frag_1_auto_out_ar_bits_id),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_in_ar_bits_addr            (_axi4frag_1_auto_out_ar_bits_addr),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_in_ar_bits_size            (_axi4frag_1_auto_out_ar_bits_size),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_in_ar_bits_burst           (_axi4frag_1_auto_out_ar_bits_burst),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_in_ar_bits_lock            (_axi4frag_1_auto_out_ar_bits_lock),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_in_ar_bits_cache           (_axi4frag_1_auto_out_ar_bits_cache),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_in_ar_bits_prot            (_axi4frag_1_auto_out_ar_bits_prot),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_in_ar_bits_qos             (_axi4frag_1_auto_out_ar_bits_qos),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_in_ar_bits_echo_real_last  (_axi4frag_1_auto_out_ar_bits_echo_real_last),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_in_r_ready                 (_axi4frag_1_auto_out_r_ready),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .auto_out_aw_ready               (_srams_1_auto_in_aw_ready),	// src/main/scala/system/SimAXIMem.scala:22:15
-    .auto_out_w_ready                (_srams_1_auto_in_w_ready),	// src/main/scala/system/SimAXIMem.scala:22:15
-    .auto_out_b_valid                (_srams_1_auto_in_b_valid),	// src/main/scala/system/SimAXIMem.scala:22:15
-    .auto_out_b_bits_id              (_srams_1_auto_in_b_bits_id),	// src/main/scala/system/SimAXIMem.scala:22:15
-    .auto_out_b_bits_resp            (_srams_1_auto_in_b_bits_resp),	// src/main/scala/system/SimAXIMem.scala:22:15
-    .auto_out_b_bits_echo_real_last  (_srams_1_auto_in_b_bits_echo_real_last),	// src/main/scala/system/SimAXIMem.scala:22:15
-    .auto_out_ar_ready               (_srams_1_auto_in_ar_ready),	// src/main/scala/system/SimAXIMem.scala:22:15
-    .auto_out_r_valid                (_srams_1_auto_in_r_valid),	// src/main/scala/system/SimAXIMem.scala:22:15
-    .auto_out_r_bits_id              (_srams_1_auto_in_r_bits_id),	// src/main/scala/system/SimAXIMem.scala:22:15
-    .auto_out_r_bits_data            (_srams_1_auto_in_r_bits_data),	// src/main/scala/system/SimAXIMem.scala:22:15
-    .auto_out_r_bits_resp            (_srams_1_auto_in_r_bits_resp),	// src/main/scala/system/SimAXIMem.scala:22:15
-    .auto_out_r_bits_echo_real_last  (_srams_1_auto_in_r_bits_echo_real_last),	// src/main/scala/system/SimAXIMem.scala:22:15
-    .auto_in_aw_ready                (_axi4buf_1_auto_in_aw_ready),
-    .auto_in_w_ready                 (_axi4buf_1_auto_in_w_ready),
-    .auto_in_b_valid                 (_axi4buf_1_auto_in_b_valid),
-    .auto_in_b_bits_id               (_axi4buf_1_auto_in_b_bits_id),
-    .auto_in_b_bits_resp             (_axi4buf_1_auto_in_b_bits_resp),
-    .auto_in_b_bits_echo_real_last   (_axi4buf_1_auto_in_b_bits_echo_real_last),
-    .auto_in_ar_ready                (_axi4buf_1_auto_in_ar_ready),
-    .auto_in_r_valid                 (_axi4buf_1_auto_in_r_valid),
-    .auto_in_r_bits_id               (_axi4buf_1_auto_in_r_bits_id),
-    .auto_in_r_bits_data             (_axi4buf_1_auto_in_r_bits_data),
-    .auto_in_r_bits_resp             (_axi4buf_1_auto_in_r_bits_resp),
-    .auto_in_r_bits_echo_real_last   (_axi4buf_1_auto_in_r_bits_echo_real_last),
-    .auto_in_r_bits_last             (_axi4buf_1_auto_in_r_bits_last),
-    .auto_out_aw_valid               (_axi4buf_1_auto_out_aw_valid),
-    .auto_out_aw_bits_id             (_axi4buf_1_auto_out_aw_bits_id),
-    .auto_out_aw_bits_addr           (_axi4buf_1_auto_out_aw_bits_addr),
-    .auto_out_aw_bits_len            (_axi4buf_1_auto_out_aw_bits_len),
-    .auto_out_aw_bits_size           (_axi4buf_1_auto_out_aw_bits_size),
-    .auto_out_aw_bits_burst          (_axi4buf_1_auto_out_aw_bits_burst),
-    .auto_out_aw_bits_lock           (_axi4buf_1_auto_out_aw_bits_lock),
-    .auto_out_aw_bits_cache          (_axi4buf_1_auto_out_aw_bits_cache),
-    .auto_out_aw_bits_prot           (_axi4buf_1_auto_out_aw_bits_prot),
-    .auto_out_aw_bits_qos            (_axi4buf_1_auto_out_aw_bits_qos),
-    .auto_out_aw_bits_echo_real_last (_axi4buf_1_auto_out_aw_bits_echo_real_last),
-    .auto_out_w_valid                (_axi4buf_1_auto_out_w_valid),
-    .auto_out_w_bits_data            (_axi4buf_1_auto_out_w_bits_data),
-    .auto_out_w_bits_strb            (_axi4buf_1_auto_out_w_bits_strb),
-    .auto_out_w_bits_last            (_axi4buf_1_auto_out_w_bits_last),
-    .auto_out_b_ready                (_axi4buf_1_auto_out_b_ready),
-    .auto_out_ar_valid               (_axi4buf_1_auto_out_ar_valid),
-    .auto_out_ar_bits_id             (_axi4buf_1_auto_out_ar_bits_id),
-    .auto_out_ar_bits_addr           (_axi4buf_1_auto_out_ar_bits_addr),
-    .auto_out_ar_bits_len            (_axi4buf_1_auto_out_ar_bits_len),
-    .auto_out_ar_bits_size           (_axi4buf_1_auto_out_ar_bits_size),
-    .auto_out_ar_bits_burst          (_axi4buf_1_auto_out_ar_bits_burst),
-    .auto_out_ar_bits_lock           (_axi4buf_1_auto_out_ar_bits_lock),
-    .auto_out_ar_bits_cache          (_axi4buf_1_auto_out_ar_bits_cache),
-    .auto_out_ar_bits_prot           (_axi4buf_1_auto_out_ar_bits_prot),
-    .auto_out_ar_bits_qos            (_axi4buf_1_auto_out_ar_bits_qos),
-    .auto_out_ar_bits_echo_real_last (_axi4buf_1_auto_out_ar_bits_echo_real_last),
-    .auto_out_r_ready                (_axi4buf_1_auto_out_r_ready)
-  );
-  AXI4Fragmenter_1 axi4frag_1 (	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
-    .clock                           (clock),
-    .reset                           (reset),
-    .auto_in_aw_valid                (_axi4xbar_auto_anon_out_1_aw_valid),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_aw_bits_id              (_axi4xbar_auto_anon_out_1_aw_bits_id),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_aw_bits_addr            (_axi4xbar_auto_anon_out_1_aw_bits_addr),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_aw_bits_len             (_axi4xbar_auto_anon_out_1_aw_bits_len),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_aw_bits_size            (_axi4xbar_auto_anon_out_1_aw_bits_size),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_aw_bits_burst           (_axi4xbar_auto_anon_out_1_aw_bits_burst),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_aw_bits_lock            (_axi4xbar_auto_anon_out_1_aw_bits_lock),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_aw_bits_cache           (_axi4xbar_auto_anon_out_1_aw_bits_cache),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_aw_bits_prot            (_axi4xbar_auto_anon_out_1_aw_bits_prot),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_aw_bits_qos             (_axi4xbar_auto_anon_out_1_aw_bits_qos),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_w_valid                 (_axi4xbar_auto_anon_out_1_w_valid),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_w_bits_data             (_axi4xbar_auto_anon_out_1_w_bits_data),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_w_bits_strb             (_axi4xbar_auto_anon_out_1_w_bits_strb),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_w_bits_last             (_axi4xbar_auto_anon_out_1_w_bits_last),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_b_ready                 (_axi4xbar_auto_anon_out_1_b_ready),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_ar_valid                (_axi4xbar_auto_anon_out_1_ar_valid),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_ar_bits_id              (_axi4xbar_auto_anon_out_1_ar_bits_id),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_ar_bits_addr            (_axi4xbar_auto_anon_out_1_ar_bits_addr),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_ar_bits_len             (_axi4xbar_auto_anon_out_1_ar_bits_len),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_ar_bits_size            (_axi4xbar_auto_anon_out_1_ar_bits_size),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_ar_bits_burst           (_axi4xbar_auto_anon_out_1_ar_bits_burst),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_ar_bits_lock            (_axi4xbar_auto_anon_out_1_ar_bits_lock),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_ar_bits_cache           (_axi4xbar_auto_anon_out_1_ar_bits_cache),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_ar_bits_prot            (_axi4xbar_auto_anon_out_1_ar_bits_prot),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_ar_bits_qos             (_axi4xbar_auto_anon_out_1_ar_bits_qos),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_in_r_ready                 (_axi4xbar_auto_anon_out_1_r_ready),	// src/main/scala/amba/axi4/Xbar.scala:241:30
-    .auto_out_aw_ready               (_axi4buf_1_auto_in_aw_ready),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_out_w_ready                (_axi4buf_1_auto_in_w_ready),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_out_b_valid                (_axi4buf_1_auto_in_b_valid),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_out_b_bits_id              (_axi4buf_1_auto_in_b_bits_id),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_out_b_bits_resp            (_axi4buf_1_auto_in_b_bits_resp),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_out_b_bits_echo_real_last  (_axi4buf_1_auto_in_b_bits_echo_real_last),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_out_ar_ready               (_axi4buf_1_auto_in_ar_ready),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_out_r_valid                (_axi4buf_1_auto_in_r_valid),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_out_r_bits_id              (_axi4buf_1_auto_in_r_bits_id),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_out_r_bits_data            (_axi4buf_1_auto_in_r_bits_data),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_out_r_bits_resp            (_axi4buf_1_auto_in_r_bits_resp),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_out_r_bits_echo_real_last  (_axi4buf_1_auto_in_r_bits_echo_real_last),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_out_r_bits_last            (_axi4buf_1_auto_in_r_bits_last),	// src/main/scala/amba/axi4/Buffer.scala:68:29
-    .auto_in_aw_ready                (_axi4frag_1_auto_in_aw_ready),
-    .auto_in_w_ready                 (_axi4frag_1_auto_in_w_ready),
-    .auto_in_b_valid                 (_axi4frag_1_auto_in_b_valid),
-    .auto_in_b_bits_id               (_axi4frag_1_auto_in_b_bits_id),
-    .auto_in_b_bits_resp             (_axi4frag_1_auto_in_b_bits_resp),
-    .auto_in_ar_ready                (_axi4frag_1_auto_in_ar_ready),
-    .auto_in_r_valid                 (_axi4frag_1_auto_in_r_valid),
-    .auto_in_r_bits_id               (_axi4frag_1_auto_in_r_bits_id),
-    .auto_in_r_bits_data             (_axi4frag_1_auto_in_r_bits_data),
-    .auto_in_r_bits_resp             (_axi4frag_1_auto_in_r_bits_resp),
-    .auto_in_r_bits_last             (_axi4frag_1_auto_in_r_bits_last),
-    .auto_out_aw_valid               (_axi4frag_1_auto_out_aw_valid),
-    .auto_out_aw_bits_id             (_axi4frag_1_auto_out_aw_bits_id),
-    .auto_out_aw_bits_addr           (_axi4frag_1_auto_out_aw_bits_addr),
-    .auto_out_aw_bits_size           (_axi4frag_1_auto_out_aw_bits_size),
-    .auto_out_aw_bits_burst          (_axi4frag_1_auto_out_aw_bits_burst),
-    .auto_out_aw_bits_lock           (_axi4frag_1_auto_out_aw_bits_lock),
-    .auto_out_aw_bits_cache          (_axi4frag_1_auto_out_aw_bits_cache),
-    .auto_out_aw_bits_prot           (_axi4frag_1_auto_out_aw_bits_prot),
-    .auto_out_aw_bits_qos            (_axi4frag_1_auto_out_aw_bits_qos),
-    .auto_out_aw_bits_echo_real_last (_axi4frag_1_auto_out_aw_bits_echo_real_last),
-    .auto_out_w_valid                (_axi4frag_1_auto_out_w_valid),
-    .auto_out_w_bits_data            (_axi4frag_1_auto_out_w_bits_data),
-    .auto_out_w_bits_strb            (_axi4frag_1_auto_out_w_bits_strb),
-    .auto_out_w_bits_last            (_axi4frag_1_auto_out_w_bits_last),
-    .auto_out_b_ready                (_axi4frag_1_auto_out_b_ready),
-    .auto_out_ar_valid               (_axi4frag_1_auto_out_ar_valid),
-    .auto_out_ar_bits_id             (_axi4frag_1_auto_out_ar_bits_id),
-    .auto_out_ar_bits_addr           (_axi4frag_1_auto_out_ar_bits_addr),
-    .auto_out_ar_bits_size           (_axi4frag_1_auto_out_ar_bits_size),
-    .auto_out_ar_bits_burst          (_axi4frag_1_auto_out_ar_bits_burst),
-    .auto_out_ar_bits_lock           (_axi4frag_1_auto_out_ar_bits_lock),
-    .auto_out_ar_bits_cache          (_axi4frag_1_auto_out_ar_bits_cache),
-    .auto_out_ar_bits_prot           (_axi4frag_1_auto_out_ar_bits_prot),
-    .auto_out_ar_bits_qos            (_axi4frag_1_auto_out_ar_bits_qos),
-    .auto_out_ar_bits_echo_real_last (_axi4frag_1_auto_out_ar_bits_echo_real_last),
-    .auto_out_r_ready                (_axi4frag_1_auto_out_r_ready)
   );
   assign io_axi4_0_aw_ready = nodeOut_aw_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:131:7, dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
   assign io_axi4_0_w_ready = nodeOut_w_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:131:7, dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
@@ -151159,7 +149132,7 @@ module mem_512x64(	// src/main/scala/util/DescribedSRAM.scala:17:26
   assign R0_data = _R0_en_d0 ? Memory[_R0_addr_d0] : 64'bx;	// src/main/scala/util/DescribedSRAM.scala:17:26
 endmodule
 
-module AXI4RAM_2(	// src/main/scala/amba/axi4/SRAM.scala:58:9
+module AXI4RAM_1(	// src/main/scala/amba/axi4/SRAM.scala:58:9
   input         clock,	// src/main/scala/amba/axi4/SRAM.scala:58:9
                 reset,	// src/main/scala/amba/axi4/SRAM.scala:58:9
                 auto_in_aw_valid,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
@@ -151900,7 +149873,7 @@ module ram_2x61(	// src/main/scala/chisel3/util/Decoupled.scala:256:91
   assign R0_data = R0_en ? Memory[R0_addr] : 61'bx;	// src/main/scala/chisel3/util/Decoupled.scala:256:91
 endmodule
 
-module Queue2_AXI4BundleAW_3(	// src/main/scala/chisel3/util/Decoupled.scala:243:7
+module Queue2_AXI4BundleAW_2(	// src/main/scala/chisel3/util/Decoupled.scala:243:7
   input         clock,	// src/main/scala/chisel3/util/Decoupled.scala:243:7
                 reset,	// src/main/scala/chisel3/util/Decoupled.scala:243:7
                 io_enq_valid,	// src/main/scala/chisel3/util/Decoupled.scala:255:14
@@ -152009,7 +149982,7 @@ module Queue2_AXI4BundleAW_3(	// src/main/scala/chisel3/util/Decoupled.scala:243
   assign io_deq_bits_echo_real_last = _ram_ext_R0_data[60];	// src/main/scala/chisel3/util/Decoupled.scala:243:7, :256:91
 endmodule
 
-module AXI4Buffer_3(	// src/main/scala/amba/axi4/Buffer.scala:37:9
+module AXI4Buffer_2(	// src/main/scala/amba/axi4/Buffer.scala:37:9
   input         clock,	// src/main/scala/amba/axi4/Buffer.scala:37:9
                 reset,	// src/main/scala/amba/axi4/Buffer.scala:37:9
                 auto_in_aw_valid,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
@@ -152216,7 +150189,7 @@ module AXI4Buffer_3(	// src/main/scala/amba/axi4/Buffer.scala:37:9
   wire [1:0]  nodeIn_r_bits_resp = nodeIn_r_irr_bits_resp;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/chisel3/util/Decoupled.scala:401:19
   wire        nodeIn_r_bits_echo_real_last = nodeIn_r_irr_bits_echo_real_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/chisel3/util/Decoupled.scala:401:19
   wire        nodeIn_r_bits_last = nodeIn_r_irr_bits_last;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17, src/main/scala/chisel3/util/Decoupled.scala:401:19
-  Queue2_AXI4BundleAW_3 nodeOut_aw_deq_q (	// src/main/scala/chisel3/util/Decoupled.scala:362:21
+  Queue2_AXI4BundleAW_2 nodeOut_aw_deq_q (	// src/main/scala/chisel3/util/Decoupled.scala:362:21
     .clock                      (clock),
     .reset                      (reset),
     .io_enq_valid               (nodeIn_aw_valid),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
@@ -152271,7 +150244,7 @@ module AXI4Buffer_3(	// src/main/scala/amba/axi4/Buffer.scala:37:9
     .io_deq_bits_resp           (nodeIn_b_irr_bits_resp),
     .io_deq_bits_echo_real_last (nodeIn_b_irr_bits_echo_real_last)
   );
-  Queue2_AXI4BundleAW_3 nodeOut_ar_deq_q (	// src/main/scala/chisel3/util/Decoupled.scala:362:21
+  Queue2_AXI4BundleAW_2 nodeOut_ar_deq_q (	// src/main/scala/chisel3/util/Decoupled.scala:362:21
     .clock                      (clock),
     .reset                      (reset),
     .io_enq_valid               (nodeIn_ar_valid),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
@@ -152358,7 +150331,7 @@ module AXI4Buffer_3(	// src/main/scala/amba/axi4/Buffer.scala:37:9
   assign auto_out_r_ready = nodeOut_r_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17, src/main/scala/amba/axi4/Buffer.scala:37:9
 endmodule
 
-module Queue1_AXI4BundleAR_3(	// src/main/scala/chisel3/util/Decoupled.scala:243:7
+module Queue1_AXI4BundleAR_2(	// src/main/scala/chisel3/util/Decoupled.scala:243:7
   input         clock,	// src/main/scala/chisel3/util/Decoupled.scala:243:7
                 reset,	// src/main/scala/chisel3/util/Decoupled.scala:243:7
                 io_enq_valid,	// src/main/scala/chisel3/util/Decoupled.scala:255:14
@@ -152447,7 +150420,7 @@ module Queue1_AXI4BundleAR_3(	// src/main/scala/chisel3/util/Decoupled.scala:243
   assign io_deq_bits_qos = empty ? io_enq_bits_qos : ram[59:56];	// src/main/scala/chisel3/util/Decoupled.scala:243:7, :256:91, :261:25, :293:17, :298:17, :299:19
 endmodule
 
-module AXI4Fragmenter_3(	// src/main/scala/amba/axi4/Fragmenter.scala:37:9
+module AXI4Fragmenter_2(	// src/main/scala/amba/axi4/Fragmenter.scala:37:9
   input         clock,	// src/main/scala/amba/axi4/Fragmenter.scala:37:9
                 reset,	// src/main/scala/amba/axi4/Fragmenter.scala:37:9
                 auto_in_aw_valid,	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:100:25
@@ -153003,7 +150976,7 @@ module AXI4Fragmenter_3(	// src/main/scala/amba/axi4/Fragmenter.scala:37:9
       `FIRRTL_AFTER_INITIAL	// src/main/scala/amba/axi4/Fragmenter.scala:37:9
     `endif // FIRRTL_AFTER_INITIAL
   `endif // ENABLE_INITIAL_REG_
-  Queue1_AXI4BundleAR_3 deq_q (	// src/main/scala/chisel3/util/Decoupled.scala:362:21
+  Queue1_AXI4BundleAR_2 deq_q (	// src/main/scala/chisel3/util/Decoupled.scala:362:21
     .clock             (clock),
     .reset             (reset),
     .io_enq_valid      (nodeIn_ar_valid),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
@@ -153029,7 +151002,7 @@ module AXI4Fragmenter_3(	// src/main/scala/amba/axi4/Fragmenter.scala:37:9
     .io_deq_bits_prot  (irr_bits_prot),
     .io_deq_bits_qos   (irr_bits_qos)
   );
-  Queue1_AXI4BundleAR_3 deq_q_1 (	// src/main/scala/chisel3/util/Decoupled.scala:362:21
+  Queue1_AXI4BundleAR_2 deq_q_1 (	// src/main/scala/chisel3/util/Decoupled.scala:362:21
     .clock             (clock),
     .reset             (reset),
     .io_enq_valid      (nodeIn_aw_valid),	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:551:17
@@ -153303,7 +151276,7 @@ module SimAXIMem_1(	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule
   wire [2:0]  nodeOut_ar_bits_prot = io_axi4_0_ar_bits_prot;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
   wire [3:0]  nodeOut_ar_bits_qos = io_axi4_0_ar_bits_qos;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
   wire        nodeOut_r_ready = io_axi4_0_r_ready;	// dependencies/diplomacy/diplomacy/src/diplomacy/nodes/MixedNode.scala:542:17
-  AXI4RAM_2 srams (	// src/main/scala/system/SimAXIMem.scala:22:15
+  AXI4RAM_1 srams (	// src/main/scala/system/SimAXIMem.scala:22:15
     .clock                          (clock),
     .reset                          (reset),
     .auto_in_aw_valid               (_axi4buf_auto_out_aw_valid),	// src/main/scala/amba/axi4/Buffer.scala:68:29
@@ -153425,7 +151398,7 @@ module SimAXIMem_1(	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule
     .auto_anon_out_ar_bits_qos   (_axi4xbar_auto_anon_out_ar_bits_qos),
     .auto_anon_out_r_ready       (_axi4xbar_auto_anon_out_r_ready)
   );
-  AXI4Buffer_3 axi4buf (	// src/main/scala/amba/axi4/Buffer.scala:68:29
+  AXI4Buffer_2 axi4buf (	// src/main/scala/amba/axi4/Buffer.scala:68:29
     .clock                           (clock),
     .reset                           (reset),
     .auto_in_aw_valid                (_axi4frag_auto_out_aw_valid),	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
@@ -153508,7 +151481,7 @@ module SimAXIMem_1(	// dependencies/diplomacy/diplomacy/src/diplomacy/lazymodule
     .auto_out_ar_bits_echo_real_last (_axi4buf_auto_out_ar_bits_echo_real_last),
     .auto_out_r_ready                (_axi4buf_auto_out_r_ready)
   );
-  AXI4Fragmenter_3 axi4frag (	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
+  AXI4Fragmenter_2 axi4frag (	// src/main/scala/amba/axi4/Fragmenter.scala:224:30
     .clock                           (clock),
     .reset                           (reset),
     .auto_in_aw_valid                (_axi4xbar_auto_anon_out_aw_valid),	// src/main/scala/amba/axi4/Xbar.scala:241:30
@@ -153620,20 +151593,18 @@ endmodule
 
 // external module EICG_wrapper
 
-module TestHarness(	// src/main/scala/system/TestHarness.scala:14:7
-  input         clock,	// src/main/scala/system/TestHarness.scala:14:7
-                reset,	// src/main/scala/system/TestHarness.scala:14:7
-  input  [31:0] io_exit,	// src/main/scala/system/TestHarness.scala:15:14
-  input         io_debug_req_valid,	// src/main/scala/system/TestHarness.scala:15:14
-  input  [6:0]  io_debug_req_bits_addr,	// src/main/scala/system/TestHarness.scala:15:14
-  input  [31:0] io_debug_req_bits_data,	// src/main/scala/system/TestHarness.scala:15:14
-  input  [1:0]  io_debug_req_bits_op,	// src/main/scala/system/TestHarness.scala:15:14
-  input         io_debug_resp_ready,	// src/main/scala/system/TestHarness.scala:15:14
-  output        io_debug_req_ready,	// src/main/scala/system/TestHarness.scala:15:14
-                io_debug_resp_valid,	// src/main/scala/system/TestHarness.scala:15:14
-  output [31:0] io_debug_resp_bits_data,	// src/main/scala/system/TestHarness.scala:15:14
-  output [1:0]  io_debug_resp_bits_resp,	// src/main/scala/system/TestHarness.scala:15:14
-  output        io_success	// src/main/scala/system/TestHarness.scala:15:14
+module TestHarness(	// src/main/scala/system/TestHarness.scala:19:7
+  input         clock,	// src/main/scala/system/TestHarness.scala:19:7
+                reset,	// src/main/scala/system/TestHarness.scala:19:7
+                io_debug_req_valid,	// src/main/scala/system/TestHarness.scala:23:14
+  input  [6:0]  io_debug_req_bits_addr,	// src/main/scala/system/TestHarness.scala:23:14
+  input  [31:0] io_debug_req_bits_data,	// src/main/scala/system/TestHarness.scala:23:14
+  input  [1:0]  io_debug_req_bits_op,	// src/main/scala/system/TestHarness.scala:23:14
+  input         io_debug_resp_ready,	// src/main/scala/system/TestHarness.scala:23:14
+  output        io_debug_req_ready,	// src/main/scala/system/TestHarness.scala:23:14
+                io_debug_resp_valid,	// src/main/scala/system/TestHarness.scala:23:14
+  output [31:0] io_debug_resp_bits_data,	// src/main/scala/system/TestHarness.scala:23:14
+  output [1:0]  io_debug_resp_bits_resp	// src/main/scala/system/TestHarness.scala:23:14
 );
 
   wire        _gated_clock_debug_clock_gate_out;	// src/main/scala/util/ClockGate.scala:36:20
@@ -153661,106 +151632,106 @@ module TestHarness(	// src/main/scala/system/TestHarness.scala:14:7
   wire [1:0]  _mem_io_axi4_0_r_bits_resp;	// src/main/scala/system/SimAXIMem.scala:50:13
   wire        _mem_io_axi4_0_r_bits_last;	// src/main/scala/system/SimAXIMem.scala:50:13
   wire        _dut_reset_reg_io_q;	// src/main/scala/util/AsyncResetReg.scala:86:21
-  wire        _ldut_debug_ndreset;	// src/main/scala/system/TestHarness.scala:22:19
-  wire        _ldut_debug_dmactive;	// src/main/scala/system/TestHarness.scala:22:19
-  wire        _ldut_mem_axi4_0_aw_valid;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [3:0]  _ldut_mem_axi4_0_aw_bits_id;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [31:0] _ldut_mem_axi4_0_aw_bits_addr;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [7:0]  _ldut_mem_axi4_0_aw_bits_len;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [2:0]  _ldut_mem_axi4_0_aw_bits_size;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [1:0]  _ldut_mem_axi4_0_aw_bits_burst;	// src/main/scala/system/TestHarness.scala:22:19
-  wire        _ldut_mem_axi4_0_aw_bits_lock;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [3:0]  _ldut_mem_axi4_0_aw_bits_cache;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [2:0]  _ldut_mem_axi4_0_aw_bits_prot;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [3:0]  _ldut_mem_axi4_0_aw_bits_qos;	// src/main/scala/system/TestHarness.scala:22:19
-  wire        _ldut_mem_axi4_0_w_valid;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [63:0] _ldut_mem_axi4_0_w_bits_data;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [7:0]  _ldut_mem_axi4_0_w_bits_strb;	// src/main/scala/system/TestHarness.scala:22:19
-  wire        _ldut_mem_axi4_0_w_bits_last;	// src/main/scala/system/TestHarness.scala:22:19
-  wire        _ldut_mem_axi4_0_b_ready;	// src/main/scala/system/TestHarness.scala:22:19
-  wire        _ldut_mem_axi4_0_ar_valid;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [3:0]  _ldut_mem_axi4_0_ar_bits_id;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [31:0] _ldut_mem_axi4_0_ar_bits_addr;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [7:0]  _ldut_mem_axi4_0_ar_bits_len;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [2:0]  _ldut_mem_axi4_0_ar_bits_size;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [1:0]  _ldut_mem_axi4_0_ar_bits_burst;	// src/main/scala/system/TestHarness.scala:22:19
-  wire        _ldut_mem_axi4_0_ar_bits_lock;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [3:0]  _ldut_mem_axi4_0_ar_bits_cache;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [2:0]  _ldut_mem_axi4_0_ar_bits_prot;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [3:0]  _ldut_mem_axi4_0_ar_bits_qos;	// src/main/scala/system/TestHarness.scala:22:19
-  wire        _ldut_mem_axi4_0_r_ready;	// src/main/scala/system/TestHarness.scala:22:19
-  wire        _ldut_mmio_axi4_0_aw_valid;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [3:0]  _ldut_mmio_axi4_0_aw_bits_id;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [30:0] _ldut_mmio_axi4_0_aw_bits_addr;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [7:0]  _ldut_mmio_axi4_0_aw_bits_len;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [2:0]  _ldut_mmio_axi4_0_aw_bits_size;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [1:0]  _ldut_mmio_axi4_0_aw_bits_burst;	// src/main/scala/system/TestHarness.scala:22:19
-  wire        _ldut_mmio_axi4_0_aw_bits_lock;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [3:0]  _ldut_mmio_axi4_0_aw_bits_cache;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [2:0]  _ldut_mmio_axi4_0_aw_bits_prot;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [3:0]  _ldut_mmio_axi4_0_aw_bits_qos;	// src/main/scala/system/TestHarness.scala:22:19
-  wire        _ldut_mmio_axi4_0_w_valid;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [63:0] _ldut_mmio_axi4_0_w_bits_data;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [7:0]  _ldut_mmio_axi4_0_w_bits_strb;	// src/main/scala/system/TestHarness.scala:22:19
-  wire        _ldut_mmio_axi4_0_w_bits_last;	// src/main/scala/system/TestHarness.scala:22:19
-  wire        _ldut_mmio_axi4_0_b_ready;	// src/main/scala/system/TestHarness.scala:22:19
-  wire        _ldut_mmio_axi4_0_ar_valid;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [3:0]  _ldut_mmio_axi4_0_ar_bits_id;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [30:0] _ldut_mmio_axi4_0_ar_bits_addr;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [7:0]  _ldut_mmio_axi4_0_ar_bits_len;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [2:0]  _ldut_mmio_axi4_0_ar_bits_size;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [1:0]  _ldut_mmio_axi4_0_ar_bits_burst;	// src/main/scala/system/TestHarness.scala:22:19
-  wire        _ldut_mmio_axi4_0_ar_bits_lock;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [3:0]  _ldut_mmio_axi4_0_ar_bits_cache;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [2:0]  _ldut_mmio_axi4_0_ar_bits_prot;	// src/main/scala/system/TestHarness.scala:22:19
-  wire [3:0]  _ldut_mmio_axi4_0_ar_bits_qos;	// src/main/scala/system/TestHarness.scala:22:19
-  wire        _ldut_mmio_axi4_0_r_ready;	// src/main/scala/system/TestHarness.scala:22:19
+  wire        _ldut_debug_ndreset;	// src/main/scala/system/TestHarness.scala:29:19
+  wire        _ldut_debug_dmactive;	// src/main/scala/system/TestHarness.scala:29:19
+  wire        _ldut_mem_axi4_0_aw_valid;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [3:0]  _ldut_mem_axi4_0_aw_bits_id;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [31:0] _ldut_mem_axi4_0_aw_bits_addr;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [7:0]  _ldut_mem_axi4_0_aw_bits_len;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [2:0]  _ldut_mem_axi4_0_aw_bits_size;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [1:0]  _ldut_mem_axi4_0_aw_bits_burst;	// src/main/scala/system/TestHarness.scala:29:19
+  wire        _ldut_mem_axi4_0_aw_bits_lock;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [3:0]  _ldut_mem_axi4_0_aw_bits_cache;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [2:0]  _ldut_mem_axi4_0_aw_bits_prot;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [3:0]  _ldut_mem_axi4_0_aw_bits_qos;	// src/main/scala/system/TestHarness.scala:29:19
+  wire        _ldut_mem_axi4_0_w_valid;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [63:0] _ldut_mem_axi4_0_w_bits_data;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [7:0]  _ldut_mem_axi4_0_w_bits_strb;	// src/main/scala/system/TestHarness.scala:29:19
+  wire        _ldut_mem_axi4_0_w_bits_last;	// src/main/scala/system/TestHarness.scala:29:19
+  wire        _ldut_mem_axi4_0_b_ready;	// src/main/scala/system/TestHarness.scala:29:19
+  wire        _ldut_mem_axi4_0_ar_valid;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [3:0]  _ldut_mem_axi4_0_ar_bits_id;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [31:0] _ldut_mem_axi4_0_ar_bits_addr;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [7:0]  _ldut_mem_axi4_0_ar_bits_len;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [2:0]  _ldut_mem_axi4_0_ar_bits_size;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [1:0]  _ldut_mem_axi4_0_ar_bits_burst;	// src/main/scala/system/TestHarness.scala:29:19
+  wire        _ldut_mem_axi4_0_ar_bits_lock;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [3:0]  _ldut_mem_axi4_0_ar_bits_cache;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [2:0]  _ldut_mem_axi4_0_ar_bits_prot;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [3:0]  _ldut_mem_axi4_0_ar_bits_qos;	// src/main/scala/system/TestHarness.scala:29:19
+  wire        _ldut_mem_axi4_0_r_ready;	// src/main/scala/system/TestHarness.scala:29:19
+  wire        _ldut_mmio_axi4_0_aw_valid;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [3:0]  _ldut_mmio_axi4_0_aw_bits_id;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [30:0] _ldut_mmio_axi4_0_aw_bits_addr;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [7:0]  _ldut_mmio_axi4_0_aw_bits_len;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [2:0]  _ldut_mmio_axi4_0_aw_bits_size;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [1:0]  _ldut_mmio_axi4_0_aw_bits_burst;	// src/main/scala/system/TestHarness.scala:29:19
+  wire        _ldut_mmio_axi4_0_aw_bits_lock;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [3:0]  _ldut_mmio_axi4_0_aw_bits_cache;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [2:0]  _ldut_mmio_axi4_0_aw_bits_prot;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [3:0]  _ldut_mmio_axi4_0_aw_bits_qos;	// src/main/scala/system/TestHarness.scala:29:19
+  wire        _ldut_mmio_axi4_0_w_valid;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [63:0] _ldut_mmio_axi4_0_w_bits_data;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [7:0]  _ldut_mmio_axi4_0_w_bits_strb;	// src/main/scala/system/TestHarness.scala:29:19
+  wire        _ldut_mmio_axi4_0_w_bits_last;	// src/main/scala/system/TestHarness.scala:29:19
+  wire        _ldut_mmio_axi4_0_b_ready;	// src/main/scala/system/TestHarness.scala:29:19
+  wire        _ldut_mmio_axi4_0_ar_valid;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [3:0]  _ldut_mmio_axi4_0_ar_bits_id;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [30:0] _ldut_mmio_axi4_0_ar_bits_addr;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [7:0]  _ldut_mmio_axi4_0_ar_bits_len;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [2:0]  _ldut_mmio_axi4_0_ar_bits_size;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [1:0]  _ldut_mmio_axi4_0_ar_bits_burst;	// src/main/scala/system/TestHarness.scala:29:19
+  wire        _ldut_mmio_axi4_0_ar_bits_lock;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [3:0]  _ldut_mmio_axi4_0_ar_bits_cache;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [2:0]  _ldut_mmio_axi4_0_ar_bits_prot;	// src/main/scala/system/TestHarness.scala:29:19
+  wire [3:0]  _ldut_mmio_axi4_0_ar_bits_qos;	// src/main/scala/system/TestHarness.scala:29:19
+  wire        _ldut_mmio_axi4_0_r_ready;	// src/main/scala/system/TestHarness.scala:29:19
   wire        dmi_reset = reset;	// src/main/scala/devices/debug/Periphery.scala:187:82
-  wire        dut_reset = reset | _dut_reset_reg_io_q;	// src/main/scala/system/TestHarness.scala:26:{33,112}, src/main/scala/util/AsyncResetReg.scala:86:21
+  wire        dut_reset = reset | _dut_reset_reg_io_q;	// src/main/scala/system/TestHarness.scala:33:{33,112}, src/main/scala/util/AsyncResetReg.scala:86:21
   wire        debug_reset_syncd;	// src/main/scala/devices/debug/Periphery.scala:196:40
   assign debug_reset_syncd = ~_debug_reset_syncd_debug_reset_sync_io_q;	// src/main/scala/devices/debug/Periphery.scala:196:40, src/main/scala/util/ShiftReg.scala:45:23
   wire        debug_reset = debug_reset_syncd;	// src/main/scala/devices/debug/Periphery.scala:194:27, :196:40
   reg         clock_en;	// src/main/scala/devices/debug/Periphery.scala:204:29
   wire        dmactiveAck;	// src/main/scala/util/ShiftReg.scala:48:24
-  always @(posedge clock or posedge debug_reset) begin	// src/main/scala/devices/debug/Periphery.scala:194:27, src/main/scala/system/TestHarness.scala:14:7
-    if (debug_reset)	// src/main/scala/devices/debug/Periphery.scala:194:27, src/main/scala/system/TestHarness.scala:14:7
-      clock_en <= 1'h1;	// src/main/scala/devices/debug/Periphery.scala:204:29, src/main/scala/system/TestHarness.scala:14:7
-    else	// src/main/scala/system/TestHarness.scala:14:7
+  always @(posedge clock or posedge debug_reset) begin	// src/main/scala/devices/debug/Periphery.scala:194:27, src/main/scala/system/TestHarness.scala:19:7
+    if (debug_reset)	// src/main/scala/devices/debug/Periphery.scala:194:27, src/main/scala/system/TestHarness.scala:19:7
+      clock_en <= 1'h1;	// src/main/scala/devices/debug/Periphery.scala:204:29, src/main/scala/system/TestHarness.scala:19:7
+    else	// src/main/scala/system/TestHarness.scala:19:7
       clock_en <= dmactiveAck;	// src/main/scala/devices/debug/Periphery.scala:204:29, src/main/scala/util/ShiftReg.scala:48:24
   end // always @(posedge, posedge)
-  `ifdef ENABLE_INITIAL_REG_	// src/main/scala/system/TestHarness.scala:14:7
-    `ifdef FIRRTL_BEFORE_INITIAL	// src/main/scala/system/TestHarness.scala:14:7
-      `FIRRTL_BEFORE_INITIAL	// src/main/scala/system/TestHarness.scala:14:7
+  `ifdef ENABLE_INITIAL_REG_	// src/main/scala/system/TestHarness.scala:19:7
+    `ifdef FIRRTL_BEFORE_INITIAL	// src/main/scala/system/TestHarness.scala:19:7
+      `FIRRTL_BEFORE_INITIAL	// src/main/scala/system/TestHarness.scala:19:7
     `endif // FIRRTL_BEFORE_INITIAL
-    logic [31:0] _RANDOM[0:0];	// src/main/scala/system/TestHarness.scala:14:7
-    initial begin	// src/main/scala/system/TestHarness.scala:14:7
-      `ifdef INIT_RANDOM_PROLOG_	// src/main/scala/system/TestHarness.scala:14:7
-        `INIT_RANDOM_PROLOG_	// src/main/scala/system/TestHarness.scala:14:7
+    logic [31:0] _RANDOM[0:0];	// src/main/scala/system/TestHarness.scala:19:7
+    initial begin	// src/main/scala/system/TestHarness.scala:19:7
+      `ifdef INIT_RANDOM_PROLOG_	// src/main/scala/system/TestHarness.scala:19:7
+        `INIT_RANDOM_PROLOG_	// src/main/scala/system/TestHarness.scala:19:7
       `endif // INIT_RANDOM_PROLOG_
-      `ifdef RANDOMIZE_REG_INIT	// src/main/scala/system/TestHarness.scala:14:7
-        _RANDOM[/*Zero width*/ 1'b0] = `RANDOM;	// src/main/scala/system/TestHarness.scala:14:7
-        clock_en = _RANDOM[/*Zero width*/ 1'b0][0];	// src/main/scala/devices/debug/Periphery.scala:204:29, src/main/scala/system/TestHarness.scala:14:7
+      `ifdef RANDOMIZE_REG_INIT	// src/main/scala/system/TestHarness.scala:19:7
+        _RANDOM[/*Zero width*/ 1'b0] = `RANDOM;	// src/main/scala/system/TestHarness.scala:19:7
+        clock_en = _RANDOM[/*Zero width*/ 1'b0][0];	// src/main/scala/devices/debug/Periphery.scala:204:29, src/main/scala/system/TestHarness.scala:19:7
       `endif // RANDOMIZE_REG_INIT
-      if (debug_reset)	// src/main/scala/devices/debug/Periphery.scala:194:27, src/main/scala/system/TestHarness.scala:14:7
-        clock_en = 1'h1;	// src/main/scala/devices/debug/Periphery.scala:204:29, src/main/scala/system/TestHarness.scala:14:7
+      if (debug_reset)	// src/main/scala/devices/debug/Periphery.scala:194:27, src/main/scala/system/TestHarness.scala:19:7
+        clock_en = 1'h1;	// src/main/scala/devices/debug/Periphery.scala:204:29, src/main/scala/system/TestHarness.scala:19:7
     end // initial
-    `ifdef FIRRTL_AFTER_INITIAL	// src/main/scala/system/TestHarness.scala:14:7
-      `FIRRTL_AFTER_INITIAL	// src/main/scala/system/TestHarness.scala:14:7
+    `ifdef FIRRTL_AFTER_INITIAL	// src/main/scala/system/TestHarness.scala:19:7
+      `FIRRTL_AFTER_INITIAL	// src/main/scala/system/TestHarness.scala:19:7
     `endif // FIRRTL_AFTER_INITIAL
   `endif // ENABLE_INITIAL_REG_
-  ExampleRocketSystem ldut (	// src/main/scala/system/TestHarness.scala:22:19
+  ExampleRocketSystem ldut (	// src/main/scala/system/TestHarness.scala:29:19
     .io_aggregator_5_clock                (clock),
-    .io_aggregator_5_reset                (dut_reset),	// src/main/scala/system/TestHarness.scala:26:112
+    .io_aggregator_5_reset                (dut_reset),	// src/main/scala/system/TestHarness.scala:33:112
     .io_aggregator_4_clock                (clock),
-    .io_aggregator_4_reset                (dut_reset),	// src/main/scala/system/TestHarness.scala:26:112
+    .io_aggregator_4_reset                (dut_reset),	// src/main/scala/system/TestHarness.scala:33:112
     .io_aggregator_3_clock                (clock),
-    .io_aggregator_3_reset                (dut_reset),	// src/main/scala/system/TestHarness.scala:26:112
+    .io_aggregator_3_reset                (dut_reset),	// src/main/scala/system/TestHarness.scala:33:112
     .io_aggregator_2_clock                (clock),
-    .io_aggregator_2_reset                (dut_reset),	// src/main/scala/system/TestHarness.scala:26:112
+    .io_aggregator_2_reset                (dut_reset),	// src/main/scala/system/TestHarness.scala:33:112
     .io_aggregator_1_clock                (clock),
-    .io_aggregator_1_reset                (dut_reset),	// src/main/scala/system/TestHarness.scala:26:112
+    .io_aggregator_1_reset                (dut_reset),	// src/main/scala/system/TestHarness.scala:33:112
     .io_aggregator_0_clock                (clock),
-    .io_aggregator_0_reset                (dut_reset),	// src/main/scala/system/TestHarness.scala:26:112
+    .io_aggregator_0_reset                (dut_reset),	// src/main/scala/system/TestHarness.scala:33:112
     .resetctrl_hartIsInReset_0            (reset),
     .debug_clock                          (_gated_clock_debug_clock_gate_out),	// src/main/scala/util/ClockGate.scala:36:20
     .debug_reset                          (debug_reset),	// src/main/scala/devices/debug/Periphery.scala:194:27
@@ -153794,33 +151765,33 @@ module TestHarness(	// src/main/scala/system/TestHarness.scala:14:7
     .mmio_axi4_0_r_bits_data              (_mmio_mem_io_axi4_0_r_bits_data),	// src/main/scala/system/SimAXIMem.scala:41:13
     .mmio_axi4_0_r_bits_resp              (_mmio_mem_io_axi4_0_r_bits_resp),	// src/main/scala/system/SimAXIMem.scala:41:13
     .mmio_axi4_0_r_bits_last              (_mmio_mem_io_axi4_0_r_bits_last),	// src/main/scala/system/SimAXIMem.scala:41:13
-    .l2_frontend_bus_axi4_0_aw_valid      (1'h0),	// src/main/scala/system/TestHarness.scala:14:7
-    .l2_frontend_bus_axi4_0_aw_bits_id    (8'h0),	// src/main/scala/system/TestHarness.scala:35:15
-    .l2_frontend_bus_axi4_0_aw_bits_addr  (32'h0),	// src/main/scala/system/TestHarness.scala:35:15
-    .l2_frontend_bus_axi4_0_aw_bits_len   (8'h0),	// src/main/scala/system/TestHarness.scala:35:15
-    .l2_frontend_bus_axi4_0_aw_bits_size  (3'h0),	// src/main/scala/system/TestHarness.scala:35:15
-    .l2_frontend_bus_axi4_0_aw_bits_burst (2'h0),	// src/main/scala/system/TestHarness.scala:35:15
-    .l2_frontend_bus_axi4_0_aw_bits_lock  (1'h0),	// src/main/scala/system/TestHarness.scala:14:7
-    .l2_frontend_bus_axi4_0_aw_bits_cache (4'h0),	// src/main/scala/system/TestHarness.scala:35:15
-    .l2_frontend_bus_axi4_0_aw_bits_prot  (3'h0),	// src/main/scala/system/TestHarness.scala:35:15
-    .l2_frontend_bus_axi4_0_aw_bits_qos   (4'h0),	// src/main/scala/system/TestHarness.scala:35:15
-    .l2_frontend_bus_axi4_0_w_valid       (1'h0),	// src/main/scala/system/TestHarness.scala:14:7
-    .l2_frontend_bus_axi4_0_w_bits_data   (64'h0),	// src/main/scala/system/TestHarness.scala:39:14
-    .l2_frontend_bus_axi4_0_w_bits_strb   (8'h0),	// src/main/scala/system/TestHarness.scala:35:15
-    .l2_frontend_bus_axi4_0_w_bits_last   (1'h0),	// src/main/scala/system/TestHarness.scala:14:7
-    .l2_frontend_bus_axi4_0_b_ready       (1'h0),	// src/main/scala/system/TestHarness.scala:14:7
-    .l2_frontend_bus_axi4_0_ar_valid      (1'h0),	// src/main/scala/system/TestHarness.scala:14:7
-    .l2_frontend_bus_axi4_0_ar_bits_id    (8'h0),	// src/main/scala/system/TestHarness.scala:35:15
-    .l2_frontend_bus_axi4_0_ar_bits_addr  (32'h0),	// src/main/scala/system/TestHarness.scala:35:15
-    .l2_frontend_bus_axi4_0_ar_bits_len   (8'h0),	// src/main/scala/system/TestHarness.scala:35:15
-    .l2_frontend_bus_axi4_0_ar_bits_size  (3'h0),	// src/main/scala/system/TestHarness.scala:35:15
-    .l2_frontend_bus_axi4_0_ar_bits_burst (2'h0),	// src/main/scala/system/TestHarness.scala:35:15
-    .l2_frontend_bus_axi4_0_ar_bits_lock  (1'h0),	// src/main/scala/system/TestHarness.scala:14:7
-    .l2_frontend_bus_axi4_0_ar_bits_cache (4'h0),	// src/main/scala/system/TestHarness.scala:35:15
-    .l2_frontend_bus_axi4_0_ar_bits_prot  (3'h0),	// src/main/scala/system/TestHarness.scala:35:15
-    .l2_frontend_bus_axi4_0_ar_bits_qos   (4'h0),	// src/main/scala/system/TestHarness.scala:35:15
-    .l2_frontend_bus_axi4_0_r_ready       (1'h0),	// src/main/scala/system/TestHarness.scala:14:7
-    .interrupts                           (2'h0),	// src/main/scala/system/TestHarness.scala:35:15
+    .l2_frontend_bus_axi4_0_aw_valid      (1'h0),	// src/main/scala/system/TestHarness.scala:19:7
+    .l2_frontend_bus_axi4_0_aw_bits_id    (8'h0),	// src/main/scala/system/TestHarness.scala:42:15
+    .l2_frontend_bus_axi4_0_aw_bits_addr  (32'h0),	// src/main/scala/system/TestHarness.scala:42:15
+    .l2_frontend_bus_axi4_0_aw_bits_len   (8'h0),	// src/main/scala/system/TestHarness.scala:42:15
+    .l2_frontend_bus_axi4_0_aw_bits_size  (3'h0),	// src/main/scala/system/TestHarness.scala:42:15
+    .l2_frontend_bus_axi4_0_aw_bits_burst (2'h0),	// src/main/scala/system/TestHarness.scala:42:15
+    .l2_frontend_bus_axi4_0_aw_bits_lock  (1'h0),	// src/main/scala/system/TestHarness.scala:19:7
+    .l2_frontend_bus_axi4_0_aw_bits_cache (4'h0),	// src/main/scala/system/TestHarness.scala:42:15
+    .l2_frontend_bus_axi4_0_aw_bits_prot  (3'h0),	// src/main/scala/system/TestHarness.scala:42:15
+    .l2_frontend_bus_axi4_0_aw_bits_qos   (4'h0),	// src/main/scala/system/TestHarness.scala:42:15
+    .l2_frontend_bus_axi4_0_w_valid       (1'h0),	// src/main/scala/system/TestHarness.scala:19:7
+    .l2_frontend_bus_axi4_0_w_bits_data   (64'h0),	// src/main/scala/system/TestHarness.scala:46:14
+    .l2_frontend_bus_axi4_0_w_bits_strb   (8'h0),	// src/main/scala/system/TestHarness.scala:42:15
+    .l2_frontend_bus_axi4_0_w_bits_last   (1'h0),	// src/main/scala/system/TestHarness.scala:19:7
+    .l2_frontend_bus_axi4_0_b_ready       (1'h0),	// src/main/scala/system/TestHarness.scala:19:7
+    .l2_frontend_bus_axi4_0_ar_valid      (1'h0),	// src/main/scala/system/TestHarness.scala:19:7
+    .l2_frontend_bus_axi4_0_ar_bits_id    (8'h0),	// src/main/scala/system/TestHarness.scala:42:15
+    .l2_frontend_bus_axi4_0_ar_bits_addr  (32'h0),	// src/main/scala/system/TestHarness.scala:42:15
+    .l2_frontend_bus_axi4_0_ar_bits_len   (8'h0),	// src/main/scala/system/TestHarness.scala:42:15
+    .l2_frontend_bus_axi4_0_ar_bits_size  (3'h0),	// src/main/scala/system/TestHarness.scala:42:15
+    .l2_frontend_bus_axi4_0_ar_bits_burst (2'h0),	// src/main/scala/system/TestHarness.scala:42:15
+    .l2_frontend_bus_axi4_0_ar_bits_lock  (1'h0),	// src/main/scala/system/TestHarness.scala:19:7
+    .l2_frontend_bus_axi4_0_ar_bits_cache (4'h0),	// src/main/scala/system/TestHarness.scala:42:15
+    .l2_frontend_bus_axi4_0_ar_bits_prot  (3'h0),	// src/main/scala/system/TestHarness.scala:42:15
+    .l2_frontend_bus_axi4_0_ar_bits_qos   (4'h0),	// src/main/scala/system/TestHarness.scala:42:15
+    .l2_frontend_bus_axi4_0_r_ready       (1'h0),	// src/main/scala/system/TestHarness.scala:19:7
+    .interrupts                           (2'h0),	// src/main/scala/system/TestHarness.scala:42:15
     .debug_clockeddmi_dmi_req_ready       (io_debug_req_ready),
     .debug_clockeddmi_dmi_resp_valid      (io_debug_resp_valid),
     .debug_clockeddmi_dmi_resp_bits_data  (io_debug_resp_bits_data),
@@ -153894,38 +151865,38 @@ module TestHarness(	// src/main/scala/system/TestHarness.scala:14:7
   AsyncResetRegVec_w1_i0 dut_reset_reg (	// src/main/scala/util/AsyncResetReg.scala:86:21
     .clock (clock),
     .reset (reset),
-    .io_d  (_ldut_debug_ndreset),	// src/main/scala/system/TestHarness.scala:22:19
+    .io_d  (_ldut_debug_ndreset),	// src/main/scala/system/TestHarness.scala:29:19
     .io_q  (_dut_reset_reg_io_q)
   );
   SimAXIMem mem (	// src/main/scala/system/SimAXIMem.scala:50:13
     .clock                   (clock),
     .reset                   (reset),
-    .io_axi4_0_aw_valid      (_ldut_mem_axi4_0_aw_valid),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_aw_bits_id    (_ldut_mem_axi4_0_aw_bits_id),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_aw_bits_addr  (_ldut_mem_axi4_0_aw_bits_addr),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_aw_bits_len   (_ldut_mem_axi4_0_aw_bits_len),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_aw_bits_size  (_ldut_mem_axi4_0_aw_bits_size),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_aw_bits_burst (_ldut_mem_axi4_0_aw_bits_burst),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_aw_bits_lock  (_ldut_mem_axi4_0_aw_bits_lock),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_aw_bits_cache (_ldut_mem_axi4_0_aw_bits_cache),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_aw_bits_prot  (_ldut_mem_axi4_0_aw_bits_prot),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_aw_bits_qos   (_ldut_mem_axi4_0_aw_bits_qos),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_w_valid       (_ldut_mem_axi4_0_w_valid),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_w_bits_data   (_ldut_mem_axi4_0_w_bits_data),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_w_bits_strb   (_ldut_mem_axi4_0_w_bits_strb),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_w_bits_last   (_ldut_mem_axi4_0_w_bits_last),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_b_ready       (_ldut_mem_axi4_0_b_ready),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_ar_valid      (_ldut_mem_axi4_0_ar_valid),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_ar_bits_id    (_ldut_mem_axi4_0_ar_bits_id),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_ar_bits_addr  (_ldut_mem_axi4_0_ar_bits_addr),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_ar_bits_len   (_ldut_mem_axi4_0_ar_bits_len),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_ar_bits_size  (_ldut_mem_axi4_0_ar_bits_size),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_ar_bits_burst (_ldut_mem_axi4_0_ar_bits_burst),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_ar_bits_lock  (_ldut_mem_axi4_0_ar_bits_lock),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_ar_bits_cache (_ldut_mem_axi4_0_ar_bits_cache),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_ar_bits_prot  (_ldut_mem_axi4_0_ar_bits_prot),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_ar_bits_qos   (_ldut_mem_axi4_0_ar_bits_qos),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_r_ready       (_ldut_mem_axi4_0_r_ready),	// src/main/scala/system/TestHarness.scala:22:19
+    .io_axi4_0_aw_valid      (_ldut_mem_axi4_0_aw_valid),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_aw_bits_id    (_ldut_mem_axi4_0_aw_bits_id),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_aw_bits_addr  (_ldut_mem_axi4_0_aw_bits_addr),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_aw_bits_len   (_ldut_mem_axi4_0_aw_bits_len),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_aw_bits_size  (_ldut_mem_axi4_0_aw_bits_size),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_aw_bits_burst (_ldut_mem_axi4_0_aw_bits_burst),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_aw_bits_lock  (_ldut_mem_axi4_0_aw_bits_lock),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_aw_bits_cache (_ldut_mem_axi4_0_aw_bits_cache),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_aw_bits_prot  (_ldut_mem_axi4_0_aw_bits_prot),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_aw_bits_qos   (_ldut_mem_axi4_0_aw_bits_qos),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_w_valid       (_ldut_mem_axi4_0_w_valid),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_w_bits_data   (_ldut_mem_axi4_0_w_bits_data),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_w_bits_strb   (_ldut_mem_axi4_0_w_bits_strb),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_w_bits_last   (_ldut_mem_axi4_0_w_bits_last),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_b_ready       (_ldut_mem_axi4_0_b_ready),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_ar_valid      (_ldut_mem_axi4_0_ar_valid),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_ar_bits_id    (_ldut_mem_axi4_0_ar_bits_id),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_ar_bits_addr  (_ldut_mem_axi4_0_ar_bits_addr),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_ar_bits_len   (_ldut_mem_axi4_0_ar_bits_len),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_ar_bits_size  (_ldut_mem_axi4_0_ar_bits_size),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_ar_bits_burst (_ldut_mem_axi4_0_ar_bits_burst),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_ar_bits_lock  (_ldut_mem_axi4_0_ar_bits_lock),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_ar_bits_cache (_ldut_mem_axi4_0_ar_bits_cache),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_ar_bits_prot  (_ldut_mem_axi4_0_ar_bits_prot),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_ar_bits_qos   (_ldut_mem_axi4_0_ar_bits_qos),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_r_ready       (_ldut_mem_axi4_0_r_ready),	// src/main/scala/system/TestHarness.scala:29:19
     .io_axi4_0_aw_ready      (_mem_io_axi4_0_aw_ready),
     .io_axi4_0_w_ready       (_mem_io_axi4_0_w_ready),
     .io_axi4_0_b_valid       (_mem_io_axi4_0_b_valid),
@@ -153941,32 +151912,32 @@ module TestHarness(	// src/main/scala/system/TestHarness.scala:14:7
   SimAXIMem_1 mmio_mem (	// src/main/scala/system/SimAXIMem.scala:41:13
     .clock                   (clock),
     .reset                   (reset),
-    .io_axi4_0_aw_valid      (_ldut_mmio_axi4_0_aw_valid),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_aw_bits_id    (_ldut_mmio_axi4_0_aw_bits_id),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_aw_bits_addr  (_ldut_mmio_axi4_0_aw_bits_addr),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_aw_bits_len   (_ldut_mmio_axi4_0_aw_bits_len),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_aw_bits_size  (_ldut_mmio_axi4_0_aw_bits_size),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_aw_bits_burst (_ldut_mmio_axi4_0_aw_bits_burst),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_aw_bits_lock  (_ldut_mmio_axi4_0_aw_bits_lock),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_aw_bits_cache (_ldut_mmio_axi4_0_aw_bits_cache),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_aw_bits_prot  (_ldut_mmio_axi4_0_aw_bits_prot),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_aw_bits_qos   (_ldut_mmio_axi4_0_aw_bits_qos),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_w_valid       (_ldut_mmio_axi4_0_w_valid),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_w_bits_data   (_ldut_mmio_axi4_0_w_bits_data),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_w_bits_strb   (_ldut_mmio_axi4_0_w_bits_strb),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_w_bits_last   (_ldut_mmio_axi4_0_w_bits_last),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_b_ready       (_ldut_mmio_axi4_0_b_ready),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_ar_valid      (_ldut_mmio_axi4_0_ar_valid),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_ar_bits_id    (_ldut_mmio_axi4_0_ar_bits_id),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_ar_bits_addr  (_ldut_mmio_axi4_0_ar_bits_addr),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_ar_bits_len   (_ldut_mmio_axi4_0_ar_bits_len),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_ar_bits_size  (_ldut_mmio_axi4_0_ar_bits_size),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_ar_bits_burst (_ldut_mmio_axi4_0_ar_bits_burst),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_ar_bits_lock  (_ldut_mmio_axi4_0_ar_bits_lock),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_ar_bits_cache (_ldut_mmio_axi4_0_ar_bits_cache),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_ar_bits_prot  (_ldut_mmio_axi4_0_ar_bits_prot),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_ar_bits_qos   (_ldut_mmio_axi4_0_ar_bits_qos),	// src/main/scala/system/TestHarness.scala:22:19
-    .io_axi4_0_r_ready       (_ldut_mmio_axi4_0_r_ready),	// src/main/scala/system/TestHarness.scala:22:19
+    .io_axi4_0_aw_valid      (_ldut_mmio_axi4_0_aw_valid),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_aw_bits_id    (_ldut_mmio_axi4_0_aw_bits_id),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_aw_bits_addr  (_ldut_mmio_axi4_0_aw_bits_addr),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_aw_bits_len   (_ldut_mmio_axi4_0_aw_bits_len),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_aw_bits_size  (_ldut_mmio_axi4_0_aw_bits_size),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_aw_bits_burst (_ldut_mmio_axi4_0_aw_bits_burst),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_aw_bits_lock  (_ldut_mmio_axi4_0_aw_bits_lock),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_aw_bits_cache (_ldut_mmio_axi4_0_aw_bits_cache),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_aw_bits_prot  (_ldut_mmio_axi4_0_aw_bits_prot),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_aw_bits_qos   (_ldut_mmio_axi4_0_aw_bits_qos),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_w_valid       (_ldut_mmio_axi4_0_w_valid),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_w_bits_data   (_ldut_mmio_axi4_0_w_bits_data),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_w_bits_strb   (_ldut_mmio_axi4_0_w_bits_strb),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_w_bits_last   (_ldut_mmio_axi4_0_w_bits_last),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_b_ready       (_ldut_mmio_axi4_0_b_ready),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_ar_valid      (_ldut_mmio_axi4_0_ar_valid),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_ar_bits_id    (_ldut_mmio_axi4_0_ar_bits_id),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_ar_bits_addr  (_ldut_mmio_axi4_0_ar_bits_addr),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_ar_bits_len   (_ldut_mmio_axi4_0_ar_bits_len),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_ar_bits_size  (_ldut_mmio_axi4_0_ar_bits_size),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_ar_bits_burst (_ldut_mmio_axi4_0_ar_bits_burst),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_ar_bits_lock  (_ldut_mmio_axi4_0_ar_bits_lock),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_ar_bits_cache (_ldut_mmio_axi4_0_ar_bits_cache),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_ar_bits_prot  (_ldut_mmio_axi4_0_ar_bits_prot),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_ar_bits_qos   (_ldut_mmio_axi4_0_ar_bits_qos),	// src/main/scala/system/TestHarness.scala:29:19
+    .io_axi4_0_r_ready       (_ldut_mmio_axi4_0_r_ready),	// src/main/scala/system/TestHarness.scala:29:19
     .io_axi4_0_aw_ready      (_mmio_mem_io_axi4_0_aw_ready),
     .io_axi4_0_w_ready       (_mmio_mem_io_axi4_0_w_ready),
     .io_axi4_0_b_valid       (_mmio_mem_io_axi4_0_b_valid),
@@ -153982,20 +151953,19 @@ module TestHarness(	// src/main/scala/system/TestHarness.scala:14:7
   AsyncResetSynchronizerShiftReg_w1_d3_i0 debug_reset_syncd_debug_reset_sync (	// src/main/scala/util/ShiftReg.scala:45:23
     .clock (clock),
     .reset (dmi_reset),	// src/main/scala/devices/debug/Periphery.scala:187:82
-    .io_d  (1'h1),	// src/main/scala/system/TestHarness.scala:14:7
+    .io_d  (1'h1),	// src/main/scala/system/TestHarness.scala:19:7
     .io_q  (_debug_reset_syncd_debug_reset_sync_io_q)
   );
   ResetSynchronizerShiftReg_w1_d3_i0 dmactiveAck_dmactiveAck (	// src/main/scala/util/ShiftReg.scala:45:23
     .clock (clock),
     .reset (debug_reset),	// src/main/scala/devices/debug/Periphery.scala:194:27
-    .io_d  (_ldut_debug_dmactive),	// src/main/scala/system/TestHarness.scala:22:19
+    .io_d  (_ldut_debug_dmactive),	// src/main/scala/system/TestHarness.scala:29:19
     .io_q  (dmactiveAck)
   );
   EICG_wrapper gated_clock_debug_clock_gate (	// src/main/scala/util/ClockGate.scala:36:20
     .in      (clock),
-    .test_en (1'h0),	// src/main/scala/system/TestHarness.scala:14:7
+    .test_en (1'h0),	// src/main/scala/system/TestHarness.scala:19:7
     .en      (clock_en),	// src/main/scala/devices/debug/Periphery.scala:204:29
     .out     (_gated_clock_debug_clock_gate_out)
   );
-  assign io_success = io_exit == 32'h1;	// src/main/scala/system/TestHarness.scala:14:7, :44:25
 endmodule
