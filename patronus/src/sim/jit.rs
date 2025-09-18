@@ -774,7 +774,10 @@ impl Simulator for JITEngine<'_> {
         let tpe;
         let value = if let Some(&offset) = self.states_to_offset.get(&expr) {
             is_cached_symbol = true;
-            tpe = self.mutable_slot_states[offset].1;
+            tpe = self
+                .mutable_slot_states
+                .get(offset)
+                .map_or_else(|| expr.get_type(self.ctx), |&(_, tpe)| tpe);
             current_state_buffer!(self).as_slice()[offset]
         } else {
             tpe = expr.get_type(self.ctx);
