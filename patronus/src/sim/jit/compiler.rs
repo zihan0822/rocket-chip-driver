@@ -88,7 +88,15 @@ impl JITCompiler {
             JITBuilder::with_flags(&parsed_flags, cranelift::module::default_libcall_names())
                 .unwrap_or_else(|_| panic!("fail to launch jit instance"));
         runtime::load_runtime_lib(&mut builder);
-        let module = JITModule::new(builder);
+        #[cfg(feature = "aot-clif")]
+        super::clif_loader::register_symbol_lookup_fallback(&mut builder);
+        #[allow(unused_mut)]
+        let mut module = JITModule::new(builder);
+        #[cfg(feature = "aot-clif")]
+        {
+            let mut clif_ctx = module.make_context();
+            super::clif_loader::register_precompiled_clif_function(&mut module, &mut clif_ctx);
+        }
         Self {
             module,
             sealed_heap_resources: vec![],
@@ -533,7 +541,11 @@ impl CodeGenContext<'_, '_, '_> {
         else {
             unreachable!()
         };
-        self.fn_builder.func.dfg.replace(dummy_inst).iconst(self.int, src_addr as i64);
+        self.fn_builder
+            .func
+            .dfg
+            .replace(dummy_inst)
+            .iconst(self.int, src_addr as i64);
     }
 }
 
