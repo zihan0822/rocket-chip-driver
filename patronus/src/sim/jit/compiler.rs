@@ -9,7 +9,6 @@ use crate::expr::{self, *};
 use crate::system::*;
 
 use baa::{BitVecValue, BitVecValueRef};
-use cranelift::codegen::cursor::{Cursor, FuncCursor};
 use cranelift::codegen::ir;
 use cranelift::jit::{JITBuilder, JITModule};
 use cranelift::module::Module;
@@ -534,14 +533,7 @@ impl CodeGenContext<'_, '_, '_> {
         else {
             unreachable!()
         };
-        let mut cursor = FuncCursor::new(self.fn_builder.func);
-        cursor.goto_inst(dummy_inst);
-        cursor.remove_inst();
-        let read_src = cursor.ins().iconst(self.int, src_addr as i64);
-        self.fn_builder
-            .func
-            .dfg
-            .change_to_alias(dummy_inst_value, read_src);
+        self.fn_builder.func.dfg.replace(dummy_inst).iconst(self.int, src_addr as i64);
     }
 }
 
