@@ -38,3 +38,4 @@ insta = { version = "1.x", features = ["yaml"] }
 trace = []
 visualize = []
 aot-clif = []
+inline = []

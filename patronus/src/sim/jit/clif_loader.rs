@@ -18,7 +18,13 @@ extern "C" fn noncolocated_rust_lib_call_stub() -> ! {
     std::process::exit(1);
 }
 
-pub(super) type SymTab = FxHashMap<String, (ir::Signature, module::FuncId)>;
+pub(super) struct LoadedFuncInfo {
+    pub(super) id: module::FuncId,
+    #[cfg(feature = "inline")]
+    pub(super) content: function::Function,
+}
+
+pub(super) type SymTab = FxHashMap<String, LoadedFuncInfo>;
 
 #[expect(dead_code)]
 enum ClifProfile {
@@ -179,7 +185,7 @@ impl<'a> ParsedClifFunctionLoader<'a> {
 
     fn finalize(mut self) -> SymTab {
         let mut symtab = FxHashMap::default();
-        let mut func_ids = vec![];
+        let mut func_info: Vec<(String, module::FuncId)> = vec![];
         for ParsedClifFunction { symbol, content } in self.parsed_functions {
             let func_id = self
                 .module
@@ -190,29 +196,35 @@ impl<'a> ParsedClifFunctionLoader<'a> {
                 .get_user()
                 .expect("expect user function")
                 .clone();
-            symtab.insert(symbol.clone(), (content.stencil.signature.clone(), func_id));
-            func_ids.push(func_id);
+            func_info.push((symbol.clone(), func_id));
             self.register_ext_user_name_remap_info(
                 original_user_ext_name,
                 module::FuncOrDataId::Func(func_id),
             );
         }
         self.stub_rustc_lib_call();
-        let fixed_functions: FxHashMap<_, _> = self
+        let fixed_functions: Vec<_> = self
             .parsed_functions
             .iter()
-            .zip(&func_ids)
-            .map(|(parsed, &func_id)| {
+            .map(|parsed| {
                 let mut function = parsed.content.clone();
                 self.fixup_ext_data_ref(&mut function);
-                (func_id, function)
+                function
             })
             .collect();
 
-        for (&func_id, function) in &fixed_functions {
-            self.ctx.func = function.clone();
+        for ((symbol, id), function) in func_info.into_iter().zip(fixed_functions) {
+            symtab.insert(
+                symbol,
+                LoadedFuncInfo {
+                    id,
+                    #[cfg(feature = "inline")]
+                    content: function.clone(),
+                },
+            );
+            self.ctx.func = function;
             self.module
-                .define_function(func_id, self.ctx)
+                .define_function(id, self.ctx)
                 .expect("fail to load parsed function");
             self.module.clear_context(self.ctx);
         }

@@ -250,11 +250,11 @@ impl JITCompiler {
             self.aot_symtab.as_ref().map(|aot_symtab| {
                 aot_symtab
                     .iter()
-                    .map(|(sym, (_sig, id))| {
+                    .map(|(sym, loaded_func)| {
                         (
                             sym.to_string(),
                             self.module
-                                .declare_func_in_func(*id, &mut cranelift_ctx.func),
+                                .declare_func_in_func(loaded_func.id, &mut cranelift_ctx.func),
                         )
                     })
                     .collect::<FxHashMap<_, _>>()
@@ -289,6 +289,44 @@ impl JITCompiler {
         let function_id = self
             .module
             .declare_anonymous_function(&cranelift_ctx.func.signature)?;
+        #[cfg(feature = "inline")]
+        {
+            let ext_funcs = cranelift_ctx.func.stencil.dfg.ext_funcs.clone();
+            let params = cranelift_ctx.func.params.clone();
+            // agressively inlining until enter non-colocated function
+            let policy =
+                &|func_ref| {
+                    ext_funcs.get(func_ref).and_then(|ext_data| {
+                        if ext_data.colocated
+                            && let ir::ExternalName::User(ext_user_ref) = ext_data.name
+                        {
+                            let ext_user_name = params.user_named_funcs().get(ext_user_ref)?;
+                            let func_id = cranelift::module::FuncId::from_u32(ext_user_name.index);
+                            // TODO: add search by `FuncId` support
+                            let (sym, loaded_func) = self.aot_symtab.as_ref()?.iter().find_map(
+                                |(sym, loaded_func)| {
+                                    if loaded_func.id == func_id {
+                                        Some((sym, loaded_func))
+                                    } else {
+                                        None
+                                    }
+                                },
+                            )?;
+                            log::info!("inline candidate `{sym}`");
+                            debug_assert_eq!(ext_user_name.namespace, 0);
+                            Some(&loaded_func.content)
+                        } else {
+                            None
+                        }
+                    })
+                };
+            if cranelift_ctx
+                .inline(super::inliner::JITInliner::new(policy))
+                .is_err()
+            {
+                log::error!("inline failure!");
+            }
+        }
         self.module
             .define_function(function_id, &mut cranelift_ctx)?;
         self.module.clear_context(&mut cranelift_ctx);

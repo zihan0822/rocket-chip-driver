@@ -7,6 +7,8 @@ mod clif_loader;
 mod compiler;
 mod expr_graph;
 mod heap;
+#[cfg(feature = "inline")]
+mod inliner;
 mod runtime;
 
 use super::*;
