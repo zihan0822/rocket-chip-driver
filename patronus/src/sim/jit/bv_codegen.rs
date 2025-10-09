@@ -17,7 +17,7 @@ pub(super) struct BVIndirect(pub(super) WidthInt);
 
 macro_rules! iconst {
     ($ctx: expr, $value: expr) => {
-        $ctx.fn_builder.ins().iconst($ctx.int, $value as i64)
+        $ctx.fn_builder.ins().iconst($ctx.int, ($value) as i64)
     };
 }
 
@@ -323,7 +323,7 @@ impl BVCodeGenVTable for BVIndirect {
             let ptr = owned_bv_literal.as_ref() as *const BitVecValue;
             ctx.compiler.constant.bv_data.push(owned_bv_literal);
             let src = TaggedValue {
-                value: ctx.fn_builder.ins().iconst(ctx.int, ptr as i64),
+                value: iconst!(ctx, ptr),
                 data_type: expr::Type::BV(self.0),
             };
             ctx.copy_from_bv(dst, src);
@@ -382,8 +382,8 @@ impl BVCodeGenVTable for BVIndirect {
             } else {
                 *arg
             };
-            let original_width = ctx.fn_builder.ins().iconst(ctx.int, (self.0 - by) as i64);
-            let by = ctx.fn_builder.ins().iconst(ctx.int, by as i64);
+            let original_width = iconst!(ctx, self.0 - by);
+            let by = iconst!(ctx, by);
             invoke_bv_extern_function(
                 ctx.runtime_lib.bv_ops["zero_extend"],
                 &[*dst, arg, original_width, by],
@@ -399,8 +399,8 @@ impl BVCodeGenVTable for BVIndirect {
             } else {
                 *arg
             };
-            let original_width = ctx.fn_builder.ins().iconst(ctx.int, (self.0 - by) as i64);
-            let by = ctx.fn_builder.ins().iconst(ctx.int, by as i64);
+            let original_width = iconst!(ctx, self.0 - by);
+            let by = iconst!(ctx, by);
             invoke_bv_extern_function(
                 ctx.runtime_lib.bv_ops["sign_extend"],
                 &[*dst, arg, original_width, by],
@@ -411,10 +411,7 @@ impl BVCodeGenVTable for BVIndirect {
 
     fn shift_right(&self, arg0: TaggedValue, arg1: TaggedValue, ctx: &mut CodeGenContext) -> Value {
         self.with_dst(ctx, |dst, ctx| {
-            let width = ctx
-                .fn_builder
-                .ins()
-                .iconst(ctx.int, arg1.expect_bv_type() as i64);
+            let width = iconst!(ctx, arg1.expect_bv_type());
             invoke_bv_extern_function(
                 ctx.runtime_lib.bv_ops["shift_right"],
                 &[*dst, *arg0, *arg1, width],
@@ -430,10 +427,7 @@ impl BVCodeGenVTable for BVIndirect {
         ctx: &mut CodeGenContext,
     ) -> Value {
         self.with_dst(ctx, |dst, ctx| {
-            let width = ctx
-                .fn_builder
-                .ins()
-                .iconst(ctx.int, arg1.expect_bv_type() as i64);
+            let width = iconst!(ctx, arg1.expect_bv_type());
             invoke_bv_extern_function(
                 ctx.runtime_lib.bv_ops["arithmetic_shift_right"],
                 &[*dst, *arg0, *arg1, width],
@@ -444,10 +438,7 @@ impl BVCodeGenVTable for BVIndirect {
 
     fn shift_left(&self, arg0: TaggedValue, arg1: TaggedValue, ctx: &mut CodeGenContext) -> Value {
         self.with_dst(ctx, |dst, ctx| {
-            let width = ctx
-                .fn_builder
-                .ins()
-                .iconst(ctx.int, arg1.expect_bv_type() as i64);
+            let width = iconst!(ctx, arg1.expect_bv_type());
             invoke_bv_extern_function(
                 ctx.runtime_lib.bv_ops["shift_left"],
                 &[*dst, *arg0, *arg1, width],
@@ -474,7 +465,6 @@ impl BVCodeGenVTable for BVIndirect {
 
     fn concat(&self, mut hi: TaggedValue, mut lo: TaggedValue, ctx: &mut CodeGenContext) -> Value {
         self.with_dst(ctx, |dst, ctx| {
-            let (hi_width, lo_width) = (hi.expect_bv_type(), lo.expect_bv_type());
             // extern `concat` function expects i64 type
             if !hi.requires_bv_delegation() {
                 hi.value = BVWord(64).extend_to_fit(hi, ctx);
@@ -482,8 +472,10 @@ impl BVCodeGenVTable for BVIndirect {
             if !lo.requires_bv_delegation() {
                 lo.value = BVWord(64).extend_to_fit(lo, ctx);
             }
-            let hi_width = ctx.fn_builder.ins().iconst(ctx.int, hi_width as i64);
-            let lo_width = ctx.fn_builder.ins().iconst(ctx.int, lo_width as i64);
+            let (hi_width, lo_width) = (
+                iconst!(ctx, hi.expect_bv_type()),
+                iconst!(ctx, lo.expect_bv_type()),
+            );
             invoke_bv_extern_function(
                 ctx.runtime_lib.bv_ops["concat"],
                 &[*dst, *hi, *lo, hi_width, lo_width],
@@ -500,8 +492,7 @@ impl BVCodeGenVTable for BVIndirect {
         ctx: &mut CodeGenContext,
     ) -> Value {
         self.with_dst(ctx, |dst, ctx| {
-            let hi = ctx.fn_builder.ins().iconst(ctx.int, hi as i64);
-            let lo = ctx.fn_builder.ins().iconst(ctx.int, lo as i64);
+            let (hi, lo) = (iconst!(ctx, hi), iconst!(ctx, lo));
             invoke_bv_extern_function(
                 ctx.runtime_lib.bv_ops["slice_with_output_buffer"],
                 &[*dst, *value, hi, lo],

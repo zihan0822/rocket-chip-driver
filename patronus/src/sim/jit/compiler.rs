@@ -623,7 +623,7 @@ impl TaggedValue {
     }
 
     pub(super) fn bv_num_words(&self) -> u32 {
-        self.expect_bv_type().div_ceil(baa::Word::BITS) 
+        self.expect_bv_type().div_ceil(baa::Word::BITS)
     }
 
     pub(super) fn tag(value: Value, data_type: expr::Type) -> Self {
