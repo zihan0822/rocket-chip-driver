@@ -3,10 +3,7 @@
 // author: Zihan Li <zl2225@cornell.edu>
 use crate::expr::{self, *};
 use baa::{BitVecOps, BitVecValue, BitVecValueRef};
-use cranelift::codegen::ir::{
-    self, FuncRef,
-    stackslot::{StackSlotData, StackSlotKind},
-};
+use cranelift::codegen::ir::FuncRef;
 use cranelift::prelude::*;
 
 use super::compiler::{BVCodeGenVTable, CodeGenContext, TaggedValue};
@@ -246,7 +243,7 @@ impl BVCodeGenVTable for BVWord {
                 ) {
                     let ret = ctx.fn_builder.ins().load(
                         ctx.int,
-                        ir::MemFlags::trusted(),
+                        codegen::ir::MemFlags::trusted(),
                         stack_slot_addr,
                         0,
                     );
@@ -509,7 +506,6 @@ pub(super) use aot::BVIndirectAOT;
 mod aot {
     use super::*;
     pub struct BVIndirectAOT {
-        #[allow(dead_code)]
         width: WidthInt,
         fallback: BVIndirect,
     }
@@ -533,10 +529,7 @@ mod aot {
     where
         A: FnOnce(WidthInt, &mut CodeGenContext) -> Value,
     {
-        let aot_slice = ctx
-            .aot_lib
-            .as_ref()
-            .and_then(|aot_lib| aot_lib.get("slice").copied())?;
+        let aot_slice = ctx.aot_func_ref("slice")?;
         let dst_width = hi - lo + 1;
         let dst_words = allocator(dst_width, ctx);
         let dst_len = iconst!(ctx, dst_width.div_ceil(baa::Word::BITS));
@@ -550,6 +543,35 @@ mod aot {
             ctx,
         );
         Some(dst_words)
+    }
+
+    /// Store `value` to a fresh stack slot.
+    /// Returns the starting address of stack slot.
+    fn move_to_stack_slot(value: TaggedValue, ctx: &mut CodeGenContext) -> Value {
+        debug_assert!(!value.requires_bv_delegation());
+        let stack_slot = ctx
+            .fn_builder
+            .func
+            .create_sized_stack_slot(StackSlotData::new(
+                StackSlotKind::ExplicitSlot,
+                size_of::<baa::Word>() as u32,
+                3,
+            ));
+        let value = BVWord(baa::Word::BITS).extend_to_fit(value, ctx);
+        ctx.fn_builder.ins().stack_store(value, stack_slot, 0);
+        ctx.fn_builder.ins().stack_addr(types::I64, stack_slot, 0)
+    }
+
+    /// Returns the starting address and length of the underlying words buffer of bitvector.
+    /// This might involve stack allocation if `value` is not backed by a `baa::BitVec`
+    fn words_slice_raw_parts(value: TaggedValue, ctx: &mut CodeGenContext) -> (Value, Value) {
+        let address = if value.requires_bv_delegation() {
+            invoke_bv_extern_function(ctx.runtime_lib.bv_words_address, &[*value], ctx).unwrap()
+        } else {
+            move_to_stack_slot(value, ctx)
+        };
+        let len = iconst!(ctx, value.bv_num_words());
+        (address, len)
     }
 
     impl BVCodeGenVTable for BVIndirectAOT {
@@ -578,12 +600,39 @@ mod aot {
                     let reserved_slot = ctx.reserve_intermediate_bv_cache_slot(width);
                     let dst = ctx.resource_ptr_at_slot(reserved_slot);
                     dst_slot = Some(*reserved_slot);
-                    invoke_bv_extern_function(ctx.runtime_lib.bv_words_address, &[*dst], ctx)
-                        .unwrap()
+                    words_slice_raw_parts(dst, ctx).0
                 },
                 ctx,
             );
             dst_slot.unwrap_or_else(|| self.fallback.slice(value, hi, lo, ctx))
+        }
+
+        /// External `concat` function prototype:
+        /// ```
+        /// fn concat(
+        ///     dst: *mut Word, dst_len: usize,
+        ///     msb: *const Word, msb_len: usize,
+        ///     lsb: *const Word, lsb_len: usize,
+        ///     lsb_width: usize,
+        /// )
+        /// ```
+        fn concat(&self, hi: TaggedValue, lo: TaggedValue, ctx: &mut CodeGenContext) -> Value {
+            let Some(aot_concat) = ctx.aot_func_ref("concat") else {
+                return self.fallback.concat(hi, lo, ctx);
+            };
+            let (hi_words, hi_len) = words_slice_raw_parts(hi, ctx);
+            let (lo_words, lo_len) = words_slice_raw_parts(lo, ctx);
+            let lsb_width = iconst!(ctx, lo.expect_bv_type());
+            reserve_bv_slot_and_then(self.width, ctx, |dst, ctx| {
+                let (dst_words, dst_len) = words_slice_raw_parts(dst, ctx);
+                invoke_bv_extern_function(
+                    aot_concat,
+                    &[
+                        dst_words, dst_len, hi_words, hi_len, lo_words, lo_len, lsb_width,
+                    ],
+                    ctx,
+                );
+            })
         }
 
         delegate::delegate! {
@@ -615,8 +664,6 @@ mod aot {
                 fn ge(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
                 fn gt_signed(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
                 fn ge_signed(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
-
-                fn concat(&self, hi: TaggedValue, lo: TaggedValue, ctx: &mut CodeGenContext) -> Value;
             }
         }
     }

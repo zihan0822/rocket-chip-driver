@@ -793,6 +793,13 @@ impl CodeGenContext<'_, '_, '_> {
             .call(self.runtime_lib.copy_from_bv, &[*dst, *src]);
     }
 
+    #[cfg(feature = "aot-clif")]
+    pub(super) fn aot_func_ref(&self, symbol: impl AsRef<str>) -> Option<ir::FuncRef> {
+        self.aot_lib
+            .as_ref()
+            .and_then(|aot_lib| aot_lib.get(symbol.as_ref()).copied())
+    }
+
     fn reserve_cloned_intermediate_cache_slot(&mut self, src: TaggedValue) -> TaggedValue {
         match src.data_type {
             expr::Type::Array(tpe) => {
