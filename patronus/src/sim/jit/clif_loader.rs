@@ -18,6 +18,8 @@ extern "C" fn noncolocated_rust_lib_call_stub() -> ! {
     std::process::exit(1);
 }
 
+pub(super) type SymTab = FxHashMap<String, (ir::Signature, module::FuncId)>;
+
 #[expect(dead_code)]
 enum ClifProfile {
     Opt,
@@ -42,12 +44,12 @@ struct ParsedClifFunction {
 pub(crate) fn register_precompiled_clif_function(
     module: &mut JITModule,
     ctx: &mut codegen::Context,
-) {
+) -> Option<SymTab> {
     let Ok(target_dir) = std::env::var(LOAD_PATH_ENV_VAR) else {
         log::warn!(
             "directory for precompiled clif files has not been specified, try set `{LOAD_PATH_ENV_VAR}` environment variable"
         );
-        return;
+        return None;
     };
     let parsed_functions =
         collect_clif_functions_with_profile(target_dir, ClifProfile::Opt).collect::<Vec<_>>();
@@ -56,6 +58,7 @@ pub(crate) fn register_precompiled_clif_function(
         "{} clif functions compiled AOT were loaded",
         loaded_functions.len()
     );
+    Some(loaded_functions)
 }
 
 pub(crate) fn register_symbol_lookup_fallback(builder: &mut JITBuilder) {
@@ -174,8 +177,8 @@ impl<'a> ParsedClifFunctionLoader<'a> {
         }
     }
 
-    fn finalize(mut self) -> FxHashMap<String, module::FuncId> {
-        let mut symbol_to_fn_id = FxHashMap::default();
+    fn finalize(mut self) -> SymTab {
+        let mut symtab = FxHashMap::default();
         let mut func_ids = vec![];
         for ParsedClifFunction { symbol, content } in self.parsed_functions {
             let func_id = self
@@ -187,7 +190,7 @@ impl<'a> ParsedClifFunctionLoader<'a> {
                 .get_user()
                 .expect("expect user function")
                 .clone();
-            symbol_to_fn_id.insert(symbol.clone(), func_id);
+            symtab.insert(symbol.clone(), (content.stencil.signature.clone(), func_id));
             func_ids.push(func_id);
             self.register_ext_user_name_remap_info(
                 original_user_ext_name,
@@ -216,7 +219,7 @@ impl<'a> ParsedClifFunctionLoader<'a> {
         self.module
             .finalize_definitions()
             .expect("fail to finalize");
-        symbol_to_fn_id
+        symtab
     }
 
     /// HACK: cranelift internally maps a FuncId/DataId to ExtData by creating a UserExternalName with 0/1 namespace

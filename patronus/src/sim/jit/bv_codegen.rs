@@ -3,7 +3,10 @@
 // author: Zihan Li <zl2225@cornell.edu>
 use crate::expr::{self, *};
 use baa::{BitVecOps, BitVecValue, BitVecValueRef};
-use cranelift::codegen::ir::FuncRef;
+use cranelift::codegen::ir::{
+    self, FuncRef,
+    stackslot::{StackSlotData, StackSlotKind},
+};
 use cranelift::prelude::*;
 
 use super::compiler::{BVCodeGenVTable, CodeGenContext, TaggedValue};
@@ -11,6 +14,12 @@ use super::compiler::{BVCodeGenVTable, CodeGenContext, TaggedValue};
 /// Contains width of result bit vector type.
 pub(super) struct BVWord(pub(super) WidthInt);
 pub(super) struct BVIndirect(pub(super) WidthInt);
+
+macro_rules! iconst {
+    ($ctx: expr, $value: expr) => {
+        $ctx.fn_builder.ins().iconst($ctx.int, $value as i64)
+    };
+}
 
 /// Given width of a bit vec value, select the smallest primitive type that is able to represent it
 pub(super) fn select_container_primitive(width: WidthInt) -> cranelift::prelude::Type {
@@ -20,6 +29,12 @@ pub(super) fn select_container_primitive(width: WidthInt) -> cranelift::prelude:
         17..=32 => types::I32,
         33..=64 => types::I64,
         _ => panic!("unsupported width for thin bit vec"),
+    }
+}
+
+impl BVWord {
+    pub(super) fn new(width: WidthInt) -> Self {
+        Self(width)
     }
 }
 
@@ -209,8 +224,37 @@ impl BVCodeGenVTable for BVWord {
         ctx: &mut CodeGenContext,
     ) -> Value {
         if value.requires_bv_delegation() {
-            let hi = ctx.fn_builder.ins().iconst(ctx.int, hi as i64);
-            let lo = ctx.fn_builder.ins().iconst(ctx.int, lo as i64);
+            #[cfg(feature = "aot-clif")]
+            {
+                if let Some(stack_slot_addr) = aot::slice_with_dst_words_allocator(
+                    value,
+                    hi,
+                    lo,
+                    |width, ctx| {
+                        assert!(width <= super::THIN_BV_MAX_WIDTH);
+                        let stack_slot =
+                            ctx.fn_builder
+                                .func
+                                .create_sized_stack_slot(StackSlotData::new(
+                                    StackSlotKind::ExplicitSlot,
+                                    size_of::<baa::Word>() as u32,
+                                    3,
+                                ));
+                        ctx.fn_builder.ins().stack_addr(ctx.int, stack_slot, 0)
+                    },
+                    ctx,
+                ) {
+                    let ret = ctx.fn_builder.ins().load(
+                        ctx.int,
+                        ir::MemFlags::trusted(),
+                        stack_slot_addr,
+                        0,
+                    );
+                    return self.truncate_to_fit(TaggedValue::tag_bv(ret, 64), ctx);
+                }
+            }
+            let hi = iconst!(ctx, hi);
+            let lo = iconst!(ctx, lo);
             // extern `slice` fn always returns i64 type
             let ret =
                 invoke_bv_extern_function(ctx.runtime_lib.bv_ops["slice"], &[*value, hi, lo], ctx)
@@ -238,16 +282,30 @@ fn invoke_bv_extern_function(
     ctx.fn_builder.inst_results(call).first().copied()
 }
 
+/// Returns reserved bv cache slot.
+fn reserve_bv_slot_and_then(
+    width: WidthInt,
+    ctx: &mut CodeGenContext,
+    op: impl FnOnce(TaggedValue, &mut CodeGenContext),
+) -> Value {
+    let dst_slot = ctx.reserve_intermediate_bv_cache_slot(width);
+    let dst = ctx.resource_ptr_at_slot(dst_slot);
+    op(dst, ctx);
+    *dst_slot
+}
+
 impl BVIndirect {
+    pub(super) fn new(width: WidthInt) -> Self {
+        Self(width)
+    }
+
+    #[inline]
     fn with_dst(
         &self,
         ctx: &mut CodeGenContext,
         op: impl FnOnce(TaggedValue, &mut CodeGenContext),
     ) -> Value {
-        let dst_slot = ctx.reserve_intermediate_bv_cache_slot(self.0);
-        let dst = ctx.resource_ptr_at_slot(dst_slot);
-        op(dst, ctx);
-        *dst_slot
+        reserve_bv_slot_and_then(self.0, ctx, op)
     }
 }
 
@@ -450,5 +508,125 @@ impl BVCodeGenVTable for BVIndirect {
                 ctx,
             );
         })
+    }
+}
+
+#[cfg(feature = "aot-clif")]
+pub(super) use aot::BVIndirectAOT;
+
+#[cfg(feature = "aot-clif")]
+mod aot {
+    use super::*;
+    pub struct BVIndirectAOT {
+        #[allow(dead_code)]
+        width: WidthInt,
+        fallback: BVIndirect,
+    }
+
+    impl BVIndirectAOT {
+        pub fn new(width: WidthInt) -> Self {
+            Self {
+                width,
+                fallback: BVIndirect::new(width),
+            }
+        }
+    }
+
+    pub fn slice_with_dst_words_allocator<A>(
+        src: TaggedValue,
+        hi: WidthInt,
+        lo: WidthInt,
+        allocator: A,
+        ctx: &mut CodeGenContext,
+    ) -> Option<Value>
+    where
+        A: FnOnce(WidthInt, &mut CodeGenContext) -> Value,
+    {
+        let aot_slice = ctx
+            .aot_lib
+            .as_ref()
+            .and_then(|aot_lib| aot_lib.get("slice").copied())?;
+        let dst_width = hi - lo + 1;
+        let dst_words = allocator(dst_width, ctx);
+        let dst_len = iconst!(ctx, dst_width.div_ceil(baa::Word::BITS));
+        let src_words =
+            invoke_bv_extern_function(ctx.runtime_lib.bv_words_address, &[*src], ctx).unwrap();
+        let src_len = iconst!(ctx, src.bv_num_words());
+        let (hi, lo) = (iconst!(ctx, hi), iconst!(ctx, lo));
+        invoke_bv_extern_function(
+            aot_slice,
+            &[dst_words, dst_len, src_words, src_len, hi, lo],
+            ctx,
+        );
+        Some(dst_words)
+    }
+
+    impl BVCodeGenVTable for BVIndirectAOT {
+        /// External `slice` function prototype:
+        /// ```
+        /// fn slice(
+        ///     dst: *mut Word, dst_len: usize,
+        ///     src: *const Word, src_len: usize,
+        ///     hi: usize, lo: usize,
+        /// )
+        /// ```
+        fn slice(
+            &self,
+            value: TaggedValue,
+            hi: WidthInt,
+            lo: WidthInt,
+            ctx: &mut CodeGenContext,
+        ) -> Value {
+            let mut dst_slot = None;
+            slice_with_dst_words_allocator(
+                value,
+                hi,
+                lo,
+                |width, ctx| {
+                    debug_assert_eq!(width, self.width);
+                    let reserved_slot = ctx.reserve_intermediate_bv_cache_slot(width);
+                    let dst = ctx.resource_ptr_at_slot(reserved_slot);
+                    dst_slot = Some(*reserved_slot);
+                    invoke_bv_extern_function(ctx.runtime_lib.bv_words_address, &[*dst], ctx)
+                        .unwrap()
+                },
+                ctx,
+            );
+            dst_slot.unwrap_or_else(|| self.fallback.slice(value, hi, lo, ctx))
+        }
+
+        delegate::delegate! {
+            to self.fallback {
+                fn symbol(&self, expr: ExprRef, ctx: &mut CodeGenContext) -> Value;
+                fn literal(&self, value: BitVecValueRef, ctx: &mut CodeGenContext) -> Value;
+                fn add(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+                fn sub(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+                fn mul(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+                fn and(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+                fn or(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+                fn xor(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+                fn not(&self, arg: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+                fn negate(&self, arg: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+                fn zero_extend(&self, arg: TaggedValue, by: WidthInt, ctx: &mut CodeGenContext) -> Value;
+                fn sign_extend(&self, arg: TaggedValue, by: WidthInt, ctx: &mut CodeGenContext) -> Value;
+
+                fn shift_right(&self, arg0: TaggedValue, arg1: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+                fn arithmetic_shift_right(
+                    &self,
+                    arg0: TaggedValue,
+                    arg1: TaggedValue,
+                    ctx: &mut CodeGenContext,
+                ) -> Value;
+                fn shift_left(&self, arg0: TaggedValue, arg1: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+
+                fn equal(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+                fn gt(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+                fn ge(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+                fn gt_signed(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+                fn ge_signed(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+
+                fn concat(&self, hi: TaggedValue, lo: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+            }
+        }
     }
 }

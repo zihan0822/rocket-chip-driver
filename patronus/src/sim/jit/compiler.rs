@@ -20,6 +20,8 @@ pub(super) struct JITCompiler {
     pub(super) sealed_heap_resources: Vec<ManagedHeapResource>,
     pub(super) active_heap_resource: ManagedHeapResource,
     pub(super) constant: ManagedHeapResource,
+    #[cfg(feature = "aot-clif")]
+    aot_symtab: Option<super::clif_loader::SymTab>,
 }
 
 #[derive(Default)]
@@ -89,19 +91,38 @@ impl JITCompiler {
                 .unwrap_or_else(|_| panic!("fail to launch jit instance"));
         runtime::load_runtime_lib(&mut builder);
         #[cfg(feature = "aot-clif")]
-        super::clif_loader::register_symbol_lookup_fallback(&mut builder);
-        #[allow(unused_mut)]
-        let mut module = JITModule::new(builder);
-        #[cfg(feature = "aot-clif")]
         {
+            super::clif_loader::register_symbol_lookup_fallback(&mut builder);
+            let mut module = JITModule::new(builder);
+            const EXPECTED_AOT_SYMBOLS: &[&str] = &["slice", "concat"];
             let mut clif_ctx = module.make_context();
-            super::clif_loader::register_precompiled_clif_function(&mut module, &mut clif_ctx);
+            let aot_symtab =
+                super::clif_loader::register_precompiled_clif_function(&mut module, &mut clif_ctx);
+            for &sym in EXPECTED_AOT_SYMBOLS {
+                if aot_symtab
+                    .as_ref()
+                    .is_none_or(|aot_symtab| !aot_symtab.contains_key(sym))
+                {
+                    log::warn!("expected symbol `{sym}` not found in provided clif files");
+                }
+            }
+            Self {
+                module,
+                sealed_heap_resources: vec![],
+                active_heap_resource: Default::default(),
+                constant: Default::default(),
+                aot_symtab,
+            }
         }
-        Self {
-            module,
-            sealed_heap_resources: vec![],
-            active_heap_resource: Default::default(),
-            constant: Default::default(),
+
+        #[cfg(not(feature = "aot-clif"))]
+        {
+            Self {
+                module: JITModule::new(builder),
+                sealed_heap_resources: vec![],
+                active_heap_resource: Default::default(),
+                constant: Default::default(),
+            }
         }
     }
 
@@ -224,6 +245,22 @@ impl JITCompiler {
 
         let runtime_lib =
             runtime::import_runtime_lib_to_func_scope(&mut self.module, &mut cranelift_ctx.func);
+        #[cfg(feature = "aot-clif")]
+        let aot_lib = {
+            self.aot_symtab.as_ref().map(|aot_symtab| {
+                aot_symtab
+                    .iter()
+                    .map(|(sym, (_sig, id))| {
+                        (
+                            sym.to_string(),
+                            self.module
+                                .declare_func_in_func(*id, &mut cranelift_ctx.func),
+                        )
+                    })
+                    .collect::<FxHashMap<_, _>>()
+            })
+        };
+
         let mut fn_builder_ctx = FunctionBuilderContext::new();
         let mut fn_builder = FunctionBuilder::new(&mut cranelift_ctx.func, &mut fn_builder_ctx);
 
@@ -244,6 +281,8 @@ impl JITCompiler {
             int: types::I64,
             long_live_cache_read_holes: vec![],
             consume_input,
+            #[cfg(feature = "aot-clif")]
+            aot_lib,
         };
         codegen_ctx.codegen(codegen_epilogue);
 
@@ -352,6 +391,8 @@ pub(super) struct CodeGenContext<'expr, 'ctx, 'engine> {
     /// These replacement operations are done after codegen, when the number of long lived cache are determined.
     long_live_cache_read_holes: Vec<(Value, expr::Type)>,
     consume_input: bool,
+    #[cfg(feature = "aot-clif")]
+    pub(super) aot_lib: Option<FxHashMap<String, ir::FuncRef>>,
 }
 
 impl CodeGenContext<'_, '_, '_> {
@@ -579,6 +620,10 @@ impl TaggedValue {
             expr::Type::BV(tpe) => tpe,
             _ => panic!("expect bitvec type"),
         }
+    }
+
+    pub(super) fn bv_num_words(&self) -> u32 {
+        self.expect_bv_type().div_ceil(baa::Word::BITS) 
     }
 
     pub(super) fn tag(value: Value, data_type: expr::Type) -> Self {
@@ -875,8 +920,18 @@ impl CodeGenContext<'_, '_, '_> {
     fn dispatch_bv_operation_codegen(&mut self, expr: ExprRef, args: &[TaggedValue]) -> Value {
         let width = expr.get_bv_type(self.expr_ctx).unwrap();
         let vtable: &dyn BVCodeGenVTable = match width {
-            0..=64 => &super::bv_codegen::BVWord(width),
-            _ => &super::bv_codegen::BVIndirect(width),
+            0..=64 => &super::bv_codegen::BVWord::new(width),
+            _ => {
+                #[cfg(feature = "aot-clif")]
+                {
+                    &super::bv_codegen::BVIndirectAOT::new(width)
+                }
+
+                #[cfg(not(feature = "aot-clif"))]
+                {
+                    &super::bv_codegen::BVIndirect::new(width)
+                }
+            }
         };
         let args: Vec<_> = args
             .iter()

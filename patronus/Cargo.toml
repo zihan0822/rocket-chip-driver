@@ -29,6 +29,7 @@ dot-writer = "0.1.4"
 cranelift-reader = "0.124.2"
 walkdir = "2.5.0"
 log = "0.4.28"
+delegate = "0.13.4"
 
 [dev-dependencies]
 insta = { version = "1.x", features = ["yaml"] }
