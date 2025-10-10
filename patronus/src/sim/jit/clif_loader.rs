@@ -187,9 +187,15 @@ impl<'a> ParsedClifFunctionLoader<'a> {
         let mut symtab = FxHashMap::default();
         let mut func_info: Vec<(String, module::FuncId)> = vec![];
         for ParsedClifFunction { symbol, content } in self.parsed_functions {
+            // linkage type is marked as `Preemptible` for safety.
+            // `Local` encourages JIT to use pc-relative call, which may not be feasible for large design.
             let func_id = self
                 .module
-                .declare_function(symbol, module::Linkage::Local, &content.stencil.signature)
+                .declare_function(
+                    symbol,
+                    module::Linkage::Preemptible,
+                    &content.stencil.signature,
+                )
                 .expect("fail to declare function");
             let original_user_ext_name = content
                 .name
