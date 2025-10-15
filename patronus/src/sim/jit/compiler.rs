@@ -657,6 +657,7 @@ impl TaggedValue {
         }
     }
 
+    #[cfg(feature = "aot-clif")]
     pub(super) fn bv_num_words(&self) -> u32 {
         self.expect_bv_type().div_ceil(baa::Word::BITS)
     }

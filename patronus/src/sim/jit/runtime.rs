@@ -2,7 +2,6 @@
 // released under BSD 3-Clause License
 // author: Zihan Li <zl2225@cornell.edu>
 use crate::expr::*;
-use baa::BitVecMutOps;
 use cranelift::codegen::ir::{AbiParam, FuncRef, Function, types};
 use cranelift::jit::{JITBuilder, JITModule};
 use cranelift::module::{Linkage, Module};
@@ -22,6 +21,7 @@ pub(super) struct RuntimeLib {
     pub(super) clone_bv: FuncRef,
     pub(super) dealloc_bv: FuncRef,
     pub(super) copy_from_bv: FuncRef,
+    #[cfg(feature = "aot-clif")]
     pub(super) bv_words_address: FuncRef,
     pub(super) bv_ops: FxHashMap<&'static str, FuncRef>,
 }
@@ -38,6 +38,7 @@ const COPY_FROM_ARRAY_OF_WIDE_BV_SYM: &str = "__copy_from_array_of_wide_bv";
 const CLONE_BV_SYM: &str = "__clone_bv";
 const DEALLOC_BV_SYM: &str = "__dealloc_bv";
 const COPY_FROM_BV_SYM: &str = "__copy_from_bv";
+#[cfg(feature = "aot-clif")]
 const BV_WORDS_ADDRESS_SYM: &str = "__bv_words_address";
 
 pub(super) fn load_runtime_lib(builder: &mut JITBuilder) {
@@ -64,6 +65,7 @@ pub(super) fn load_runtime_lib(builder: &mut JITBuilder) {
     builder.symbol(CLONE_BV_SYM, __clone_bv as *const u8);
     builder.symbol(DEALLOC_BV_SYM, __dealloc_bv as *const u8);
     builder.symbol(COPY_FROM_BV_SYM, __copy_from_bv as *const u8);
+    #[cfg(feature = "aot-clif")]
     builder.symbol(BV_WORDS_ADDRESS_SYM, __bv_words_address as *const u8);
     for registered in inventory::iter::<trampoline::BVOpRegistry>() {
         builder.symbol(
@@ -117,6 +119,7 @@ pub(super) fn import_runtime_lib_to_func_scope(
     let dealloc_bv = import_extern_function(module, func, DEALLOC_BV_SYM, [types::I64], []);
     let copy_from_bv =
         import_extern_function(module, func, COPY_FROM_BV_SYM, [types::I64, types::I64], []);
+    #[cfg(feature = "aot-clif")]
     let bv_words_address = import_extern_function(
         module,
         func,
@@ -137,6 +140,7 @@ pub(super) fn import_runtime_lib_to_func_scope(
         clone_bv,
         dealloc_bv,
         copy_from_bv,
+        #[cfg(feature = "aot-clif")]
         bv_words_address,
         bv_ops: import_bv_runtime_to_func_scope(module, func),
     }
@@ -376,7 +380,9 @@ pub(super) unsafe extern "C" fn __copy_from_bv(
     }
 }
 
+#[cfg(feature = "aot-clif")]
 unsafe extern "C" fn __bv_words_address(bv: *mut baa::BitVecValue) -> *mut baa::Word {
+    use baa::BitVecMutOps;
     unsafe { (*bv).words_mut().as_mut_ptr() }
 }
 
