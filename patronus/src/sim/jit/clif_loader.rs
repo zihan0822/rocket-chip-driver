@@ -225,7 +225,7 @@ impl<'a> ParsedClifFunctionLoader<'a> {
                 LoadedFuncInfo {
                     id,
                     #[cfg(feature = "inline")]
-                    content: function.clone(),
+                    content: relax_ext_func_call_mode(function.clone()),
                 },
             );
             self.ctx.func = function;
@@ -326,4 +326,15 @@ impl<'a> ParsedClifFunctionLoader<'a> {
             }
         }
     }
+}
+
+#[cfg(feature = "inline")]
+/// Downgrades pc relative call instruction to an absolute jump.
+/// For large design, the compiled code size might grow out of the supported range of a pc relative jump,
+/// which might cause problem when IR gets inlined.
+fn relax_ext_func_call_mode(mut function: function::Function) -> function::Function {
+    for ir::ExtFuncData { colocated, .. } in function.stencil.dfg.ext_funcs.values_mut() {
+        *colocated = false;
+    }
+    function
 }
