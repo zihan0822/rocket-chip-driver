@@ -1,0 +1,8 @@
+[build]
+rustflags=["--emit=llvm-ir", "-Z", "fmt-debug=none", "-Z", "ub-checks=no"]
+
+[unstable]
+codegen-backend = true
+
+[profile.dev]
+codegen-backend = "cranelift"

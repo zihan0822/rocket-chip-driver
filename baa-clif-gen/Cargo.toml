@@ -1,0 +1,11 @@
+[package]
+name = "baa-clif-gen"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+
+[profile.dev]
+panic = "abort"
+overflow-checks = false
+opt-level = 3 
