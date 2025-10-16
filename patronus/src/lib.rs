@@ -9,5 +9,4 @@ pub mod btor2;
 pub mod expr;
 pub mod mc;
 pub mod sim;
-pub mod smt;
 pub mod system;
