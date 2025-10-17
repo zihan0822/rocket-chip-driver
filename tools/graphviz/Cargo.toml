@@ -5,7 +5,7 @@ description = "A btor expr visualization tool"
 edition = "2024"
 
 [dependencies]
-patronus.workspace = true
+patronus = { workspace = true, features = ["visualize"] }
 clap.workspace = true
 regex.workspace = true
 rayon = "1.11.0"

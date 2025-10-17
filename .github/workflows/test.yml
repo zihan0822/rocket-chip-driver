@@ -1,0 +1,68 @@
+name: Rust
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+    - uses: actions/checkout@v5
+    - uses: Swatinem/rust-cache@v2
+    - name: Build
+      run: cargo build
+    - name: Run tests
+      run: cargo test -p patronus --all-features
+  
+  repair-sim:
+    name: Test Simulator Tool
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: cargo build --release -p sim
+      - name: Simulate
+        run: |
+          tests=(
+            "mux_4_1.original.tb.csv mux_4_1.original.btor"
+            "sdram_controller.original.tb.csv sdram_controller.original.btor"
+            "i2c_m.tb.csv i2c_m.original.replace_literals.btor"
+            "axis-fifo-wrapper.original.tb.csv axis-fifo-wrapper.original.btor"
+            "axis-adapter.original.tb.csv axis-adapter.original.btor"
+            "axis_frame_len.original.tb.csv axis_frame_len.original.btor"
+            "axis-fifo.original.tb.csv axis-fifo.original.btor"
+            "zipcpu_sdspi.original.tb.csv zipcpu_sdspi.original.btor"
+            "axis-frame-fifo.original.tb.csv axis-frame-fifo.original.btor"
+            "axis-switch.original.tb.csv axis-switch.original.btor"
+            "axis-async-fifo-wrapper.original.tb.csv axis-async-fifo-wrapper.original.btor"
+            "axi-lite-xlnx.original.tb0.csv axi-lite-xlnx.original.btor"
+            "axi-lite-xlnx.original.tb1.csv axi-lite-xlnx.original.btor"
+            "axi-stream-xlnx.original.tb.csv axi-stream-xlnx.original.btor" 
+          )
+          for test in "${tests[@]}"; do
+            read -r csv btor <<< "$test" 
+            cargo run --release -p sim -- --init=zero --jit --repetition=4 --testbench=inputs/repair/$csv inputs/repair/$btor
+          done
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: Swatinem/rust-cache@v2
+      - name: Rustup
+        run: rustup component add clippy rustfmt
+      - name: Link Check 
+        run: cargo clippy --workspace -- --deny warnings
+      - name: Format Check 
+        run: cargo fmt --check

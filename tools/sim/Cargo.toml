@@ -1,0 +1,12 @@
+[package]
+name = "sim"
+version = "0.1.0"
+description = "A btor simulator based on the patronus library."
+edition = "2024"
+
+[dependencies]
+patronus = { workspace = true, features = ["aot-clif", "inline"] }
+rustc-hash.workspace = true
+baa.workspace = true
+clap = { version = "4.5.45", features = ["derive"] }
+env_logger.workspace = true
