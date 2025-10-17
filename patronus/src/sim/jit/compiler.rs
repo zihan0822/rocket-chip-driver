@@ -476,12 +476,8 @@ impl CodeGenContext<'_, '_, '_> {
             if let Expr::ArrayStore { array, .. } = expr {
                 if array_references[array].iter().any(|&other| {
                     debug_assert!(!independent_expressions(&bottom_up_expr_graph, e, other));
-                    if let Expr::ArrayIte { tru, fals, .. } = self.expr_ctx[other] {
-                        if tru == e || fals == e {
-                            return false;
-                        }
-                    }
-                    true
+                    !(matches!(self.expr_ctx[other], Expr::ArrayIte { .. })
+                        && other.is_parent_of(&bottom_up_expr_graph, e))
                 }) {
                     let cow_slot = self.reserve_intermediate_array_cache_slot(
                         expr.get_array_type(self.expr_ctx).unwrap(),

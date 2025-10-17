@@ -10,6 +10,14 @@ pub(crate) struct BottomUpExprGraph {
     pub(crate) node_dependents: FxHashMap<ExprRef, Vec<ExprRef>>,
 }
 
+impl ExprRef {
+    pub(crate) fn is_parent_of(&self, expr_graph: &BottomUpExprGraph, other: ExprRef) -> bool {
+        expr_graph
+            .parent_expr_iter(other)
+            .any(|parent| *self == parent)
+    }
+}
+
 impl BottomUpExprGraph {
     pub(crate) fn from_top_down_graph(ctx: &Context, top_down_roots: &[ExprRef]) -> Self {
         let mut bottom_up_roots = vec![];
