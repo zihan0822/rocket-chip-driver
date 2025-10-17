@@ -576,7 +576,7 @@ mod aot {
 
     impl BVCodeGenVTable for BVIndirectAOT {
         /// External `slice` function prototype:
-        /// ```
+        /// ```ignore
         /// fn slice(
         ///     dst: *mut Word, dst_len: usize,
         ///     src: *const Word, src_len: usize,
@@ -608,7 +608,7 @@ mod aot {
         }
 
         /// External `concat` function prototype:
-        /// ```
+        /// ```ignore
         /// fn concat(
         ///     dst: *mut Word, dst_len: usize,
         ///     msb: *const Word, msb_len: usize,
