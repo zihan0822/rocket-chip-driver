@@ -2,6 +2,7 @@
 // released under BSD 3-Clause License
 // author: Zihan Li <zl2225@cornell.edu>
 use crate::expr::*;
+use baa::Word;
 use cranelift::codegen::ir::{AbiParam, FuncRef, Function, types};
 use cranelift::jit::{JITBuilder, JITModule};
 use cranelift::module::{Linkage, Module};
@@ -21,8 +22,6 @@ pub(super) struct RuntimeLib {
     pub(super) clone_bv: FuncRef,
     pub(super) dealloc_bv: FuncRef,
     pub(super) copy_from_bv: FuncRef,
-    #[cfg(feature = "aot-clif")]
-    pub(super) bv_words_address: FuncRef,
     pub(super) bv_ops: FxHashMap<&'static str, FuncRef>,
 }
 inventory::collect!(trampoline::BVOpRegistry);
@@ -38,8 +37,6 @@ const COPY_FROM_ARRAY_OF_WIDE_BV_SYM: &str = "__copy_from_array_of_wide_bv";
 const CLONE_BV_SYM: &str = "__clone_bv";
 const DEALLOC_BV_SYM: &str = "__dealloc_bv";
 const COPY_FROM_BV_SYM: &str = "__copy_from_bv";
-#[cfg(feature = "aot-clif")]
-const BV_WORDS_ADDRESS_SYM: &str = "__bv_words_address";
 
 pub(super) fn load_runtime_lib(builder: &mut JITBuilder) {
     builder.symbol(CLONE_ARRAY_SYM, __clone_array as *const u8);
@@ -65,8 +62,6 @@ pub(super) fn load_runtime_lib(builder: &mut JITBuilder) {
     builder.symbol(CLONE_BV_SYM, __clone_bv as *const u8);
     builder.symbol(DEALLOC_BV_SYM, __dealloc_bv as *const u8);
     builder.symbol(COPY_FROM_BV_SYM, __copy_from_bv as *const u8);
-    #[cfg(feature = "aot-clif")]
-    builder.symbol(BV_WORDS_ADDRESS_SYM, __bv_words_address as *const u8);
     for registered in inventory::iter::<trampoline::BVOpRegistry>() {
         builder.symbol(
             bv_operation_name_mangle(registered.sym),
@@ -115,18 +110,10 @@ pub(super) fn import_runtime_lib_to_func_scope(
         [types::I64; 4],
         [],
     );
-    let clone_bv = import_extern_function(module, func, CLONE_BV_SYM, [types::I64], [types::I64]);
-    let dealloc_bv = import_extern_function(module, func, DEALLOC_BV_SYM, [types::I64], []);
-    let copy_from_bv =
-        import_extern_function(module, func, COPY_FROM_BV_SYM, [types::I64, types::I64], []);
-    #[cfg(feature = "aot-clif")]
-    let bv_words_address = import_extern_function(
-        module,
-        func,
-        BV_WORDS_ADDRESS_SYM,
-        [types::I64],
-        [types::I64],
-    );
+    let clone_bv =
+        import_extern_function(module, func, CLONE_BV_SYM, [types::I64; 2], [types::I64]);
+    let dealloc_bv = import_extern_function(module, func, DEALLOC_BV_SYM, [types::I64; 2], []);
+    let copy_from_bv = import_extern_function(module, func, COPY_FROM_BV_SYM, [types::I64; 3], []);
 
     RuntimeLib {
         clone_array,
@@ -140,8 +127,6 @@ pub(super) fn import_runtime_lib_to_func_scope(
         clone_bv,
         dealloc_bv,
         copy_from_bv,
-        #[cfg(feature = "aot-clif")]
-        bv_words_address,
         bv_ops: import_bv_runtime_to_func_scope(module, func),
     }
 }
@@ -153,10 +138,9 @@ fn import_bv_runtime_to_func_scope(
     let mut bv_runtime_lib = FxHashMap::default();
     for registered in inventory::iter::<BVOpRegistry>() {
         let num_params = match registered.kind {
-            BVOpKind::Unary(_) | BVOpKind::Cmp(_) => 2,
-            BVOpKind::Binary(_) | BVOpKind::Slice(_) => 3,
-            BVOpKind::SliceWithOutputBuffer(_) | BVOpKind::Extend(_) | BVOpKind::Shift(_) => 4,
-            BVOpKind::Concat(_) => 5,
+            BVOpKind::Unary(_) | BVOpKind::Cmp(_) => 3,
+            BVOpKind::Binary(_) | BVOpKind::Slice(_) | BVOpKind::Extend(_) => 4,
+            BVOpKind::SliceWithOutputBuffer(_) | BVOpKind::Shift(_) | BVOpKind::Concat(_) => 5,
         };
         let return_types: &[types::Type] = match registered.kind {
             BVOpKind::Cmp(_) => &[types::I8],
@@ -236,8 +220,8 @@ pub(super) use reinterp_array_ptr_by_data_width;
 
 pub(super) unsafe extern "C" fn __clone_array(
     src: *const (),
-    index_width: WidthInt,
-    data_width: WidthInt,
+    index_width: u64,
+    data_width: u64,
 ) -> *mut () {
     reinterp_array_ptr_by_data_width!(src, data_width, {
         let len = 1 << index_width;
@@ -249,24 +233,24 @@ pub(super) unsafe extern "C" fn __clone_array(
 }
 
 pub(super) unsafe extern "C" fn __clone_array_of_wide_bv(
-    src: *const *const baa::BitVecValue,
-    index_width: WidthInt,
-    _data_width: WidthInt,
-) -> *const *mut baa::BitVecValue {
+    src: *const *const Word,
+    index_width: u64,
+    data_width: u64,
+) -> *const *mut Word {
     unsafe {
         let len = 1 << index_width;
         let mut array = Vec::with_capacity(len);
         let src = std::slice::from_raw_parts(src, len);
-        array.extend(src.iter().map(|&bv| __clone_bv(bv)));
-        array.leak() as *const [*mut baa::BitVecValue] as *const *mut baa::BitVecValue
+        array.extend(src.iter().map(|&bv| __clone_bv(bv, data_width)));
+        array.leak() as *const [*mut Word] as *const *mut Word
     }
 }
 
 pub(super) unsafe extern "C" fn __copy_from_array(
     dst: *mut (),
     src: *const (),
-    index_width: WidthInt,
-    data_width: WidthInt,
+    index_width: u64,
+    data_width: u64,
 ) {
     let len = 1 << index_width;
     reinterp_array_ptr_by_data_width!([dst, src], data_width, {
@@ -279,10 +263,10 @@ pub(super) unsafe extern "C" fn __copy_from_array(
 }
 
 pub(super) unsafe extern "C" fn __copy_from_array_of_wide_bv(
-    dst: *const *mut baa::BitVecValue,
-    src: *const *const baa::BitVecValue,
-    index_width: WidthInt,
-    _data_width: WidthInt,
+    dst: *const *mut Word,
+    src: *const *const Word,
+    index_width: u64,
+    data_width: u64,
 ) {
     unsafe {
         let len = 1 << index_width;
@@ -290,7 +274,7 @@ pub(super) unsafe extern "C" fn __copy_from_array_of_wide_bv(
         let src = std::slice::from_raw_parts(src, len);
         dst.iter()
             .zip(src.iter())
-            .for_each(|(&dst_bv, &src_bv)| __copy_from_bv(dst_bv, src_bv));
+            .for_each(|(&dst_bv, &src_bv)| __copy_from_bv(dst_bv, src_bv, data_width));
     }
 }
 
@@ -307,8 +291,8 @@ macro_rules! alloc_array_of_data_width {
 
 pub(super) extern "C" fn __alloc_array(
     default_data: i64,
-    index_width: WidthInt,
-    data_width: WidthInt,
+    index_width: u64,
+    data_width: u64,
 ) -> *mut () {
     alloc_array_of_data_width!(
         default_data, index_width, data_width,
@@ -317,22 +301,18 @@ pub(super) extern "C" fn __alloc_array(
 }
 
 pub(super) unsafe extern "C" fn __alloc_array_of_wide_bv(
-    default_data: *const baa::BitVecValue,
-    index_width: WidthInt,
-    _data_width: WidthInt,
-) -> *const *mut baa::BitVecValue {
+    default_data: *const Word,
+    index_width: u64,
+    data_width: u64,
+) -> *const *mut Word {
     let len = 1 << index_width;
     unsafe {
-        Vec::from_iter(std::iter::repeat_with(|| __clone_bv(default_data)).take(len)).leak()
-            as *const [*mut baa::BitVecValue] as *const *mut baa::BitVecValue
+        Vec::from_iter(std::iter::repeat_with(|| __clone_bv(default_data, data_width)).take(len))
+            .leak() as *const [*mut Word] as *const *mut Word
     }
 }
 
-pub(super) unsafe extern "C" fn __dealloc_array(
-    src: *mut (),
-    index_width: WidthInt,
-    data_width: WidthInt,
-) {
+pub(super) unsafe extern "C" fn __dealloc_array(src: *mut (), index_width: u64, data_width: u64) {
     reinterp_array_ptr_by_data_width!(src, data_width, {
         let len = 1 << index_width;
         let ptr = std::ptr::slice_from_raw_parts_mut(src, len);
@@ -343,52 +323,100 @@ pub(super) unsafe extern "C" fn __dealloc_array(
 }
 
 pub(super) unsafe extern "C" fn __dealloc_array_of_wide_bv(
-    src: *mut *mut baa::BitVecValue,
-    index_width: WidthInt,
-    _data_width: WidthInt,
+    src: *mut *mut Word,
+    index_width: u64,
+    data_width: u64,
 ) {
     unsafe {
         let len = 1 << index_width;
         let array = std::slice::from_raw_parts_mut(src, len);
         for &bv in array.iter() {
-            __dealloc_bv(bv);
+            __dealloc_bv(bv, data_width);
         }
         let _ = Box::from_raw(array);
     }
 }
 
-pub(super) extern "C" fn __alloc_bv(width: WidthInt) -> *mut baa::BitVecValue {
-    Box::leak(Box::new(baa::BitVecValue::zero(width)))
+pub(super) extern "C" fn __alloc_bv(width: u64) -> *mut Word {
+    Box::leak(reserve_bv_boxed_words(width)) as *mut [Word] as *mut Word
 }
 
-pub(super) unsafe extern "C" fn __clone_bv(src: *const baa::BitVecValue) -> *mut baa::BitVecValue {
-    unsafe { Box::leak(Box::new((*src).clone())) }
-}
-
-pub(super) unsafe extern "C" fn __dealloc_bv(src: *mut baa::BitVecValue) {
+pub(super) unsafe extern "C" fn __clone_bv(src: *const Word, width: u64) -> *mut Word {
+    let dst = __alloc_bv(width);
     unsafe {
-        let _ = Box::from_raw(src);
+        bv_words_slice_from_raw_parts_mut(dst, width)
+            .copy_from_slice(bv_words_slice_from_raw_parts(src, width));
+    }
+    dst
+}
+
+pub(super) unsafe extern "C" fn __dealloc_bv(src: *mut Word, width: u64) {
+    unsafe {
+        let _ = Box::from_raw(bv_words_slice_from_raw_parts_mut(src, width));
     }
 }
 
-pub(super) unsafe extern "C" fn __copy_from_bv(
-    dst: *mut baa::BitVecValue,
-    src: *const baa::BitVecValue,
-) {
+pub(super) unsafe extern "C" fn __copy_from_bv(dst: *mut Word, src: *const Word, width: u64) {
     unsafe {
-        *dst = (*src).clone();
+        bv_words_slice_from_raw_parts_mut(dst, width)
+            .copy_from_slice(bv_words_slice_from_raw_parts(src, width));
     }
 }
 
-#[cfg(feature = "aot-clif")]
-unsafe extern "C" fn __bv_words_address(bv: *mut baa::BitVecValue) -> *mut baa::Word {
-    use baa::BitVecMutOps;
-    unsafe { (*bv).words_mut().as_mut_ptr() }
+#[inline]
+pub(super) fn reserve_bv_boxed_words(width: u64) -> Box<[Word]> {
+    vec![0; width.div_ceil(Word::BITS as u64) as usize].into_boxed_slice()
 }
+
+/// Construct the underlying words buffer given starting address and bit vector's width
+///
+/// # Safety
+/// The caller should guarantee that `ptr` points to a valid word buffer reserved for bit vector of `width`
+#[inline]
+pub(super) unsafe fn bv_words_slice_from_raw_parts<'a>(ptr: *const Word, width: u64) -> &'a [Word] {
+    unsafe { std::slice::from_raw_parts(ptr, width.div_ceil(Word::BITS as u64) as usize) }
+}
+
+/// Construct the underlying words buffer given starting address and bit vector's width
+///
+/// # Safety
+/// The caller should guarantee that `ptr` points to a valid word buffer reserved for bit vector of `width`
+#[inline]
+pub(super) unsafe fn bv_words_slice_from_raw_parts_mut<'a>(
+    ptr: *mut Word,
+    width: u64,
+) -> &'a mut [Word] {
+    unsafe { std::slice::from_raw_parts_mut(ptr, width.div_ceil(Word::BITS as u64) as usize) }
+}
+
+macro_rules! bv_value_ref {
+    ($ptr: expr, $width: expr) => {
+        baa::BitVecValueRef::new(
+            $crate::sim::jit::runtime::bv_words_slice_from_raw_parts($ptr, $width as u64),
+            $width as baa::WidthInt,
+        )
+    };
+}
+
+macro_rules! bv_value_ref_from_scalar {
+    ($value: expr, $width: expr) => {
+        baa::BitVecValueRef::new(std::slice::from_ref(&$value), $width as baa::WidthInt)
+    };
+}
+
+macro_rules! bv_value_mut {
+    ($ptr: expr, $width: expr) => {
+        baa::BitVecValueMutRef::new(
+            $width as baa::WidthInt,
+            $crate::sim::jit::runtime::bv_words_slice_from_raw_parts_mut($ptr, $width as u64),
+        )
+    };
+}
+pub(super) use {bv_value_mut, bv_value_ref, bv_value_ref_from_scalar};
 
 mod trampoline {
-    use crate::expr::*;
-    use baa::{BitVecMutOps, BitVecOps, BitVecValue};
+    use super::*;
+    use baa::{BitVecMutOps, BitVecOps};
 
     pub(super) struct BVOpRegistry {
         pub(super) sym: &'static str,
@@ -409,27 +437,17 @@ mod trampoline {
             }
         }
     }
-    type MaybeIndirect = i64;
+    type MaybeIndirect = u64;
     type ThinBV = i64;
     pub(super) enum BVOpKind {
-        Binary(unsafe extern "C" fn(*mut BitVecValue, *const BitVecValue, *const BitVecValue)),
-        Unary(unsafe extern "C" fn(*mut BitVecValue, *const BitVecValue)),
-        Cmp(unsafe extern "C" fn(*const BitVecValue, *const BitVecValue) -> i8),
-        Slice(unsafe extern "C" fn(*const BitVecValue, WidthInt, WidthInt) -> ThinBV),
-        SliceWithOutputBuffer(
-            unsafe extern "C" fn(*mut BitVecValue, *const BitVecValue, WidthInt, WidthInt),
-        ),
-        Concat(
-            unsafe extern "C" fn(
-                *mut BitVecValue,
-                MaybeIndirect,
-                MaybeIndirect,
-                WidthInt,
-                WidthInt,
-            ),
-        ),
-        Extend(unsafe extern "C" fn(*mut BitVecValue, MaybeIndirect, WidthInt, WidthInt)),
-        Shift(unsafe extern "C" fn(*mut BitVecValue, *const BitVecValue, MaybeIndirect, WidthInt)),
+        Binary(unsafe extern "C" fn(*mut Word, *const Word, *const Word, u64)),
+        Unary(unsafe extern "C" fn(*mut Word, *const Word, u64)),
+        Cmp(unsafe extern "C" fn(*const Word, *const Word, u64) -> i8),
+        Slice(unsafe extern "C" fn(*const Word, u64, u64, u64) -> ThinBV),
+        SliceWithOutputBuffer(unsafe extern "C" fn(*mut Word, *const Word, u64, u64, u64)),
+        Concat(unsafe extern "C" fn(*mut Word, MaybeIndirect, MaybeIndirect, u64, u64)),
+        Extend(unsafe extern "C" fn(*mut Word, MaybeIndirect, u64, u64)),
+        Shift(unsafe extern "C" fn(*mut Word, *const Word, u64, MaybeIndirect, u64)),
     }
 
     macro_rules! baa_binary_op_shim {
@@ -446,12 +464,16 @@ mod trampoline {
                 sym: stringify!($sym)
             });
             pub(super) unsafe extern "C" fn $func(
-                dst: *mut BitVecValue,
-                lhs: *const BitVecValue,
-                rhs: *const BitVecValue,
-            ) { unsafe {
-                (*dst).$baa_delegation(&*lhs, &*rhs);
-            }}
+                dst: *mut Word,
+                lhs: *const Word,
+                rhs: *const Word,
+                width: u64,
+            ) {
+                unsafe {
+                    bv_value_mut!(dst, width)
+                        .$baa_delegation(&bv_value_ref!(lhs, width), &bv_value_ref!(rhs, width))
+                }
+            }
         }
     }
 
@@ -479,12 +501,9 @@ mod trampoline {
                 kind: BVOpKind::Cmp($func),
                 sym: stringify!($sym)
             });
-            pub(super) unsafe extern "C" fn $func(
-                lhs: *const BitVecValue,
-                rhs: *const BitVecValue,
-            ) -> i8 { unsafe {
-                (&*lhs).$baa_delegation(&*rhs) as i8
-            }}
+            pub(super) unsafe extern "C" fn $func(lhs: *const Word, rhs: *const Word, width: u64) -> i8 {
+                unsafe { bv_value_ref!(lhs, width).$baa_delegation(&bv_value_ref!(rhs, width)) as i8 }
+            }
         };
     }
 
@@ -492,7 +511,7 @@ mod trampoline {
         ($($op: ident),*) => {
             $(
                 paste::paste! {
-                    baa_unary_op_shim!(@internal [<__bv_ $op>], $op, $op);
+                    baa_unary_op_shim!(@internal [<__bv_ $op>], [<$op _in_place>], $op);
                 }
             )*
         };
@@ -501,12 +520,13 @@ mod trampoline {
                 kind: BVOpKind::Unary($func),
                 sym: stringify!($sym)
             });
-            pub(super) unsafe extern "C" fn $func(
-                dst: *mut BitVecValue,
-                value: *const BitVecValue,
-            ) { unsafe {
-                *dst = (&*value).$baa_delegation();
-            }}
+            pub(super) unsafe extern "C" fn $func(dst: *mut Word, value: *const Word, width: u64) {
+                unsafe {
+                    bv_words_slice_from_raw_parts_mut(dst, width)
+                        .copy_from_slice(bv_words_slice_from_raw_parts(value, width));
+                    bv_value_mut!(dst, width).$baa_delegation();
+                }
+            }
         };
     }
 
@@ -524,17 +544,17 @@ mod trampoline {
                 sym: stringify!($sym)
             });
             pub(super) unsafe extern "C" fn $func(
-                dst: *mut BitVecValue,
+                dst: *mut Word,
                 value: MaybeIndirect,
-                original_width: WidthInt,
-                by: WidthInt,
+                original_width: u64,
+                by: u64,
             ) { unsafe {
                 let value = if original_width <= 64 {
-                    &BitVecValue::from_i64(value, original_width)
+                    &bv_value_ref_from_scalar!(value, original_width)
                 } else {
-                    &*(value as *const BitVecValue)
+                    &bv_value_ref!(value as *const Word, original_width)
                 };
-                (*dst).$baa_delegation(value, by);
+                bv_value_mut!(dst, original_width + by).$baa_delegation(value, by as WidthInt);
             }}
         };
     }
@@ -553,18 +573,21 @@ mod trampoline {
                 sym: stringify!($sym)
             });
             pub(super) unsafe extern "C" fn $func(
-                dst: *mut BitVecValue,
-                value: *const BitVecValue,
+                dst: *mut Word,
+                value: *const Word,
+                width: u64,
                 shift: MaybeIndirect,
-                shift_data_width: WidthInt,
-            ) { unsafe {
-                let shift = if shift_data_width <= 64 {
-                    &BitVecValue::from_i64(shift, shift_data_width)
-                } else {
-                    &*(shift as *const BitVecValue)
-                };
-                (*dst).$baa_delegation(&*value, shift);
-            }}
+                shift_data_width: u64,
+            ) {
+                unsafe {
+                    let shift = if shift_data_width <= 64 {
+                        bv_value_ref_from_scalar!(shift, shift_data_width)
+                    } else {
+                        bv_value_ref!(shift as *const Word, shift_data_width)
+                    };
+                    bv_value_mut!(dst, width).$baa_delegation(&bv_value_ref!(value, width), &shift);
+                }
+            }
         };
     }
     baa_binary_op_shim!(add, sub, mul, and, or, xor);
@@ -584,14 +607,16 @@ mod trampoline {
         sym: "slice"
     });
     pub(super) unsafe extern "C" fn __bv_slice(
-        value: *const BitVecValue,
-        hi: WidthInt,
-        lo: WidthInt,
+        value: *const Word,
+        value_width: u64,
+        hi: u64,
+        lo: u64,
     ) -> ThinBV {
         unsafe {
-            let ret = (*value).slice(hi, lo);
-            debug_assert!(ret.width() <= 64);
-            ret.to_u64().unwrap() as ThinBV
+            bv_value_ref!(value, value_width)
+                .slice(hi as WidthInt, lo as WidthInt)
+                .to_u64()
+                .unwrap() as ThinBV
         }
     }
 
@@ -600,14 +625,19 @@ mod trampoline {
         sym: "slice_with_output_buffer"
     });
     pub(super) unsafe extern "C" fn __bv_slice_with_output_buffer(
-        dst: *mut BitVecValue,
-        value: *const BitVecValue,
-        hi: WidthInt,
-        lo: WidthInt,
+        dst: *mut Word,
+        value: *const Word,
+        value_width: u64,
+        hi: u64,
+        lo: u64,
     ) {
         unsafe {
             debug_assert!((hi - lo + 1) > 64);
-            (*dst).slice_in_place(&*value, hi, lo);
+            bv_value_mut!(dst, hi - lo + 1).slice_in_place(
+                &bv_value_ref!(value, value_width),
+                hi as WidthInt,
+                lo as WidthInt,
+            )
         }
     }
 
@@ -616,24 +646,24 @@ mod trampoline {
         sym: "concat"
     });
     pub(super) unsafe extern "C" fn __bv_concat(
-        dst: *mut BitVecValue,
+        dst: *mut Word,
         hi: MaybeIndirect,
         lo: MaybeIndirect,
-        hi_width: WidthInt,
-        lo_width: WidthInt,
+        hi_width: u64,
+        lo_width: u64,
     ) {
         unsafe {
             let hi = if hi_width <= 64 {
-                &BitVecValue::from_u64(hi as u64, hi_width)
+                bv_value_ref_from_scalar!(hi, hi_width)
             } else {
-                &*(hi as *const BitVecValue)
+                bv_value_ref!(hi as *const Word, hi_width)
             };
             let lo = if lo_width <= 64 {
-                &BitVecValue::from_u64(lo as u64, lo_width)
+                bv_value_ref_from_scalar!(lo, lo_width)
             } else {
-                &*(lo as *const BitVecValue)
+                bv_value_ref!(lo as *const Word, lo_width)
             };
-            (*dst).concat_in_place(hi, lo);
+            bv_value_mut!(dst, hi_width + lo_width).concat_in_place(&hi, &lo);
         }
     }
 }

@@ -268,15 +268,17 @@ macro_rules! next_state_buffer_mut {
 
 impl ArrayType {
     fn alloc(&self) -> *mut () {
+        let (index_width, data_width) = (self.index_width as u64, self.data_width as u64);
         if self.data_width <= THIN_BV_MAX_WIDTH {
-            runtime::__alloc_array(0, self.index_width, self.data_width) as _
+            runtime::__alloc_array(0, index_width, data_width) as _
         } else {
             // SAFETY: default value comes from a valid BitVecValue on stack
             unsafe {
                 runtime::__alloc_array_of_wide_bv(
-                    &baa::BitVecValue::zero(self.data_width),
-                    self.index_width,
-                    self.data_width,
+                    baa::BitVecValue::zero(self.data_width).words() as *const [baa::Word]
+                        as *const baa::Word,
+                    index_width,
+                    data_width,
                 ) as _
             }
         }
@@ -285,15 +287,12 @@ impl ArrayType {
     /// # Safety
     /// The caller should guarantee that the array `ptr` points to is allocated by `ArrayType::alloc` and has the correct type
     unsafe fn dealloc(&self, ptr: *mut ()) {
+        let (index_width, data_width) = (self.index_width as u64, self.data_width as u64);
         unsafe {
             if self.data_width <= THIN_BV_MAX_WIDTH {
-                runtime::__dealloc_array(ptr, self.index_width, self.data_width);
+                runtime::__dealloc_array(ptr, index_width, data_width);
             } else {
-                runtime::__dealloc_array_of_wide_bv(
-                    ptr as *mut *mut baa::BitVecValue,
-                    self.index_width,
-                    self.data_width,
-                )
+                runtime::__dealloc_array_of_wide_bv(ptr as *mut *mut Word, index_width, data_width)
             }
         }
     }
@@ -301,14 +300,15 @@ impl ArrayType {
     /// # Safety
     /// The caller should guarantee that the array `ptr` points to is allocated by `ArrayType::alloc` and has the correct type
     unsafe fn clone(&self, ptr: *const ()) -> *mut () {
+        let (index_width, data_width) = (self.index_width as u64, self.data_width as u64);
         unsafe {
             if self.data_width <= THIN_BV_MAX_WIDTH {
-                runtime::__clone_array(ptr, self.index_width, self.data_width) as _
+                runtime::__clone_array(ptr, index_width, data_width) as _
             } else {
                 runtime::__clone_array_of_wide_bv(
-                    ptr as *const *const baa::BitVecValue,
-                    self.index_width,
-                    self.data_width,
+                    ptr as *const *const Word,
+                    index_width,
+                    data_width,
                 ) as _
             }
         }
@@ -406,7 +406,7 @@ impl<'expr> JITEngine<'expr> {
                     }
                     expr::Type::BV(width) => {
                         if width > 64 {
-                            buffer[offset] = runtime::__alloc_bv(width) as i64;
+                            buffer[offset] = runtime::__alloc_bv(width as u64) as i64;
                         }
                     }
                 }
@@ -449,7 +449,7 @@ impl<'expr> JITEngine<'expr> {
                     }
                     ret_placeholder
                 } else {
-                    let bv = runtime::__alloc_bv(width) as *mut ();
+                    let bv = runtime::__alloc_bv(width as u64) as *mut ();
                     // SAFETY: heap allocated wide bitvector
                     unsafe {
                         self.eval_expr_with_ret_placeholder(expr, bv);
@@ -570,7 +570,8 @@ impl<'expr> JITEngine<'expr> {
                     } else {
                         // SAFETY: `value` coming from state buffer is guaranteed to be valid
                         unsafe {
-                            dst[offset] = runtime::__clone_bv(value as *const BitVecValue) as i64;
+                            dst[offset] =
+                                runtime::__clone_bv(value as *const Word, width as u64) as i64;
                         }
                     }
                 }
@@ -592,7 +593,10 @@ unsafe fn check_slot_value_dirty(a: i64, b: i64, tpe: expr::Type) -> bool {
             if width <= THIN_BV_MAX_WIDTH {
                 a != b
             } else {
-                unsafe { (*(a as *const BitVecValue)).ne(&*(b as *const BitVecValue)) }
+                unsafe {
+                    runtime::bv_value_ref!(a as *const Word, width)
+                        .ne(&runtime::bv_value_ref!(b as *const Word, width))
+                }
             }
         }
         // TODO: Currently for input array, compiler might steal the previous input array.
@@ -632,7 +636,7 @@ where
             match expr.get_type(self.ctx) {
                 expr::Type::BV(width) => {
                     if width > THIN_BV_MAX_WIDTH {
-                        runtime::__dealloc_bv(value as *mut BitVecValue);
+                        runtime::__dealloc_bv(value as *mut Word, width as u64);
                     }
                 }
                 expr::Type::Array(array_ty) => {
@@ -663,7 +667,8 @@ impl Simulator for JITEngine<'_> {
             let init_value = generator.generate(tpe);
             match init_value {
                 baa::Value::BitVec(bv) => {
-                    if bv.width() <= THIN_BV_MAX_WIDTH {
+                    let width = bv.width();
+                    if width <= THIN_BV_MAX_WIDTH {
                         *current_state_buffer_mut!(self).get_state_mut(state) =
                             bv.to_u64().unwrap() as i64;
                     } else {
@@ -671,8 +676,9 @@ impl Simulator for JITEngine<'_> {
                         // SAFETY: &bv is a valid pointer to `BitVecValue`
                         unsafe {
                             runtime::__copy_from_bv(
-                                dst as *mut BitVecValue,
-                                &bv as *const BitVecValue,
+                                dst as *mut Word,
+                                bv.words() as *const [Word] as *const Word,
+                                width as u64,
                             );
                         }
                     }
@@ -699,16 +705,15 @@ impl Simulator for JITEngine<'_> {
                         });
                     } else {
                         let dst = unsafe {
-                            std::slice::from_raw_parts(
-                                ptr as *const *mut BitVecValue,
-                                1 << index_width,
-                            )
+                            std::slice::from_raw_parts(ptr as *const *mut Word, 1 << index_width)
                         };
                         for (idx, &dst) in dst.iter().enumerate() {
                             let src_element =
                                 array.select(&BitVecValue::from_u64(idx as u64, index_width));
                             unsafe {
-                                *dst = src_element;
+                                runtime::bv_value_mut!(dst, data_width)
+                                    .words_mut()
+                                    .copy_from_slice(src_element.words())
                             }
                         }
                     }
@@ -754,16 +759,17 @@ impl Simulator for JITEngine<'_> {
             next_state_buffer_mut!(self).as_mut_slice()[offset] = value as i64;
         } else {
             // XXX: currently `runtime::__clone_bv` only supports raw pointer to `BitVecValue` as parameter
-            let value: BitVecValue = value.into();
-            let value = &value as *const BitVecValue;
+            let value = value.words() as *const [Word] as *const Word;
             unsafe {
                 runtime::__copy_from_bv(
-                    current_state_buffer!(self).as_slice()[offset] as *mut BitVecValue,
+                    current_state_buffer!(self).as_slice()[offset] as *mut Word,
                     value,
+                    width as u64,
                 );
                 runtime::__copy_from_bv(
-                    next_state_buffer!(self).as_slice()[offset] as *mut BitVecValue,
+                    next_state_buffer!(self).as_slice()[offset] as *mut Word,
                     value,
+                    width as u64,
                 );
             }
         }
@@ -807,15 +813,15 @@ impl Simulator for JITEngine<'_> {
                             index_width,
                             &baa::BitVecValue::zero(data_width),
                         );
-                        std::slice::from_raw_parts(
-                            value as *const *mut baa::BitVecValue,
-                            1 << index_width,
-                        )
-                        .iter()
-                        .enumerate()
-                        .for_each(|(idx, &bv)| {
-                            array.store(&BitVecValue::from_u64(idx as u64, index_width), &*bv);
-                        });
+                        std::slice::from_raw_parts(value as *const *const Word, 1 << index_width)
+                            .iter()
+                            .enumerate()
+                            .for_each(|(idx, &bv)| {
+                                array.store(
+                                    &BitVecValue::from_u64(idx as u64, index_width),
+                                    runtime::bv_value_ref!(bv, data_width),
+                                )
+                            });
                         baa::Value::Array(array)
                     };
                     if !is_cached_symbol {
@@ -830,11 +836,14 @@ impl Simulator for JITEngine<'_> {
                 } else {
                     // SAFETY: jit compiler guarantees that value is a pointer to wide bv allocated on heap
                     unsafe {
-                        if is_cached_symbol {
-                            baa::Value::BitVec((*(value as *mut BitVecValue)).clone())
-                        } else {
-                            baa::Value::BitVec(*Box::from_raw(value as *mut BitVecValue))
+                        let ret = baa::Value::BitVec(
+                            runtime::bv_value_ref!(value as *const Word, width).into(),
+                        );
+                        // TODO: steal data
+                        if !is_cached_symbol {
+                            runtime::__dealloc_bv(value as *mut Word, width as u64);
                         }
+                        ret
                     }
                 }
             }

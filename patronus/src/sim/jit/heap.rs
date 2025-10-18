@@ -17,6 +17,7 @@ impl<T> Default for HeapResourceCache<T> {
     }
 }
 
+#[expect(dead_code)]
 impl<T> HeapResourceCache<T> {
     pub(super) fn new() -> Self {
         Self {

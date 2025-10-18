@@ -1,14 +1,14 @@
 // Copyright 2025 Cornell University
 // released under BSD 3-Clause License
 // author: Zihan Li <zl2225@cornell.edu>
-use super::bv_codegen::{self, select_container_primitive};
+use super::bv_codegen::{self, iconst, select_container_primitive};
 use super::expr_graph::*;
 use super::heap::*;
 use super::{JITResult, StateBufferView, THIN_BV_MAX_WIDTH, runtime};
 use crate::expr::{self, *};
 use crate::system::*;
 
-use baa::{BitVecValue, BitVecValueRef};
+use baa::{BitVecValueRef, Word};
 use cranelift::codegen::ir;
 use cranelift::jit::{JITBuilder, JITModule};
 use cranelift::module::Module;
@@ -26,9 +26,10 @@ pub(super) struct JITCompiler {
 
 #[derive(Default)]
 pub(super) struct ManagedHeapResource {
-    pub(super) bv_data: HeapResourceCache<BitVecValue>,
+    pub(super) bv_data: SlicedHeapResourceCache<Word>,
     array_data: SlicedHeapResourceCache<u8>,
-    array_with_wide_bv_data: SlicedHeapResourceCache<LeakedBitVecPtr>,
+    /// TODO: resources reclaim this length erased pointer
+    array_with_wide_bv_data: SlicedHeapResourceCache<*mut Word>,
 }
 
 impl ManagedHeapResource {
@@ -36,24 +37,6 @@ impl ManagedHeapResource {
         self.bv_data.seal();
         self.array_data.seal();
         self.array_with_wide_bv_data.seal();
-    }
-}
-
-#[repr(transparent)]
-struct LeakedBitVecPtr(*mut BitVecValue);
-
-impl LeakedBitVecPtr {
-    fn new(data: BitVecValue) -> Self {
-        Self(Box::into_raw(Box::new(data)))
-    }
-}
-
-impl std::ops::Drop for LeakedBitVecPtr {
-    fn drop(&mut self) {
-        // SAFETY: `value` is leaked from Box in `Self::new`
-        unsafe {
-            let _ = Box::from_raw(self.0);
-        }
     }
 }
 
@@ -543,7 +526,7 @@ impl CodeGenContext<'_, '_, '_> {
                     self.compiler
                         .active_heap_resource
                         .bv_data
-                        .push(Box::new(BitVecValue::zero(width)));
+                        .push(runtime::reserve_bv_boxed_words(width as u64));
                     bv_holes.push(value);
                 }
                 expr::Type::Array(ArrayType {
@@ -551,7 +534,7 @@ impl CodeGenContext<'_, '_, '_> {
                     data_width,
                 }) => {
                     if data_width <= THIN_BV_MAX_WIDTH {
-                        let ptr = runtime::__alloc_array(0, index_width, data_width);
+                        let ptr = runtime::__alloc_array(0, index_width as u64, data_width as u64);
                         let num_bytes = (1 << (index_width as usize))
                             * (select_container_primitive(data_width).bytes() as usize);
                         // SAFETY: `ptr` is always byte aligned and the coerced bytes slice len is computed properly
@@ -567,11 +550,10 @@ impl CodeGenContext<'_, '_, '_> {
                             .push(boxed_bytes);
                         array_holes.push(value);
                     } else {
-                        let data: Vec<_> = std::iter::repeat_with(|| {
-                            LeakedBitVecPtr::new(BitVecValue::zero(data_width))
-                        })
-                        .take(1 << index_width)
-                        .collect();
+                        let data: Vec<_> =
+                            std::iter::repeat_with(|| runtime::__alloc_bv(data_width as u64))
+                                .take(1 << index_width)
+                                .collect();
                         self.compiler
                             .active_heap_resource
                             .array_with_wide_bv_data
@@ -805,18 +787,20 @@ impl CodeGenContext<'_, '_, '_> {
     }
 
     fn dealloc_bv(&mut self, bv_to_dealloc: TaggedValue) {
+        let width = iconst!(self, bv_to_dealloc.expect_bv_type());
         self.fn_builder
             .ins()
-            .call(self.runtime_lib.dealloc_bv, &[*bv_to_dealloc]);
+            .call(self.runtime_lib.dealloc_bv, &[*bv_to_dealloc, width]);
     }
 
     #[expect(dead_code)]
     pub(super) fn clone_bv(&mut self, src: TaggedValue) -> TaggedValue {
         assert!(src.requires_bv_delegation());
+        let width = iconst!(self, src.expect_bv_type());
         let call = self
             .fn_builder
             .ins()
-            .call(self.runtime_lib.clone_bv, &[*src]);
+            .call(self.runtime_lib.clone_bv, &[*src, width]);
         let ret = TaggedValue::tag(self.fn_builder.inst_results(call)[0], src.data_type);
         self.register_short_lived_heap_allocation(ret);
         ret
@@ -824,9 +808,10 @@ impl CodeGenContext<'_, '_, '_> {
 
     pub(super) fn copy_from_bv(&mut self, dst: TaggedValue, src: TaggedValue) {
         assert_eq!(src.data_type, dst.data_type);
+        let width = iconst!(self, dst.expect_bv_type());
         self.fn_builder
             .ins()
-            .call(self.runtime_lib.copy_from_bv, &[*dst, *src]);
+            .call(self.runtime_lib.copy_from_bv, &[*dst, *src, width]);
     }
 
     #[cfg(feature = "aot-clif")]
