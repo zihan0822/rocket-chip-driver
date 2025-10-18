@@ -5,12 +5,25 @@ use crate::expr::{self, *};
 use baa::{BitVecOps, BitVecValueRef};
 use cranelift::codegen::ir::FuncRef;
 use cranelift::prelude::*;
+use rustc_hash::FxHashMap;
+use std::sync::Mutex;
 
 use super::compiler::{BVCodeGenVTable, CodeGenContext, TaggedValue};
 
 /// Contains width of result bit vector type.
 pub(super) struct BVWord(pub(super) WidthInt);
 pub(super) struct BVIndirect(pub(super) WidthInt);
+
+lazy_static! {
+    pub static ref SLICE_CALL: Mutex<FxHashMap<ConstParamList<1, 2>, usize>> =
+        Mutex::new(FxHashMap::default());
+}
+
+#[derive(Debug, Hash, PartialEq, Eq)]
+pub struct ConstParamList<const N: usize, const T: usize> {
+    words_width: [WidthInt; N],
+    trailing_params: [WidthInt; T],
+}
 
 macro_rules! iconst {
     ($ctx: expr, $value: expr) => {
@@ -220,6 +233,7 @@ impl BVCodeGenVTable for BVWord {
         ctx: &mut CodeGenContext,
     ) -> Value {
         if value.requires_bv_delegation() {
+            register_slice_call(value, hi, lo);
             #[cfg(feature = "aot-clif")]
             {
                 if let Some(stack_slot_addr) = aot::slice_with_dst_words_allocator(
@@ -253,13 +267,23 @@ impl BVCodeGenVTable for BVWord {
             let lo = iconst!(ctx, lo);
             let value_width = iconst!(ctx, value.expect_bv_type());
 
-            // extern `slice` fn always returns i64 type
-            let ret = invoke_bv_extern_function(
-                ctx.runtime_lib.bv_ops["slice"],
-                &[*value, value_width, hi, lo],
-                ctx,
-            )
-            .unwrap();
+            let ret = if self.0 <= 64 && value.bv_num_words() == 2 {
+                println!("specialize once");
+                invoke_bv_extern_function(
+                    ctx.runtime_lib.bv_ops["specialized_two_words_slice"],
+                    &[*value, value_width, hi, lo],
+                    ctx,
+                )
+                .unwrap()
+            } else {
+                // extern `slice` fn always returns i64 type
+                invoke_bv_extern_function(
+                    ctx.runtime_lib.bv_ops["slice"],
+                    &[*value, value_width, hi, lo],
+                    ctx,
+                )
+                .unwrap()
+            };
             self.truncate_to_fit(TaggedValue::tag_bv(ret, 64), ctx)
         } else {
             let shifted = self.truncate_to_fit(
@@ -532,6 +556,7 @@ impl BVCodeGenVTable for BVIndirect {
         lo: WidthInt,
         ctx: &mut CodeGenContext,
     ) -> Value {
+        register_slice_call(value, hi, lo);
         self.with_dst(ctx, |dst, ctx| {
             let (hi, lo) = (iconst!(ctx, hi), iconst!(ctx, lo));
             let value_width = iconst!(ctx, value.expect_bv_type());
@@ -542,6 +567,17 @@ impl BVCodeGenVTable for BVIndirect {
             );
         })
     }
+}
+
+fn register_slice_call(src: TaggedValue, hi: WidthInt, lo: WidthInt) {
+    *SLICE_CALL
+        .lock()
+        .unwrap()
+        .entry(ConstParamList {
+            words_width: [src.bv_num_words()],
+            trailing_params: [(hi - lo + 1).div_ceil(baa::Word::BITS), 0],
+        })
+        .or_default() += 1;
 }
 
 #[cfg(feature = "aot-clif")]

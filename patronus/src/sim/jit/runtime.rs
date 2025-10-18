@@ -604,6 +604,26 @@ mod trampoline {
 
     inventory::submit!(BVOpRegistry {
         kind: BVOpKind::Slice(__bv_slice),
+        sym: "specialized_two_words_slice"
+    });
+    pub(super) unsafe extern "C" fn __bv_slice_specialized_two_words_variant(
+        value: *const Word,
+        _value_width: u64,
+        hi: u64,
+        lo: u64,
+    ) -> ThinBV {
+        unsafe {
+            let value = value as *const [Word; 2];
+            crate::sim::jit::arithmetic::specialized_two_words_slice(
+                &*value,
+                hi as WidthInt,
+                lo as WidthInt,
+            ) as _
+        }
+    }
+
+    inventory::submit!(BVOpRegistry {
+        kind: BVOpKind::Slice(__bv_slice),
         sym: "slice"
     });
     pub(super) unsafe extern "C" fn __bv_slice(

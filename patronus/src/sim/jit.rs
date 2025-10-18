@@ -1,6 +1,7 @@
 // Copyright 2025 Cornell University
 // released under BSD 3-Clause License
 // author: Zihan Li <zl2225@cornell.edu>
+mod arithmetic;
 mod bv_codegen;
 #[cfg(feature = "aot-clif")]
 mod clif_loader;

@@ -420,6 +420,7 @@ impl CodeGenContext<'_, '_, '_> {
     fn codegen<F: FnOnce(Vec<Value>, Self)>(mut self, epilogue: F) {
         let ret = self.mock_interpret();
         self.finalize_long_lived_heap_resources();
+        // display_top_k_entries::<10, 1, 2>(&super::bv_codegen::SLICE_CALL.lock().unwrap());
         epilogue(ret, self);
     }
 
@@ -1042,4 +1043,14 @@ pub(super) trait BVCodeGenVTable {
         lo: WidthInt,
         ctx: &mut CodeGenContext,
     ) -> Value;
+}
+
+fn display_top_k_entries<const K: usize, const N: usize, const T: usize>(
+    m: &rustc_hash::FxHashMap<super::bv_codegen::ConstParamList<N, T>, usize>,
+) {
+    let mut items = m.iter().collect::<Vec<_>>();
+    items.sort_by(|a, b| b.1.cmp(a.1));
+    for (key, value) in items.iter().take(K) {
+        println!("{key:#?} -> {value}");
+    }
 }
