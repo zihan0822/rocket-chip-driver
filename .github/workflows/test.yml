@@ -49,6 +49,7 @@ jobs:
             "axi-lite-xlnx.original.tb0.csv axi-lite-xlnx.original.btor"
             "axi-lite-xlnx.original.tb1.csv axi-lite-xlnx.original.btor"
             "axi-stream-xlnx.original.tb.csv axi-stream-xlnx.original.btor" 
+            "keccak.original.tb.csv keccak.original.btor"
           )
           for test in "${tests[@]}"; do
             read -r csv btor <<< "$test" 
@@ -62,7 +63,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Rustup
         run: rustup component add clippy rustfmt
-      - name: Link Check 
+      - name: Lint Check 
         run: cargo clippy --workspace -- --deny warnings
       - name: Format Check 
         run: cargo fmt --check
