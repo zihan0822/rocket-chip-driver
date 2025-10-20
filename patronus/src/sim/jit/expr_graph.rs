@@ -2,7 +2,6 @@ use crate::expr::{traversal, *};
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, VecDeque, hash_map};
-use std::rc::Rc;
 
 pub(crate) struct BottomUpExprGraph {
     pub(crate) roots: Vec<ExprRef>,
@@ -50,12 +49,12 @@ impl BottomUpExprGraph {
 
     /// Returns a walker with custom candidate priority comparator.
     /// The internal representation is of candidates is a min-heap. Smaller value returned from `compare` will be prioritized.
-    pub(crate) fn walker_with_sorted_fringe<F>(
-        &self,
-        compare: F,
-    ) -> BiasedBottomUpExprGraphWalker<'_, F>
+    pub(crate) fn walker_with_sorted_fringe<'a, F>(
+        &'a self,
+        compare: &'a F,
+    ) -> BiasedBottomUpExprGraphWalker<'a, F>
     where
-        F: Fn(&ExprRef, &ExprRef) -> std::cmp::Ordering,
+        for<'e> F: Fn(&'e ExprRef, &'e ExprRef) -> std::cmp::Ordering,
     {
         BiasedBottomUpExprGraphWalker::new(self, compare)
     }
@@ -122,30 +121,30 @@ impl Iterator for BottomUpExprGraphWalker<'_> {
     }
 }
 
-struct WeightedExprNode<F>
+struct WeightedExprNode<'a, F>
 where
-    F: Fn(&ExprRef, &ExprRef) -> std::cmp::Ordering,
+    for<'e> F: Fn(&'e ExprRef, &'e ExprRef) -> Ordering,
 {
     expr: ExprRef,
-    compare: Rc<F>,
+    compare: &'a F,
 }
 
 pub(crate) struct BiasedBottomUpExprGraphWalker<'a, F>
 where
-    F: Fn(&ExprRef, &ExprRef) -> Ordering,
+    for<'e> F: Fn(&'e ExprRef, &'e ExprRef) -> Ordering,
 {
-    todo: BinaryHeap<WeightedExprNode<F>>,
+    todo: BinaryHeap<WeightedExprNode<'a, F>>,
     graph: &'a BottomUpExprGraph,
     in_degree: FxHashMap<ExprRef, usize>,
     expandable: Vec<ExprRef>,
-    fringe_compare: Rc<F>,
+    fringe_compare: &'a F,
 }
 
 impl<'a, F> BiasedBottomUpExprGraphWalker<'a, F>
 where
-    F: Fn(&ExprRef, &ExprRef) -> Ordering,
+    for<'e> F: Fn(&'e ExprRef, &'e ExprRef) -> Ordering,
 {
-    fn new(graph: &'a BottomUpExprGraph, compare: F) -> Self {
+    fn new(graph: &'a BottomUpExprGraph, fringe_compare: &'a F) -> Self {
         let mut in_degree = graph.node_in_degree();
         let expandable = in_degree
             .extract_if(|_, &mut degree| degree == 0)
@@ -156,21 +155,21 @@ where
             graph,
             in_degree,
             expandable,
-            fringe_compare: Rc::new(compare),
+            fringe_compare,
         }
     }
 }
 
 impl<'a, F> Iterator for BiasedBottomUpExprGraphWalker<'a, F>
 where
-    F: Fn(&ExprRef, &ExprRef) -> Ordering,
+    for<'e> F: Fn(&'e ExprRef, &'e ExprRef) -> Ordering,
 {
     type Item = ExprRef;
     fn next(&mut self) -> Option<Self::Item> {
         self.todo
             .extend(self.expandable.drain(..).map(|expr| WeightedExprNode {
                 expr,
-                compare: Rc::clone(&self.fringe_compare),
+                compare: self.fringe_compare,
             }));
         let next = self.todo.pop()?;
         for &dependent in &self.graph.node_dependents[&next.expr] {
@@ -188,34 +187,37 @@ where
     }
 }
 
-impl<F> std::cmp::Ord for WeightedExprNode<F>
+impl<F> std::cmp::Ord for WeightedExprNode<'_, F>
 where
-    F: Fn(&ExprRef, &ExprRef) -> Ordering,
+    for<'e> F: Fn(&'e ExprRef, &'e ExprRef) -> Ordering,
 {
     fn cmp(&self, other: &Self) -> Ordering {
         (self.compare)(&self.expr, &other.expr).reverse()
     }
 }
 
-impl<F> std::cmp::PartialOrd for WeightedExprNode<F>
+impl<F> std::cmp::PartialOrd for WeightedExprNode<'_, F>
 where
-    F: Fn(&ExprRef, &ExprRef) -> Ordering,
+    for<'e> F: Fn(&'e ExprRef, &'e ExprRef) -> Ordering,
 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<F> std::cmp::PartialEq for WeightedExprNode<F>
+impl<F> std::cmp::PartialEq for WeightedExprNode<'_, F>
 where
-    F: Fn(&ExprRef, &ExprRef) -> Ordering,
+    for<'e> F: Fn(&'e ExprRef, &'e ExprRef) -> Ordering,
 {
     fn eq(&self, other: &Self) -> bool {
         (self.compare)(&self.expr, &other.expr).is_eq()
     }
 }
 
-impl<F> std::cmp::Eq for WeightedExprNode<F> where F: Fn(&ExprRef, &ExprRef) -> Ordering {}
+impl<F> std::cmp::Eq for WeightedExprNode<'_, F> where
+    for<'e> F: Fn(&'e ExprRef, &'e ExprRef) -> Ordering
+{
+}
 
 pub(crate) struct ParentExprIter<'a> {
     graph: &'a BottomUpExprGraph,

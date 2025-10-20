@@ -444,13 +444,14 @@ impl CodeGenContext<'_, '_, '_> {
 
         let mut arguments = Vec::with_capacity(4);
         // Postpone `ArrayStore` as much as possible to reduce unnecessary clone of potentially huge array
-        let walker = bottom_up_expr_graph.walker_with_sorted_fringe(|&a, _| {
-            if matches!(self.expr_ctx[a], Expr::ArrayStore { .. }) {
+        let fringe_compare = |a: &ExprRef, _: &ExprRef| {
+            if matches!(self.expr_ctx[*a], Expr::ArrayStore { .. }) {
                 std::cmp::Ordering::Greater
             } else {
                 std::cmp::Ordering::Less
             }
-        });
+        };
+        let walker = bottom_up_expr_graph.walker_with_sorted_fringe(&fringe_compare);
         for e in walker {
             let expr = &self.expr_ctx[e];
             expr.for_each_child(|child| {
