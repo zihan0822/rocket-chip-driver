@@ -1,7 +1,7 @@
 use crate::expr::{traversal, *};
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::cmp::Ordering;
-use std::collections::{BinaryHeap, VecDeque};
+use std::collections::{BinaryHeap, VecDeque, hash_map};
 use std::rc::Rc;
 
 pub(crate) struct BottomUpExprGraph {
@@ -137,6 +137,7 @@ where
     todo: BinaryHeap<WeightedExprNode<F>>,
     graph: &'a BottomUpExprGraph,
     in_degree: FxHashMap<ExprRef, usize>,
+    expandable: Vec<ExprRef>,
     fringe_compare: Rc<F>,
 }
 
@@ -145,10 +146,16 @@ where
     F: Fn(&ExprRef, &ExprRef) -> Ordering,
 {
     fn new(graph: &'a BottomUpExprGraph, compare: F) -> Self {
+        let mut in_degree = graph.node_in_degree();
+        let expandable = in_degree
+            .extract_if(|_, &mut degree| degree == 0)
+            .map(|(expr, _)| expr)
+            .collect();
         Self {
             todo: BinaryHeap::default(),
             graph,
-            in_degree: graph.node_in_degree(),
+            in_degree,
+            expandable,
             fringe_compare: Rc::new(compare),
         }
     }
@@ -161,17 +168,21 @@ where
     type Item = ExprRef;
     fn next(&mut self) -> Option<Self::Item> {
         self.todo
-            .extend(
-                self.in_degree
-                    .extract_if(|_, &mut degree| degree == 0)
-                    .map(|(expr, _)| WeightedExprNode {
-                        expr,
-                        compare: Rc::clone(&self.fringe_compare),
-                    }),
-            );
+            .extend(self.expandable.drain(..).map(|expr| WeightedExprNode {
+                expr,
+                compare: Rc::clone(&self.fringe_compare),
+            }));
         let next = self.todo.pop()?;
-        for dependent in &self.graph.node_dependents[&next.expr] {
-            *self.in_degree.get_mut(dependent).unwrap() -= 1;
+        for &dependent in &self.graph.node_dependents[&next.expr] {
+            let hash_map::Entry::Occupied(mut entry) = self.in_degree.entry(dependent) else {
+                unreachable!()
+            };
+            let node_in_degree = entry.get_mut();
+            *node_in_degree -= 1;
+            if *node_in_degree == 0 {
+                self.expandable.push(dependent);
+                entry.remove();
+            }
         }
         Some(next.expr)
     }
