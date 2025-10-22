@@ -14,10 +14,6 @@ which includes a few extensions to support translation of large chip designs.
 
 #### Running Patronus
 ```
-# compiles libfesvr.so
-$ cd resources && make riscv
-
-$ cd ..
 $ make all
 $ ./resources/emulator <rocket-chip-btor-file> <test-elf>
 ```

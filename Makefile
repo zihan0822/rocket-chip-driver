@@ -24,8 +24,7 @@ emulator:
 		yosys $(YOSYS_SCRIPT)
 
 clean:
-	@for design in $(DESIGNS_DIR); do \
-		rm -f $$design/$(BTOR_OUTPUT); \
-	done
+	@cargo clean
+	@make -C resources clean
 
 

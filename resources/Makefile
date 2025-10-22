@@ -1,4 +1,4 @@
-RUST_TARGET_DIR := $(realpath -f ../target)
+RUST_TARGET_DIR := $$(realpath ../target)
 RUST_LIB_DIR := $(RUST_TARGET_DIR)/$(RUST_PROFILE)
 CXX_DIR := $(shell pwd)/cxx
 RISCV_SIM := $(CXX_DIR)/riscv-fesvr
@@ -30,7 +30,7 @@ riscv:
 	@cd $(RISCV_SIM) && mkdir -p build && cd build && \
 		../configure --prefix=$(RISCV_DIR) --target=$(RISCV_TOOLCHAIN) && make install
 
-emulator: $(CXX_DIR)/emulator.cc rocket_chip_driver
+emulator: $(CXX_DIR)/emulator.cc rocket_chip_driver riscv
 	@$(CXX) -o $@ $< $(LDFLAGS) $(INCLUDES) $(LIBS) $(LINKER_ARGS)
 
 rocket_chip_driver:
