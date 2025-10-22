@@ -9,6 +9,8 @@ We use `Patronus` to simulate [rocket-chip](https://github.com/chipsalliance/roc
 #### Prerequisites
 * [riscv-toolchain](https://github.com/riscv-collab/riscv-gnu-toolchain/tree/b683d4dec3f6bb2d715e63d78a2a92862e551590): riscv cross-compiler and libc
 * [riscv-tests](https://github.com/riscv-software-src/riscv-tests/tree/b5ba87097c42aa41c56657e0ae049c2996e8d8d8): test and benchmark program
+* yosys: used to translate Verilog into Btor. Please build it from our [forked version](https://github.com/zihan0822/yosys/tree/btor-fix), 
+which includes a few extensions to support translation of large chip designs. 
 
 #### Running Patronus
 ```
@@ -44,4 +46,5 @@ $ ROCKET_CHIP_DRIVER=<path-to-this-rocket-chip-driver-repo> make emulator
 * Env variable `ROCKET_CHIP_DRIVER` should be set to point to this repository so both emulators share the same simulation libraries. 
 * Compiled emulator elf can be found in `out/emulator/<design>/verilator/elf.dest/emulator`.
 * Note that `designs/rocket-latest/TestHarness.sv` is directly adapted from `make verilog` output, with minor modifications to wire up the debug module to accommondate test driver used for `Patronus`.
+
 
