@@ -11,6 +11,7 @@ We use `Patronus` to simulate [rocket-chip](https://github.com/chipsalliance/roc
 * [riscv-tests](https://github.com/riscv-software-src/riscv-tests/tree/b5ba87097c42aa41c56657e0ae049c2996e8d8d8): test and benchmark program
 * yosys: used to translate Verilog into Btor. Please build it from our [forked version](https://github.com/zihan0822/yosys/tree/btor-fix), 
 which includes a few extensions to support translation of large chip designs. 
+* git-lfs: used to download large precompiled Verilog and BTOR files for uploaded chip designs. 
 
 #### Running Patronus
 ```

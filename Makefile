@@ -10,7 +10,7 @@ BTOR_TARGET := $(patsubst %.sv,%.btor,$(foreach dir,$(DESIGNS_DIR),$(dir)/$(DESI
 
 .PHONY: clean 
 
-all: btor emulator
+all: emulator
 
 btor: $(BTOR_TARGET)
 

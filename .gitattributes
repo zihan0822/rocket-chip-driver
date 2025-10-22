@@ -1,0 +1,2 @@
+designs/*/*.btor filter=lfs diff=lfs merge=lfs -text
+designs/*/*.sv filter=lfs diff=lfs merge=lfs -text
