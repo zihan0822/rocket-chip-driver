@@ -71,7 +71,7 @@ impl JITCompiler {
         });
         let mut builder =
             JITBuilder::with_flags(&parsed_flags, cranelift::module::default_libcall_names())
-                .unwrap_or_else(|_| panic!("fail to launch jit instance"));
+                .unwrap_or_else(|err| panic!("fail to launch jit instance, due to: {err:?}"));
         runtime::load_runtime_lib(&mut builder);
         #[cfg(feature = "aot-clif")]
         {
