@@ -61,17 +61,23 @@ impl EvalBatchedExprWithUpdate {
 
 impl JITCompiler {
     pub(super) fn new(flags: Option<&str>) -> Self {
-        let parsed_flags = flags.map_or(vec![], |s| {
-            s.split(",")
-                .map(|flag| {
-                    flag.split_once(":")
-                        .expect("flag should be a `:` separated pair")
+        let mut default_flags = FxHashMap::from_iter([("regalloc_algorithm", "single_pass")]);
+        default_flags.extend(
+            flags
+                .map(|s| {
+                    s.split(",").map(|flag| {
+                        flag.split_once(":")
+                            .expect("flag should be a `:` separated pair")
+                    })
                 })
-                .collect()
-        });
-        let mut builder =
-            JITBuilder::with_flags(&parsed_flags, cranelift::module::default_libcall_names())
-                .unwrap_or_else(|err| panic!("fail to launch jit instance, due to: {err:?}"));
+                .into_iter()
+                .flatten(),
+        );
+        let mut builder = JITBuilder::with_flags(
+            &Vec::from_iter(default_flags),
+            cranelift::module::default_libcall_names(),
+        )
+        .unwrap_or_else(|err| panic!("fail to launch jit instance, due to: {err:?}"));
         runtime::load_runtime_lib(&mut builder);
         #[cfg(feature = "aot-clif")]
         {
