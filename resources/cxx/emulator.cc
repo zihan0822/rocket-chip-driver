@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <rocket_chip_driver.h>
+#include <iomanip>
+#include <chrono>
 
 // TODO: add in support for JTAG remote bit bang
 // TODO: add in support for VM_TRACE and VCD output
@@ -230,6 +232,13 @@ done_processing:
 
   signal(SIGTERM, handle_sigterm);
 
+  auto compile_start = std::chrono::high_resolution_clock::now();
+  // trigger compilation with a dummy step
+  ffi::step_driver();
+  auto compile_end = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> compile_duration = compile_end - compile_start;
+  std::cout << "Compile time: " << std::fixed << std::setprecision(3) << compile_duration.count() << "s" << std::endl; 
+
   // The initial block in AsyncResetReg is either racy or is not handled
   // correctly by Verilator when the reset signal isn't a top-level pin.
   // So guarantee that all the AsyncResetRegs will see a rising edge of
@@ -238,6 +247,7 @@ done_processing:
   int async_reset_cycles = 2;
   // Rocket-chip requires synchronous reset to be asserted for several cycles.
   int sync_reset_cycles = 10;
+  auto exec_start = std::chrono::high_resolution_clock::now();
   while (trace_count < max_cycles) {
     if (done_reset && (dtm->done()))
       break;
@@ -250,6 +260,9 @@ done_processing:
     tick_dtm(done_reset, debug_output);
     trace_count++;
   }
+  auto exec_end = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> exec_duration = exec_end - exec_start;
+  std::cout << "Execution time: " << std::fixed << std::setprecision(3) << exec_duration.count() << "s" << std::endl; 
 
   if (dtm->exit_code())
   {
