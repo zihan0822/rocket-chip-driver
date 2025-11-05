@@ -97,10 +97,15 @@ pub(crate) struct BottomUpExprGraphWalker<'a> {
 
 impl<'a> BottomUpExprGraphWalker<'a> {
     fn new(graph: &'a BottomUpExprGraph) -> Self {
+        let mut in_degree = graph.node_in_degree();
+        let todo = in_degree
+            .extract_if(|_, &mut degree| degree == 0)
+            .map(|(expr, _)| expr)
+            .collect();
         Self {
-            todo: Default::default(),
+            todo,
             graph,
-            in_degree: graph.node_in_degree(),
+            in_degree,
         }
     }
 }
@@ -108,14 +113,17 @@ impl<'a> BottomUpExprGraphWalker<'a> {
 impl Iterator for BottomUpExprGraphWalker<'_> {
     type Item = ExprRef;
     fn next(&mut self) -> Option<Self::Item> {
-        self.todo.extend(
-            self.in_degree
-                .extract_if(|_, &mut degree| degree == 0)
-                .map(|(expr, _)| expr),
-        );
         let next = self.todo.pop_front()?;
-        for dependent in &self.graph.node_dependents[&next] {
-            *self.in_degree.get_mut(dependent).unwrap() -= 1;
+        for &dependent in &self.graph.node_dependents[&next] {
+            let hash_map::Entry::Occupied(mut entry) = self.in_degree.entry(dependent) else {
+                unreachable!()
+            };
+            let node_in_degree = entry.get_mut();
+            *node_in_degree -= 1;
+            if *node_in_degree == 0 {
+                self.todo.push_back(dependent);
+                entry.remove();
+            }
         }
         Some(next)
     }
@@ -136,7 +144,6 @@ where
     todo: BinaryHeap<WeightedExprNode<'a, F>>,
     graph: &'a BottomUpExprGraph,
     in_degree: FxHashMap<ExprRef, usize>,
-    expandable: Vec<ExprRef>,
     fringe_compare: &'a F,
 }
 
@@ -146,15 +153,17 @@ where
 {
     fn new(graph: &'a BottomUpExprGraph, fringe_compare: &'a F) -> Self {
         let mut in_degree = graph.node_in_degree();
-        let expandable = in_degree
+        let todo = in_degree
             .extract_if(|_, &mut degree| degree == 0)
-            .map(|(expr, _)| expr)
+            .map(|(expr, _)| WeightedExprNode {
+                expr,
+                compare: fringe_compare,
+            })
             .collect();
         Self {
-            todo: BinaryHeap::default(),
+            todo,
             graph,
             in_degree,
-            expandable,
             fringe_compare,
         }
     }
@@ -166,11 +175,6 @@ where
 {
     type Item = ExprRef;
     fn next(&mut self) -> Option<Self::Item> {
-        self.todo
-            .extend(self.expandable.drain(..).map(|expr| WeightedExprNode {
-                expr,
-                compare: self.fringe_compare,
-            }));
         let next = self.todo.pop()?;
         for &dependent in &self.graph.node_dependents[&next.expr] {
             let hash_map::Entry::Occupied(mut entry) = self.in_degree.entry(dependent) else {
@@ -179,7 +183,10 @@ where
             let node_in_degree = entry.get_mut();
             *node_in_degree -= 1;
             if *node_in_degree == 0 {
-                self.expandable.push(dependent);
+                self.todo.push(WeightedExprNode {
+                    expr: dependent,
+                    compare: self.fringe_compare,
+                });
                 entry.remove();
             }
         }
