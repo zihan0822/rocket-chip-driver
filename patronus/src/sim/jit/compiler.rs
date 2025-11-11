@@ -1046,6 +1046,7 @@ impl CodeGenContext<'_, '_, '_> {
                 vtable.arithmetic_shift_right(args[0], args[1], self)
             }
             Expr::BVConcat(..) => vtable.concat(args[0], args[1], self),
+            Expr::BVImplies(..) => vtable.implies(args[0], args[1], self),
             _ => todo!("{:?}", self.expr_ctx[expr]),
         }
     }
@@ -1088,4 +1089,6 @@ pub(super) trait BVCodeGenVTable {
         lo: WidthInt,
         ctx: &mut CodeGenContext,
     ) -> Value;
+
+    fn implies(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
 }

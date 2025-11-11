@@ -272,6 +272,11 @@ impl BVCodeGenVTable for BVWord {
             self.mask(shifted, hi - lo + 1, ctx)
         }
     }
+    fn implies(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value {
+        let lhs = ctx.fn_builder.ins().bnot(*lhs);
+        let ret = ctx.fn_builder.ins().bor(lhs, *rhs);
+        self.overflow_guard(ret, ctx)
+    }
 }
 
 fn invoke_bv_extern_function(
@@ -503,6 +508,9 @@ impl BVCodeGenVTable for BVIndirect {
     fn ge_signed(&self, _lhs: TaggedValue, _rhs: TaggedValue, _ctx: &mut CodeGenContext) -> Value {
         unreachable!()
     }
+    fn implies(&self, _lhs: TaggedValue, _rhs: TaggedValue, _ctx: &mut CodeGenContext) -> Value {
+        unreachable!()
+    }
 
     fn concat(&self, mut hi: TaggedValue, mut lo: TaggedValue, ctx: &mut CodeGenContext) -> Value {
         self.with_dst(ctx, |dst, ctx| {
@@ -703,6 +711,7 @@ mod aot {
                 fn ge(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
                 fn gt_signed(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
                 fn ge_signed(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
+                fn implies(&self, lhs: TaggedValue, rhs: TaggedValue, ctx: &mut CodeGenContext) -> Value;
             }
         }
     }
