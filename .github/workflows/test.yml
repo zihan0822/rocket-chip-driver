@@ -56,6 +56,27 @@ jobs:
             cargo run --release -p sim -- --init=zero --jit --repetition=4 --testbench=inputs/repair/$csv inputs/repair/$btor
           done
 
+  rlt-sim:
+    name: Test RISC-V chips RTL simulation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        core:
+          - rocket20
+          - boom21
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          lfs: true
+      - uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: make all 
+      - name: Run ${{ matrix.core }} core
+        run: ./resources/emulator -c designs/${{ matrix.core }}/TestHarness.btor riscv-tests/dhrystone.riscv
+
+
   lint:
     runs-on: ubuntu-latest
     steps:
