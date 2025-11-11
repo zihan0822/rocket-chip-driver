@@ -139,9 +139,9 @@ impl JITCompiler {
             .unzip();
         self.compile_batched_update_with_output_slots(
             expr_ctx,
-            next_expr_batch,
+            &next_expr_batch,
             input_state_buffer,
-            Vec::from_iter(
+            &Vec::from_iter(
                 states_expr
                     .into_iter()
                     .map(|sym| output_state_buffer.get_state_offset(sym)),
@@ -152,7 +152,7 @@ impl JITCompiler {
     pub(super) fn compile_batched_expr_eval(
         &mut self,
         expr_ctx: &expr::Context,
-        expr_batch: Vec<ExprRef>,
+        expr_batch: &[ExprRef],
         input_state_buffer: &dyn StateBufferView<i64>,
         output_state_buffer: &dyn StateBufferView<i64>,
     ) -> JITResult<EvalBatchedExprWithUpdate> {
@@ -165,16 +165,16 @@ impl JITCompiler {
             expr_ctx,
             expr_batch,
             input_state_buffer,
-            slot_offset,
+            &slot_offset,
         )
     }
 
     pub(super) fn compile_batched_update_with_output_slots(
         &mut self,
         expr_ctx: &expr::Context,
-        expr_batch: Vec<ExprRef>,
+        expr_batch: &[ExprRef],
         input_state_buffer: &dyn StateBufferView<i64>,
-        slot_offset: Vec<usize>,
+        slot_offset: &[usize],
     ) -> JITResult<EvalBatchedExprWithUpdate> {
         assert_eq!(expr_batch.len(), slot_offset.len());
         let sig = Signature {
@@ -185,12 +185,12 @@ impl JITCompiler {
         self.enter_compile_ctx_with(
             sig,
             expr_ctx,
-            expr_batch.clone(),
+            expr_batch,
             input_state_buffer,
             true,
             |batch, mut codegen_ctx| {
-                for ((expr, offset), ret) in
-                    std::iter::zip(expr_batch.into_iter().zip(slot_offset), batch)
+                for ((&expr, &offset), ret) in
+                    std::iter::zip(expr_batch.iter().zip(slot_offset), batch)
                 {
                     let param_offset = offset as u32;
                     let output_buffer_address =
@@ -235,7 +235,7 @@ impl JITCompiler {
         self.enter_compile_ctx_with(
             sig,
             expr_ctx,
-            vec![root_expr],
+            &[root_expr],
             input_state_buffer,
             false,
             |ret, mut codegen_ctx| {
@@ -260,7 +260,7 @@ impl JITCompiler {
         &mut self,
         sig: Signature,
         expr_ctx: &expr::Context,
-        expr_batch: Vec<ExprRef>,
+        expr_batch: &[ExprRef],
         input_state_buffer: &dyn StateBufferView<i64>,
         consume_input: bool,
         codegen_epilogue: F,
@@ -448,7 +448,7 @@ pub(super) struct CodeGenContext<'expr, 'ctx, 'engine> {
     pub(super) runtime_lib: runtime::RuntimeLib,
     pub(super) expr_ctx: &'expr expr::Context,
     block_id: Block,
-    expr_batch: Vec<ExprRef>,
+    expr_batch: &'engine [ExprRef],
     input_state_buffer: &'engine dyn StateBufferView<i64>,
     short_lived_heap_allocation: FxHashSet<TaggedValue>,
     pub(super) compiler: &'ctx mut JITCompiler,
@@ -471,7 +471,7 @@ impl CodeGenContext<'_, '_, '_> {
     fn mock_interpret(&mut self) -> Vec<Value> {
         let mut evaluated: FxHashMap<ExprRef, TaggedValue> = FxHashMap::default();
         let bottom_up_expr_graph =
-            BottomUpExprGraph::from_top_down_graph(self.expr_ctx, &self.expr_batch);
+            BottomUpExprGraph::from_top_down_graph(self.expr_ctx, self.expr_batch);
 
         // Track direct depedents of each array related expr node.
         // This allows us to determine whether we could steal heap allocated resources from operand expression.

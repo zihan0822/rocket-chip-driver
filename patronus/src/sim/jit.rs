@@ -221,7 +221,7 @@ impl JITBackend {
                 self.compiler
                     .compile_batched_expr_eval(
                         ctx,
-                        output_exprs.to_vec(),
+                        output_exprs,
                         input_state_buffer,
                         output_exprs_buffer,
                     )
