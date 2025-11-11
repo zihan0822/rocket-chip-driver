@@ -552,7 +552,7 @@ impl CodeGenContext<'_, '_, '_> {
     /// We maintain the invariance that for every long lived heap resource there is a slot that contains the raw heap pointer
     /// to that during the entire lifetime of compiler. And that slot address won't change.
     fn phantom_register_long_lived_heap_resources(&mut self, tpe: expr::Type) -> TaggedValue {
-        let phantom_src_addr = self.fn_builder.ins().iconst(self.int, 0);
+        let phantom_src_addr = iconst!(self, 0);
         self.long_live_cache_read_holes
             .push((phantom_src_addr, tpe));
         TaggedValue::tag(phantom_src_addr, tpe)
@@ -720,10 +720,7 @@ impl CodeGenContext<'_, '_, '_> {
     fn input_state_slot(&mut self, expr: ExprRef) -> TaggedValue {
         let param_offset = self.input_state_buffer.get_state_offset(expr) as u32;
         let input_buffer_address = self.fn_builder.block_params(self.block_id)[0];
-        let param_offset = self
-            .fn_builder
-            .ins()
-            .iconst(self.int, (param_offset * self.int.bytes()) as i64);
+        let param_offset = iconst!(self, param_offset * self.int.bytes());
         let slot_address = self
             .fn_builder
             .ins()
@@ -763,8 +760,7 @@ impl CodeGenContext<'_, '_, '_> {
         } else {
             self.runtime_lib.copy_from_array_of_wide_bv
         };
-        let index_width = self.fn_builder.ins().iconst(self.int, index_width as i64);
-        let data_width = self.fn_builder.ins().iconst(self.int, data_width as i64);
+        let (index_width, data_width) = (iconst!(self, index_width), iconst!(self, data_width));
         self.fn_builder
             .ins()
             .call(callee, &[*dst, *src, index_width, data_width]);
@@ -780,8 +776,7 @@ impl CodeGenContext<'_, '_, '_> {
         } else {
             self.runtime_lib.dealloc_array_of_wide_bv
         };
-        let index_width = self.fn_builder.ins().iconst(self.int, index_width as i64);
-        let data_width = self.fn_builder.ins().iconst(self.int, data_width as i64);
+        let (index_width, data_width) = (iconst!(self, index_width), iconst!(self, data_width));
         self.fn_builder
             .ins()
             .call(callee, &[*array_to_dealloc, index_width, data_width]);
@@ -798,8 +793,7 @@ impl CodeGenContext<'_, '_, '_> {
         } else {
             self.runtime_lib.clone_array_of_wide_bv
         };
-        let index_width = self.fn_builder.ins().iconst(self.int, index_width as i64);
-        let data_width = self.fn_builder.ins().iconst(self.int, data_width as i64);
+        let (index_width, data_width) = (iconst!(self, index_width), iconst!(self, data_width));
         let call = self
             .fn_builder
             .ins()
@@ -815,14 +809,10 @@ impl CodeGenContext<'_, '_, '_> {
         } else {
             self.runtime_lib.alloc_array_of_wide_bv
         };
-        let index_width = self
-            .fn_builder
-            .ins()
-            .iconst(self.int, tpe.index_width as i64);
-        let data_width = self
-            .fn_builder
-            .ins()
-            .iconst(self.int, tpe.data_width as i64);
+        let (index_width, data_width) = (
+            iconst!(self, tpe.index_width),
+            iconst!(self, tpe.data_width),
+        );
         let call = self
             .fn_builder
             .ins()
