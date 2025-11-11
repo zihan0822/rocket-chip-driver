@@ -19,7 +19,7 @@ use compiler::*;
 use cranelift::module::ModuleError;
 use fixedbitset::FixedBitSet;
 use rustc_hash::{FxHashMap, FxHashSet};
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::sync::LazyLock;
 
 type JITResult<T> = Result<T, JITError>;
@@ -143,6 +143,9 @@ impl DirtyStateRegistry {
 
 pub struct JITEngine<'expr> {
     buffers: [Box<[i64]>; 2],
+    /// Value placeholders for output expressions, including `output`, `bad` and `constraint`
+    output_exprs_buffer: RefCell<Box<[i64]>>,
+    output_exprs: Vec<ExprRef>,
     ctx: &'expr expr::Context,
     sys: &'expr TransitionSystem,
     /// Interior mutability for lazy compilation triggered by `Simulator::get`
@@ -155,18 +158,21 @@ pub struct JITEngine<'expr> {
     /// types are cached for better perf
     mutable_slot_states: Vec<(State, expr::Type)>,
     states_to_offset: FxHashMap<ExprRef, usize>,
+    output_exprs_to_offset: FxHashMap<ExprRef, usize>,
     step_count: u64,
     /// Whether dynamic switching is enabled is determined by the number of expr nodes.
     /// When enabled, JIT will switch between per-expr and batched update mode in each `step()` according to the dirty
     /// percetange of output states.
     dynamic_update_mode_switching_enabled: bool,
     snapshots: Vec<Box<[i64]>>,
+    output_up_to_date: Cell<bool>,
 }
 
 struct JITBackend {
     compiler: JITCompiler,
     compiled_transition_sys: Option<EvalBatchedExprWithUpdate>,
     compiled_expr_eval: FxHashMap<ExprRef, EvalSingleExprWithUpdate>,
+    compiled_output_exprs_batched_update: Option<EvalBatchedExprWithUpdate>,
 }
 
 impl JITBackend {
@@ -175,6 +181,7 @@ impl JITBackend {
             compiler: JITCompiler::new(flags),
             compiled_transition_sys: None,
             compiled_expr_eval: FxHashMap::default(),
+            compiled_output_exprs_batched_update: None,
         }
     }
 
@@ -198,6 +205,35 @@ impl JITBackend {
 
             // SAFETY: jit compiler has not been dropped
             eval_fn.call(input_state_buffer.as_slice(), ret_placeholder as *mut i64);
+        }
+    }
+
+    fn batched_eval_output_exprs(
+        &mut self,
+        ctx: &expr::Context,
+        output_exprs: &[ExprRef],
+        input_state_buffer: &impl StateBufferView<i64>,
+        output_exprs_buffer: &mut impl StateBufferViewMut<i64>,
+    ) {
+        let eval_fn = self
+            .compiled_output_exprs_batched_update
+            .get_or_insert_with(|| {
+                self.compiler
+                    .compile_batched_expr_eval(
+                        ctx,
+                        output_exprs.to_vec(),
+                        input_state_buffer,
+                        output_exprs_buffer,
+                    )
+                    .unwrap_or_else(|err| {
+                        panic!("fail to compiled batched output exprs update, due to {err:?}")
+                    })
+            });
+        unsafe {
+            eval_fn.call(
+                input_state_buffer.as_slice(),
+                output_exprs_buffer.as_mut_slice(),
+            )
         }
     }
 
@@ -315,6 +351,21 @@ impl ArrayType {
     }
 }
 
+fn init_expr_slot_data(tpe: expr::Type, slot: &mut i64) {
+    match tpe {
+        expr::Type::Array(array_ty) => {
+            *slot = array_ty.alloc() as i64;
+        }
+        expr::Type::BV(width) => {
+            if width > THIN_BV_MAX_WIDTH {
+                *slot = runtime::__alloc_bv(width as u64) as i64;
+            } else {
+                *slot = 0;
+            }
+        }
+    }
+}
+
 impl<'expr> JITEngine<'expr> {
     pub fn new(ctx: &'expr expr::Context, sys: &'expr TransitionSystem) -> JITEngine<'expr> {
         let mut states_to_offset: FxHashMap<ExprRef, usize> = FxHashMap::default();
@@ -329,8 +380,19 @@ impl<'expr> JITEngine<'expr> {
             states_to_offset.entry(input).or_insert(offset);
         }
 
+        let output_exprs: Vec<_> = sys
+            .outputs
+            .iter()
+            .map(|out| out.expr)
+            .chain(sys.bad_states.iter().chain(&sys.constraints).copied())
+            .collect();
         let buffers: [Box<[i64]>; 2] =
             std::array::from_fn(|_| vec![0_i64; states_to_offset.len()].into_boxed_slice());
+        let output_exprs_buffer = vec![0_i64; output_exprs.len()].into_boxed_slice();
+        let mut output_exprs_to_offset = FxHashMap::default();
+        for (idx, expr) in output_exprs.into_iter().enumerate() {
+            output_exprs_to_offset.insert(expr, idx);
+        }
 
         let mut init_states = FixedBitSet::with_capacity(mutable_slot_states.len());
         init_states.insert_range(..);
@@ -341,6 +403,8 @@ impl<'expr> JITEngine<'expr> {
         let mut engine = Self {
             backend: RefCell::new(JITBackend::with_compiler_flags(CRANELIFT_FLAGS.as_deref())),
             buffers,
+            output_exprs_buffer: RefCell::new(output_exprs_buffer),
+            output_exprs: Vec::from_iter(output_exprs_to_offset.keys().copied()),
             ctx,
             sys,
             states_to_offset,
@@ -349,7 +413,9 @@ impl<'expr> JITEngine<'expr> {
             dirty_registry,
             step_count: 0,
             dynamic_update_mode_switching_enabled,
+            output_exprs_to_offset,
             snapshots: Vec::default(),
+            output_up_to_date: Cell::new(false),
         };
         engine.bootstrap_state_buffers();
         if dynamic_update_mode_switching_enabled {
@@ -400,17 +466,15 @@ impl<'expr> JITEngine<'expr> {
     fn bootstrap_state_buffers(&mut self) {
         for (&state, &offset) in &self.states_to_offset {
             for buffer in &mut self.buffers {
-                match state.get_type(self.ctx) {
-                    expr::Type::Array(array_ty) => {
-                        buffer[offset] = array_ty.alloc() as i64;
-                    }
-                    expr::Type::BV(width) => {
-                        if width > 64 {
-                            buffer[offset] = runtime::__alloc_bv(width as u64) as i64;
-                        }
-                    }
-                }
+                init_expr_slot_data(state.get_type(self.ctx), &mut buffer[offset]);
             }
+        }
+        let output_exprs_buffer = &mut **self.output_exprs_buffer.borrow_mut();
+        for (&output_expr, &offset) in &self.output_exprs_to_offset {
+            init_expr_slot_data(
+                output_expr.get_type(self.ctx),
+                &mut output_exprs_buffer[offset],
+            );
         }
     }
 
@@ -500,6 +564,25 @@ impl<'expr> JITEngine<'expr> {
         self.cached_states_shootdown();
     }
 
+    fn try_fetch_from_latest_outputs(&self, expr: ExprRef) -> Option<i64> {
+        let offset = self.output_exprs_to_offset.get(&expr)?;
+        let mut output_exprs_buffer = self.output_exprs_buffer.borrow_mut();
+        if !self.output_up_to_date.get() {
+            self.backend.borrow_mut().batched_eval_output_exprs(
+                self.ctx,
+                &self.output_exprs,
+                &current_state_buffer!(self),
+                &mut StateBuffer {
+                    buffer: &mut **output_exprs_buffer,
+                    states_to_offset: &self.output_exprs_to_offset,
+                    ctx: self.ctx,
+                },
+            );
+            self.output_up_to_date.set(true);
+        }
+        Some(output_exprs_buffer[*offset])
+    }
+
     fn swap_state_buffer(&mut self) {
         if !self.dynamic_update_mode_switching_enabled {
             self.buffers.swap(CURRENT_STATE_INDEX, NEXT_STATE_INDEX);
@@ -532,6 +615,7 @@ impl<'expr> JITEngine<'expr> {
 
     fn cached_states_shootdown(&mut self) {
         self.dirty_registry.states.insert_range(..);
+        self.output_up_to_date.set(false);
     }
 
     /// Inspect current state and next state to find those that are modified
@@ -780,16 +864,19 @@ impl Simulator for JITEngine<'_> {
     }
 
     fn get(&self, expr: ExprRef) -> baa::Value {
-        let mut is_cached_symbol = false;
+        let mut is_cached_symbol = true;
         let tpe;
-        let value = if let Some(&offset) = self.states_to_offset.get(&expr) {
-            is_cached_symbol = true;
+        let value = if let Some(value) = self.try_fetch_from_latest_outputs(expr) {
+            tpe = expr.get_type(self.ctx);
+            value
+        } else if let Some(&offset) = self.states_to_offset.get(&expr) {
             tpe = self
                 .mutable_slot_states
                 .get(offset)
                 .map_or_else(|| expr.get_type(self.ctx), |&(_, tpe)| tpe);
             current_state_buffer!(self).as_slice()[offset]
         } else {
+            is_cached_symbol = false;
             tpe = expr.get_type(self.ctx);
             self.eval_non_state_expr(expr)
         };

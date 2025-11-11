@@ -132,28 +132,67 @@ impl JITCompiler {
         input_state_buffer: &dyn StateBufferView<i64>,
         output_state_buffer: &dyn StateBufferView<i64>,
     ) -> JITResult<EvalBatchedExprWithUpdate> {
-        let sig = Signature {
-            params: vec![AbiParam::new(types::I64), AbiParam::new(types::I64)],
-            returns: vec![],
-            call_conv: isa::CallConv::SystemV,
-        };
-
         let (next_expr_batch, states_expr): (Vec<_>, Vec<_>) = sys
             .states
             .iter()
             .filter_map(|state| state.next.map(|next| (next, state.symbol)))
             .unzip();
-
-        self.enter_compile_ctx_with(
-            sig,
+        self.compile_batched_update_with_output_slots(
             expr_ctx,
             next_expr_batch,
             input_state_buffer,
+            Vec::from_iter(
+                states_expr
+                    .into_iter()
+                    .map(|sym| output_state_buffer.get_state_offset(sym)),
+            ),
+        )
+    }
+
+    pub(super) fn compile_batched_expr_eval(
+        &mut self,
+        expr_ctx: &expr::Context,
+        expr_batch: Vec<ExprRef>,
+        input_state_buffer: &dyn StateBufferView<i64>,
+        output_state_buffer: &dyn StateBufferView<i64>,
+    ) -> JITResult<EvalBatchedExprWithUpdate> {
+        let slot_offset = Vec::from_iter(
+            expr_batch
+                .iter()
+                .map(|&sym| output_state_buffer.get_state_offset(sym)),
+        );
+        self.compile_batched_update_with_output_slots(
+            expr_ctx,
+            expr_batch,
+            input_state_buffer,
+            slot_offset,
+        )
+    }
+
+    pub(super) fn compile_batched_update_with_output_slots(
+        &mut self,
+        expr_ctx: &expr::Context,
+        expr_batch: Vec<ExprRef>,
+        input_state_buffer: &dyn StateBufferView<i64>,
+        slot_offset: Vec<usize>,
+    ) -> JITResult<EvalBatchedExprWithUpdate> {
+        assert_eq!(expr_batch.len(), slot_offset.len());
+        let sig = Signature {
+            params: vec![AbiParam::new(types::I64), AbiParam::new(types::I64)],
+            returns: vec![],
+            call_conv: isa::CallConv::SystemV,
+        };
+        self.enter_compile_ctx_with(
+            sig,
+            expr_ctx,
+            expr_batch.clone(),
+            input_state_buffer,
             true,
             |batch, mut codegen_ctx| {
-                debug_assert_eq!(states_expr.len(), batch.len());
-                for (expr, ret) in std::iter::zip(states_expr, batch) {
-                    let param_offset = output_state_buffer.get_state_offset(expr) as u32;
+                for ((expr, offset), ret) in
+                    std::iter::zip(expr_batch.into_iter().zip(slot_offset), batch)
+                {
+                    let param_offset = offset as u32;
                     let output_buffer_address =
                         codegen_ctx.fn_builder.block_params(codegen_ctx.block_id)[1];
                     let data_type = expr.get_type(expr_ctx);
