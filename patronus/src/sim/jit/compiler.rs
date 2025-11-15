@@ -4,7 +4,8 @@
 use super::bv_codegen::{self, iconst, select_container_primitive};
 use super::expr_graph::*;
 use super::heap::*;
-use super::{JITResult, StateBufferView, THIN_BV_MAX_WIDTH, runtime};
+use super::slot::{ExprLedge, StateBuffer};
+use super::{JITResult, THIN_BV_MAX_WIDTH, runtime};
 use crate::expr::{self, *};
 use crate::system::*;
 
@@ -40,21 +41,12 @@ impl ManagedHeapResource {
     }
 }
 
-pub(super) struct EvalSingleExprWithUpdate(extern "C" fn(*const i64, *mut i64));
-pub(super) struct EvalBatchedExprWithUpdate(extern "C" fn(*const i64, *mut i64));
-
-impl EvalSingleExprWithUpdate {
-    /// # Safety
-    /// caller should guarantee the memory allocated for compiled code has not been reclaimed
-    pub(super) unsafe fn call(&self, current_states: &[i64], ret_placeholder: *mut i64) {
-        (self.0)(current_states.as_ptr(), ret_placeholder);
-    }
-}
+pub(super) struct EvalBatchedExprWithUpdate(extern "C" fn(*const u64, *mut u64));
 
 impl EvalBatchedExprWithUpdate {
     /// # Safety
     /// caller should guarantee the memory allocated for compiled code has not been reclaimed
-    pub(super) unsafe fn call(&self, current_states: &[i64], next_states: &mut [i64]) {
+    pub(super) unsafe fn call(&self, current_states: &[u64], next_states: &mut [u64]) {
         (self.0)(current_states.as_ptr(), next_states.as_mut_ptr())
     }
 }
@@ -129,8 +121,8 @@ impl JITCompiler {
         &mut self,
         expr_ctx: &expr::Context,
         sys: &TransitionSystem,
-        input_state_buffer: &dyn StateBufferView<i64>,
-        output_state_buffer: &dyn StateBufferView<i64>,
+        input_state_buffer: &StateBuffer<'_>,
+        output_state_buffer: &StateBuffer<'_>,
     ) -> JITResult<EvalBatchedExprWithUpdate> {
         let (next_expr_batch, states_expr): (Vec<_>, Vec<_>) = sys
             .states
@@ -146,6 +138,7 @@ impl JITCompiler {
                     .into_iter()
                     .map(|sym| output_state_buffer.get_state_offset(sym)),
             ),
+            true,
         )
     }
 
@@ -153,19 +146,20 @@ impl JITCompiler {
         &mut self,
         expr_ctx: &expr::Context,
         expr_batch: &[ExprRef],
-        input_state_buffer: &dyn StateBufferView<i64>,
-        output_state_buffer: &dyn StateBufferView<i64>,
+        input_state_buffer: &StateBuffer<'_>,
+        output_ledge: &mut ExprLedge,
     ) -> JITResult<EvalBatchedExprWithUpdate> {
         let slot_offset = Vec::from_iter(
             expr_batch
                 .iter()
-                .map(|&sym| output_state_buffer.get_state_offset(sym)),
+                .map(|&sym| output_ledge.offset_query(sym).unwrap()),
         );
         self.compile_batched_update_with_output_slots(
             expr_ctx,
             expr_batch,
             input_state_buffer,
             &slot_offset,
+            false,
         )
     }
 
@@ -173,8 +167,9 @@ impl JITCompiler {
         &mut self,
         expr_ctx: &expr::Context,
         expr_batch: &[ExprRef],
-        input_state_buffer: &dyn StateBufferView<i64>,
+        input_state_buffer: &StateBuffer<'_>,
         slot_offset: &[usize],
+        consume_input: bool,
     ) -> JITResult<EvalBatchedExprWithUpdate> {
         assert_eq!(expr_batch.len(), slot_offset.len());
         let sig = Signature {
@@ -187,7 +182,7 @@ impl JITCompiler {
             expr_ctx,
             expr_batch,
             input_state_buffer,
-            true,
+            consume_input,
             |batch, mut codegen_ctx| {
                 for ((&expr, &offset), ret) in
                     std::iter::zip(expr_batch.iter().zip(slot_offset), batch)
@@ -215,43 +210,7 @@ impl JITCompiler {
             // SAFETY: upheld by the unsafeness of call method
             EvalBatchedExprWithUpdate(std::mem::transmute::<
                 *const u8,
-                extern "C" fn(*const i64, *mut i64),
-            >(address))
-        })
-    }
-
-    pub(super) fn compile_expr(
-        &mut self,
-        expr_ctx: &expr::Context,
-        root_expr: ExprRef,
-        input_state_buffer: &dyn StateBufferView<i64>,
-    ) -> JITResult<EvalSingleExprWithUpdate> {
-        let sig = Signature {
-            params: vec![AbiParam::new(types::I64), AbiParam::new(types::I64)],
-            returns: vec![],
-            call_conv: isa::CallConv::SystemV,
-        };
-
-        self.enter_compile_ctx_with(
-            sig,
-            expr_ctx,
-            &[root_expr],
-            input_state_buffer,
-            false,
-            |ret, mut codegen_ctx| {
-                debug_assert_eq!(ret.len(), 1);
-                let data_type = root_expr.get_type(expr_ctx);
-                let dst = codegen_ctx.fn_builder.block_params(codegen_ctx.block_id)[1];
-                copy_compiled_code_ret_at(dst, ret[0], data_type, &mut codegen_ctx);
-                codegen_ctx.fn_builder.ins().return_(&[]);
-                codegen_ctx.fn_builder.finalize();
-            },
-        )
-        .map(|address| unsafe {
-            // SAFETY: upheld by the unsafeness of call method
-            EvalSingleExprWithUpdate(std::mem::transmute::<
-                *const u8,
-                extern "C" fn(*const i64, *mut i64),
+                extern "C" fn(*const u64, *mut u64),
             >(address))
         })
     }
@@ -261,7 +220,7 @@ impl JITCompiler {
         sig: Signature,
         expr_ctx: &expr::Context,
         expr_batch: &[ExprRef],
-        input_state_buffer: &dyn StateBufferView<i64>,
+        input_state_buffer: &StateBuffer<'_>,
         consume_input: bool,
         codegen_epilogue: F,
     ) -> JITResult<*const u8>
@@ -364,32 +323,6 @@ impl JITCompiler {
     }
 }
 
-/// `dst` is a pointer to object with type aligned with `src`.
-fn copy_compiled_code_ret_at(
-    dst: Value,
-    src: Value,
-    data_type: expr::Type,
-    codegen_ctx: &mut CodeGenContext,
-) {
-    if let expr::Type::BV(width) = data_type
-        && width <= THIN_BV_MAX_WIDTH
-    {
-        store_thin_bv_at_slot(dst, src, width, codegen_ctx);
-        return;
-    }
-    let src = codegen_ctx.resource_ptr_at_slot(TaggedValue::tag(src, data_type));
-    let dst = TaggedValue {
-        value: dst,
-        data_type,
-    };
-    match data_type {
-        expr::Type::BV(..) => {
-            codegen_ctx.copy_from_bv(dst, src);
-        }
-        expr::Type::Array(..) => codegen_ctx.copy_from_array(dst, src),
-    }
-}
-
 fn try_swap_compiled_code_ret_with_slot(
     dst_slot: Value,
     src: Value,
@@ -449,7 +382,7 @@ pub(super) struct CodeGenContext<'expr, 'ctx, 'engine> {
     pub(super) expr_ctx: &'expr expr::Context,
     block_id: Block,
     expr_batch: &'engine [ExprRef],
-    input_state_buffer: &'engine dyn StateBufferView<i64>,
+    input_state_buffer: &'engine StateBuffer<'expr>,
     short_lived_heap_allocation: FxHashSet<TaggedValue>,
     pub(super) compiler: &'ctx mut JITCompiler,
     pub(super) int: cranelift::prelude::Type,

@@ -418,8 +418,8 @@ mod tests {
         insta::assert_snapshot!(format_symbol_list(&ctx, &cone0));
         insta::assert_snapshot!(format_symbol_list(&ctx, &cone1));
         let cone2 = cone_of_influence_init(&ctx, &sys, reg0);
-        assert_eq!(cone2, [reg0], "reg0 is initialized to zero. {:?}", cone2);
+        assert_eq!(cone2, [reg0], "reg0 is initialized to zero. {cone2:?}");
         let cone3 = cone_of_influence_init(&ctx, &sys, reg1);
-        assert_eq!(cone3, [reg1], "reg1 is initialized to zero. {:?}", cone3);
+        assert_eq!(cone3, [reg1], "reg1 is initialized to zero. {cone3:?}");
     }
 }

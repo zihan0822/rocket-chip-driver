@@ -5,11 +5,13 @@ mod bv_codegen;
 #[cfg(feature = "aot-clif")]
 mod clif_loader;
 mod compiler;
+mod converter;
 mod expr_graph;
 mod heap;
 #[cfg(feature = "inline")]
 mod inliner;
 mod runtime;
+mod slot;
 
 use super::*;
 use crate::expr::{self, *};
@@ -19,6 +21,7 @@ use compiler::*;
 use cranelift::module::ModuleError;
 use fixedbitset::FixedBitSet;
 use rustc_hash::{FxHashMap, FxHashSet};
+use slot::*;
 use std::cell::{Cell, RefCell};
 use std::sync::LazyLock;
 
@@ -36,58 +39,9 @@ impl From<ModuleError> for JITError {
     }
 }
 
-trait StateBufferView<T> {
-    fn get_state_offset(&self, expr: ExprRef) -> usize;
-    fn get_state_ref(&self, expr: ExprRef) -> &T;
-    fn as_slice(&self) -> &[T];
-}
-
-trait StateBufferViewMut<T>: StateBufferView<T> {
-    fn get_state_mut(&mut self, expr: ExprRef) -> &mut T;
-    fn as_mut_slice(&mut self) -> &mut [T];
-}
-
-struct StateBuffer<'engine, B> {
-    buffer: B,
-    states_to_offset: &'engine FxHashMap<ExprRef, usize>,
-    ctx: &'engine expr::Context,
-}
-
-impl<B> StateBufferView<i64> for StateBuffer<'_, B>
-where
-    B: std::borrow::Borrow<[i64]>,
-{
-    fn get_state_offset(&self, expr: ExprRef) -> usize {
-        self.states_to_offset[&expr]
-    }
-
-    fn get_state_ref(&self, expr: ExprRef) -> &i64 {
-        let offset = self.get_state_offset(expr);
-        &self.buffer.borrow()[offset]
-    }
-    fn as_slice(&self) -> &[i64] {
-        self.buffer.borrow()
-    }
-}
-
-impl<B> StateBufferViewMut<i64> for StateBuffer<'_, B>
-where
-    B: std::borrow::BorrowMut<[i64]>,
-{
-    fn get_state_mut(&mut self, expr: ExprRef) -> &mut i64 {
-        let offset = self.get_state_offset(expr);
-        &mut self.buffer.borrow_mut()[offset]
-    }
-    fn as_mut_slice(&mut self) -> &mut [i64] {
-        self.buffer.borrow_mut()
-    }
-}
-
 /// Bit vector with width less than `THIN_BV_MAX_WIDTH` is stored as Rust primitive type.
 /// Otherwise, it is stored as `baa::BitVecValue`
 const THIN_BV_MAX_WIDTH: u32 = 64;
-const CURRENT_STATE_INDEX: usize = 0;
-const NEXT_STATE_INDEX: usize = 1;
 /// Minimum dirty percentage of output states that will trigger batched update mode
 const BATCHED_UPDATE_THRESHOLD: f64 = 0.6;
 /// Only when this environment variable is set and the threshold condition is met, dynamic mode switch will be turned on.
@@ -142,9 +96,10 @@ impl DirtyStateRegistry {
 }
 
 pub struct JITEngine<'expr> {
-    buffers: [Box<[i64]>; 2],
+    input_state_buffer: StateBuffer<'expr>,
+    output_state_buffer: StateBuffer<'expr>,
     /// Value placeholders for output expressions, including `output`, `bad` and `constraint`
-    output_exprs_buffer: RefCell<Box<[i64]>>,
+    output_ledge: RefCell<ExprLedge>,
     output_exprs: Vec<ExprRef>,
     ctx: &'expr expr::Context,
     sys: &'expr TransitionSystem,
@@ -154,24 +109,19 @@ pub struct JITEngine<'expr> {
     upstream_dependents: FxHashMap<ExprRef, FixedBitSet>,
     /// Maintains set of states that need to be recomputed at next step
     dirty_registry: DirtyStateRegistry,
-    /// States corresponding to the first `sys.states.len()` expr in the state buffer
-    /// types are cached for better perf
-    mutable_slot_states: Vec<(State, expr::Type)>,
-    states_to_offset: FxHashMap<ExprRef, usize>,
-    output_exprs_to_offset: FxHashMap<ExprRef, usize>,
     step_count: u64,
     /// Whether dynamic switching is enabled is determined by the number of expr nodes.
     /// When enabled, JIT will switch between per-expr and batched update mode in each `step()` according to the dirty
     /// percetange of output states.
     dynamic_update_mode_switching_enabled: bool,
-    snapshots: Vec<Box<[i64]>>,
+    snapshots: Vec<StateBuffer<'expr>>,
     output_up_to_date: Cell<bool>,
 }
 
 struct JITBackend {
     compiler: JITCompiler,
     compiled_transition_sys: Option<EvalBatchedExprWithUpdate>,
-    compiled_expr_eval: FxHashMap<ExprRef, EvalSingleExprWithUpdate>,
+    compiled_expr_eval: FxHashMap<ExprRef, EvalBatchedExprWithUpdate>,
     compiled_output_exprs_batched_update: Option<EvalBatchedExprWithUpdate>,
 }
 
@@ -185,54 +135,63 @@ impl JITBackend {
         }
     }
 
-    /// # Safety
-    /// The caller should guarantee that `ret_placeholder` is a valid pointer to object of the same type as `expr`
-    unsafe fn eval_expr(
+    fn eval_expr_at_slot(
         &mut self,
         expr: ExprRef,
         ctx: &expr::Context,
-        input_state_buffer: &impl StateBufferView<i64>,
-        ret_placeholder: *mut (),
+        input_state_buffer: &StateBuffer<'_>,
+        mut entry: SlotEntry<'_>,
     ) {
+        let eval_fn = self.compiled_expr_eval.entry(expr).or_insert_with(|| {
+            self.compiler
+                .compile_batched_expr_eval(
+                    ctx,
+                    &[expr],
+                    input_state_buffer,
+                    &mut ExprLedge::new_singleton(ctx, expr),
+                )
+                .unwrap_or_else(|err| panic!("fail to compile: `{:?}` due to {:?}", ctx[expr], err))
+        });
+        // SAFETY: jit compiler has not been dropped
         unsafe {
-            let eval_fn = self.compiled_expr_eval.entry(expr).or_insert_with(|| {
-                self.compiler
-                    .compile_expr(ctx, expr, input_state_buffer)
-                    .unwrap_or_else(|err| {
-                        panic!("fail to compile: `{:?}` due to {:?}", ctx[expr], err)
-                    })
-            });
-
-            // SAFETY: jit compiler has not been dropped
-            eval_fn.call(input_state_buffer.as_slice(), ret_placeholder as *mut i64);
+            eval_fn.call(
+                input_state_buffer.ledge.as_raw_data_slice(),
+                std::slice::from_mut(entry.raw_data()),
+            );
         }
+    }
+
+    fn eval_expr(
+        &mut self,
+        expr: ExprRef,
+        ctx: &expr::Context,
+        input_state_buffer: &StateBuffer<'_>,
+    ) -> SlotData {
+        let mut ledge = ExprLedge::new_singleton(ctx, expr);
+        self.eval_expr_at_slot(expr, ctx, input_state_buffer, ledge.entry_at_offset(0));
+        ledge.into_slot_data().into_iter().next().unwrap()
     }
 
     fn batched_eval_output_exprs(
         &mut self,
         ctx: &expr::Context,
         output_exprs: &[ExprRef],
-        input_state_buffer: &impl StateBufferView<i64>,
-        output_exprs_buffer: &mut impl StateBufferViewMut<i64>,
+        input_state_buffer: &StateBuffer<'_>,
+        output_ledge: &mut ExprLedge,
     ) {
         let eval_fn = self
             .compiled_output_exprs_batched_update
             .get_or_insert_with(|| {
                 self.compiler
-                    .compile_batched_expr_eval(
-                        ctx,
-                        output_exprs,
-                        input_state_buffer,
-                        output_exprs_buffer,
-                    )
+                    .compile_batched_expr_eval(ctx, output_exprs, input_state_buffer, output_ledge)
                     .unwrap_or_else(|err| {
                         panic!("fail to compiled batched output exprs update, due to {err:?}")
                     })
             });
         unsafe {
             eval_fn.call(
-                input_state_buffer.as_slice(),
-                output_exprs_buffer.as_mut_slice(),
+                input_state_buffer.ledge.as_raw_data_slice(),
+                output_ledge.as_mut_raw_data_slice(),
             )
         }
     }
@@ -241,8 +200,8 @@ impl JITBackend {
         &mut self,
         ctx: &expr::Context,
         sys: &TransitionSystem,
-        input_state_buffer: &impl StateBufferView<i64>,
-        output_state_buffer: &mut impl StateBufferViewMut<i64>,
+        input_state_buffer: &StateBuffer<'_>,
+        output_state_buffer: &mut StateBuffer<'_>,
     ) {
         let eval_fn = self.compiled_transition_sys.get_or_insert_with(|| {
             self.compiler
@@ -255,169 +214,54 @@ impl JITBackend {
         // SAFETY: jit compiler has not been dropped
         unsafe {
             eval_fn.call(
-                input_state_buffer.as_slice(),
-                output_state_buffer.as_mut_slice(),
+                input_state_buffer.ledge.as_raw_data_slice(),
+                output_state_buffer.ledge.as_mut_raw_data_slice(),
             )
-        }
-    }
-}
-
-macro_rules! current_state_buffer {
-    ($engine: ident) => {
-        StateBuffer {
-            buffer: &*$engine.buffers[CURRENT_STATE_INDEX],
-            states_to_offset: &$engine.states_to_offset,
-            ctx: $engine.ctx,
-        }
-    };
-}
-
-macro_rules! current_state_buffer_mut {
-    ($engine: ident) => {
-        StateBuffer {
-            buffer: &mut *$engine.buffers[CURRENT_STATE_INDEX],
-            states_to_offset: &$engine.states_to_offset,
-            ctx: $engine.ctx,
-        }
-    };
-}
-
-macro_rules! next_state_buffer {
-    ($engine: ident) => {
-        StateBuffer {
-            buffer: &*$engine.buffers[NEXT_STATE_INDEX],
-            states_to_offset: &$engine.states_to_offset,
-            ctx: $engine.ctx,
-        }
-    };
-}
-
-macro_rules! next_state_buffer_mut {
-    ($engine: ident) => {
-        StateBuffer {
-            buffer: &mut *$engine.buffers[NEXT_STATE_INDEX],
-            states_to_offset: &$engine.states_to_offset,
-            ctx: $engine.ctx,
-        }
-    };
-}
-
-impl ArrayType {
-    fn alloc(&self) -> *mut () {
-        let (index_width, data_width) = (self.index_width as u64, self.data_width as u64);
-        if self.data_width <= THIN_BV_MAX_WIDTH {
-            runtime::__alloc_array(0, index_width, data_width) as _
-        } else {
-            // SAFETY: default value comes from a valid BitVecValue on stack
-            unsafe {
-                runtime::__alloc_array_of_wide_bv(
-                    baa::BitVecValue::zero(self.data_width).words() as *const [baa::Word]
-                        as *const baa::Word,
-                    index_width,
-                    data_width,
-                ) as _
-            }
-        }
-    }
-
-    /// # Safety
-    /// The caller should guarantee that the array `ptr` points to is allocated by `ArrayType::alloc` and has the correct type
-    unsafe fn dealloc(&self, ptr: *mut ()) {
-        let (index_width, data_width) = (self.index_width as u64, self.data_width as u64);
-        unsafe {
-            if self.data_width <= THIN_BV_MAX_WIDTH {
-                runtime::__dealloc_array(ptr, index_width, data_width);
-            } else {
-                runtime::__dealloc_array_of_wide_bv(ptr as *mut *mut Word, index_width, data_width)
-            }
-        }
-    }
-
-    /// # Safety
-    /// The caller should guarantee that the array `ptr` points to is allocated by `ArrayType::alloc` and has the correct type
-    unsafe fn clone(&self, ptr: *const ()) -> *mut () {
-        let (index_width, data_width) = (self.index_width as u64, self.data_width as u64);
-        unsafe {
-            if self.data_width <= THIN_BV_MAX_WIDTH {
-                runtime::__clone_array(ptr, index_width, data_width) as _
-            } else {
-                runtime::__clone_array_of_wide_bv(
-                    ptr as *const *const Word,
-                    index_width,
-                    data_width,
-                ) as _
-            }
-        }
-    }
-}
-
-fn init_expr_slot_data(tpe: expr::Type, slot: &mut i64) {
-    match tpe {
-        expr::Type::Array(array_ty) => {
-            *slot = array_ty.alloc() as i64;
-        }
-        expr::Type::BV(width) => {
-            if width > THIN_BV_MAX_WIDTH {
-                *slot = runtime::__alloc_bv(width as u64) as i64;
-            } else {
-                *slot = 0;
-            }
         }
     }
 }
 
 impl<'expr> JITEngine<'expr> {
     pub fn new(ctx: &'expr expr::Context, sys: &'expr TransitionSystem) -> JITEngine<'expr> {
-        let mut states_to_offset: FxHashMap<ExprRef, usize> = FxHashMap::default();
-        let mut mutable_slot_states: Vec<(State, expr::Type)> = vec![];
-        for state in &sys.states {
-            mutable_slot_states.push((state.clone(), state.symbol.get_type(ctx)));
-            let offset = states_to_offset.len();
-            states_to_offset.entry(state.symbol).or_insert(offset);
-        }
-        for &input in &sys.inputs {
-            let offset = states_to_offset.len();
-            states_to_offset.entry(input).or_insert(offset);
-        }
+        let (input_state_buffer, output_state_buffer) = slot::build_in_out_state_buffer(ctx, sys);
 
-        let output_exprs: Vec<_> = sys
-            .outputs
-            .iter()
-            .map(|out| out.expr)
-            .chain(sys.bad_states.iter().chain(&sys.constraints).copied())
-            .collect();
-        let buffers: [Box<[i64]>; 2] =
-            std::array::from_fn(|_| vec![0_i64; states_to_offset.len()].into_boxed_slice());
-        let output_exprs_buffer = vec![0_i64; output_exprs.len()].into_boxed_slice();
+        let output_exprs: Vec<_> = Vec::from_iter(
+            sys.outputs
+                .iter()
+                .map(|out| out.expr)
+                .chain(sys.bad_states.iter().chain(&sys.constraints).copied())
+                .collect::<FxHashSet<_>>(),
+        );
         let mut output_exprs_to_offset = FxHashMap::default();
-        for (idx, expr) in output_exprs.into_iter().enumerate() {
+        for (idx, &expr) in output_exprs.iter().enumerate() {
             output_exprs_to_offset.insert(expr, idx);
         }
+        let output_ledge = ExprLedge::new(ctx, &output_exprs, move |e| {
+            output_exprs_to_offset.get(&e).copied()
+        });
 
-        let mut init_states = FixedBitSet::with_capacity(mutable_slot_states.len());
+        let num_mutable_states = sys.states.len();
+        let mut init_states = FixedBitSet::with_capacity(num_mutable_states);
         init_states.insert_range(..);
-        let dirty_registry = DirtyStateRegistry::new(init_states, mutable_slot_states.len());
+        let dirty_registry = DirtyStateRegistry::new(init_states, num_mutable_states);
         let dynamic_update_mode_switching_enabled =
             *DYNAMIC_MODE_SWITCH && ctx.exprs.len() > DYNAMIC_MODE_SWITCH_THRESHOLD;
 
         let mut engine = Self {
             backend: RefCell::new(JITBackend::with_compiler_flags(CRANELIFT_FLAGS.as_deref())),
-            buffers,
-            output_exprs_buffer: RefCell::new(output_exprs_buffer),
-            output_exprs: Vec::from_iter(output_exprs_to_offset.keys().copied()),
+            input_state_buffer,
+            output_state_buffer,
+            output_ledge: RefCell::new(output_ledge),
+            output_exprs,
             ctx,
             sys,
-            states_to_offset,
-            mutable_slot_states,
             upstream_dependents: FxHashMap::default(),
             dirty_registry,
             step_count: 0,
             dynamic_update_mode_switching_enabled,
-            output_exprs_to_offset,
             snapshots: Vec::default(),
             output_up_to_date: Cell::new(false),
         };
-        engine.bootstrap_state_buffers();
         if dynamic_update_mode_switching_enabled {
             engine.find_leaf_states_upstream_dep();
         }
@@ -427,6 +271,7 @@ impl<'expr> JITEngine<'expr> {
     fn find_leaf_states_upstream_dep(&mut self) {
         let mut todo = vec![];
         let mut visited: FxHashMap<ExprRef, FxHashSet<&State>> = FxHashMap::default();
+        let num_mutable_states = self.sys.states.len();
         for state in &self.sys.states {
             if let Some(next) = state.next {
                 self.ctx[next].for_each_child(|&child| todo.push((next, child)));
@@ -450,294 +295,106 @@ impl<'expr> JITEngine<'expr> {
                 let dependents = self
                     .upstream_dependents
                     .entry(e)
-                    .or_insert_with(|| FixedBitSet::with_capacity(self.mutable_slot_states.len()));
+                    .or_insert_with(|| FixedBitSet::with_capacity(num_mutable_states));
                 for root in dependent_roots {
-                    let offset_in_state_buffer = self.states_to_offset[&root.symbol];
-                    if offset_in_state_buffer < self.mutable_slot_states.len() {
-                        dependents.insert(offset_in_state_buffer);
+                    let offset = self.input_state_buffer.get_state_offset(root.symbol);
+                    if offset < num_mutable_states {
+                        dependents.insert(offset);
                     }
                 }
             }
         }
     }
 
-    /// Maintains the invariance that all heap allocated states in the current buffer
-    /// and all heap allocated init(immortal) states in the next buffer point to a valid object
-    fn bootstrap_state_buffers(&mut self) {
-        for (&state, &offset) in &self.states_to_offset {
-            for buffer in &mut self.buffers {
-                init_expr_slot_data(state.get_type(self.ctx), &mut buffer[offset]);
-            }
-        }
-        let output_exprs_buffer = &mut **self.output_exprs_buffer.borrow_mut();
-        for (&output_expr, &offset) in &self.output_exprs_to_offset {
-            init_expr_slot_data(
-                output_expr.get_type(self.ctx),
-                &mut output_exprs_buffer[offset],
-            );
-        }
-    }
-
-    /// Evaluates expression binded to slot at `offset` and saves the result at the same position in the next state buffer.
-    /// This function directly takes slot offset as parameter instead of `ExprRef` to avoid `states_to_offset` search overhead.
-    fn eval_expr_at_slot(&self, offset: usize) {
-        let &(ref state, tpe) = &self.mutable_slot_states[offset];
-        let ret_placeholder = if matches!(tpe, expr::Type::BV(width) if width  <= THIN_BV_MAX_WIDTH)
-        {
-            &next_state_buffer!(self).as_slice()[offset] as *const _ as *mut ()
-        } else {
-            next_state_buffer!(self).as_slice()[offset] as *mut ()
-        };
-        // SAFETY: `ret_placeholder` is obtained from `next_state_buffer` at the same slot, so it points to
-        // an object of correct type. There is no alias xor mut conflit here, `ret_placeholder` is guaranteed to not
-        // overlap with `current_state_buffer`
-        unsafe {
-            self.eval_expr_with_ret_placeholder(state.next.unwrap(), ret_placeholder);
-        }
-    }
-
-    /// Computes expressions that do not bind to a mutable state slot.
-    /// Interpretation of the returned value varies depending on the expression type.
-    /// For wide bit vector and array, the returned value is a pointer to leaked heap allocated object.
-    fn eval_non_state_expr(&self, expr: ExprRef) -> i64 {
-        match expr.get_type(self.ctx) {
-            expr::Type::BV(width) => {
-                if width <= THIN_BV_MAX_WIDTH {
-                    let mut ret_placeholder: i64 = 0;
-                    // SAFETY: ref mut of stack allocated `i64` for thin bitvector
-                    unsafe {
-                        self.eval_expr_with_ret_placeholder(
-                            expr,
-                            &mut ret_placeholder as *mut _ as *mut (),
-                        );
-                    }
-                    ret_placeholder
-                } else {
-                    let bv = runtime::__alloc_bv(width as u64) as *mut ();
-                    // SAFETY: heap allocated wide bitvector
-                    unsafe {
-                        self.eval_expr_with_ret_placeholder(expr, bv);
-                    }
-                    bv as i64
-                }
-            }
-            expr::Type::Array(array_ty) => {
-                unsafe {
-                    // SAFETY: heap allocated array
-                    let array = array_ty.alloc();
-                    self.eval_expr_with_ret_placeholder(expr, array);
-                    array as i64
-                }
-            }
-        }
-    }
-
-    /// # Safety
-    /// Follows the same requirement as `JITBackend::expr_expr`
-    unsafe fn eval_expr_with_ret_placeholder(&self, expr: ExprRef, ret_placeholder: *mut ()) {
-        unsafe {
-            self.backend.borrow_mut().eval_expr(
-                expr,
-                self.ctx,
-                &current_state_buffer!(self),
-                ret_placeholder,
-            )
-        }
+    fn eval_non_state_expr(&self, expr: ExprRef) -> SlotData {
+        self.backend
+            .borrow_mut()
+            .eval_expr(expr, self.ctx, &self.input_state_buffer)
     }
 
     fn step_transition_sys(&mut self) {
-        let (current, next) = self.buffers.split_at_mut(NEXT_STATE_INDEX);
         self.backend.borrow_mut().step_transition_sys(
             self.ctx,
             self.sys,
-            &StateBuffer {
-                buffer: &*current[0],
-                states_to_offset: &self.states_to_offset,
-                ctx: self.ctx,
-            },
-            &mut StateBuffer {
-                buffer: &mut *next[0],
-                states_to_offset: &self.states_to_offset,
-                ctx: self.ctx,
-            },
+            &self.input_state_buffer,
+            &mut self.output_state_buffer,
         );
         self.cached_states_shootdown();
     }
 
-    fn try_fetch_from_latest_outputs(&self, expr: ExprRef) -> Option<i64> {
-        let offset = self.output_exprs_to_offset.get(&expr)?;
-        let mut output_exprs_buffer = self.output_exprs_buffer.borrow_mut();
+    fn try_fetch_from_latest_outputs(&self, expr: ExprRef) -> Option<baa::Value> {
         if !self.output_up_to_date.get() {
             self.backend.borrow_mut().batched_eval_output_exprs(
                 self.ctx,
                 &self.output_exprs,
-                &current_state_buffer!(self),
-                &mut StateBuffer {
-                    buffer: &mut **output_exprs_buffer,
-                    states_to_offset: &self.output_exprs_to_offset,
-                    ctx: self.ctx,
-                },
+                &self.input_state_buffer,
+                &mut self.output_ledge.borrow_mut(),
             );
             self.output_up_to_date.set(true);
         }
-        Some(output_exprs_buffer[*offset])
+        self.output_ledge
+            .borrow()
+            .get_slot_data(expr)
+            .map(|data| data.reduce(converter::BaaValueConverter))
     }
 
     fn swap_state_buffer(&mut self) {
-        if !self.dynamic_update_mode_switching_enabled {
-            self.buffers.swap(CURRENT_STATE_INDEX, NEXT_STATE_INDEX);
-            return;
+        // SAFETY: input and output state buffer are guaranteed to contain the same slot layout
+        unsafe {
+            self.input_state_buffer.swap(&mut self.output_state_buffer);
         }
-        self.mark_dirty_states();
-        let previous_dirty_states = &self.dirty_registry.states;
-        // If all mutable states are marked dirty, which can be caused by `cached_states_shootdown` when
-        // the very last update strategy we choose is `step_transition_sys`, we optimize state buffer updating by directly swapping
-        // current and next buffer
-        if previous_dirty_states.is_full() {
-            self.buffers.swap(CURRENT_STATE_INDEX, NEXT_STATE_INDEX);
-        } else {
-            let [current_state_buffer, next_state_buffer] = self
-                .buffers
-                .get_disjoint_mut([CURRENT_STATE_INDEX, NEXT_STATE_INDEX])
-                .unwrap();
-            for offset in previous_dirty_states.ones() {
-                std::mem::swap(
-                    &mut current_state_buffer[offset],
-                    &mut next_state_buffer[offset],
-                );
-            }
+        if self.dynamic_update_mode_switching_enabled {
+            self.mark_dirty_states();
+            std::mem::swap(
+                &mut self.dirty_registry.states,
+                &mut self.dirty_registry.scratch_states,
+            );
         }
-        std::mem::swap(
-            &mut self.dirty_registry.states,
-            &mut self.dirty_registry.scratch_states,
-        );
     }
 
     fn cached_states_shootdown(&mut self) {
-        self.dirty_registry.states.insert_range(..);
+        if self.dynamic_update_mode_switching_enabled {
+            self.dirty_registry.states.insert_range(..);
+        }
         self.output_up_to_date.set(false);
     }
 
-    /// Inspect current state and next state to find those that are modified
+    /// Inspect current state and next state to find those that are modified in last `step` call;
     /// Schedule them to be re-computed at next `step` by adding them to `dirty_states`
     fn mark_dirty_states(&mut self) {
         let states_require_reexamine = &self.dirty_registry.states;
         let next_step_dirty_states = &mut self.dirty_registry.scratch_states;
         next_step_dirty_states.clear();
-        let (current_state_buffer, next_state_buffer) =
-            (current_state_buffer!(self), next_state_buffer!(self));
+        // Correctness relies on the fact that mutable state is always put at the front of the slot
         for offset in states_require_reexamine.ones() {
-            let &(ref state, tpe) = &self.mutable_slot_states[offset];
-            // SAFETY: state buffer invariance we've maintained ensures that slot contains proper type
-            if unsafe {
-                check_slot_value_dirty(
-                    current_state_buffer.as_slice()[offset],
-                    next_state_buffer.as_slice()[offset],
-                    tpe,
-                )
-            } {
-                if let Some(roots) = self.upstream_dependents.get(&state.symbol) {
-                    next_step_dirty_states.union_with(roots);
-                }
+            let current = self
+                .input_state_buffer
+                .ledge
+                .get_slot_data_at_offset(offset)
+                .unwrap();
+            let next = self
+                .output_state_buffer
+                .ledge
+                .get_slot_data_at_offset(offset)
+                .unwrap();
+            if check_slot_dirtiness(current, next)
+                && let Some(roots) = self
+                    .upstream_dependents
+                    .get(&self.sys.states[offset].symbol)
+            {
+                next_step_dirty_states.union_with(roots);
             }
         }
-    }
-
-    fn clone_state_buffer(&self, src: &impl StateBufferView<i64>) -> Box<[i64]> {
-        let mut dst = vec![0_i64; self.states_to_offset.len()];
-        for (state, &offset) in &self.states_to_offset {
-            let value = src.as_slice()[offset];
-            match state.get_type(self.ctx) {
-                expr::Type::BV(width) => {
-                    if width <= THIN_BV_MAX_WIDTH {
-                        dst[offset] = value;
-                    } else {
-                        // SAFETY: `value` coming from state buffer is guaranteed to be valid
-                        unsafe {
-                            dst[offset] =
-                                runtime::__clone_bv(value as *const Word, width as u64) as i64;
-                        }
-                    }
-                }
-                expr::Type::Array(array_ty) => unsafe {
-                    // SAFETY: `value` coming from state buffer is guaranteed to be valid
-                    dst[offset] = array_ty.clone(value as *const ()) as i64;
-                },
-            }
-        }
-        dst.into_boxed_slice()
     }
 }
 
-/// # Safety
-/// The caller should guarantee that `a` and `b` can be safely coerced to ptr of object of `tpe`
-unsafe fn check_slot_value_dirty(a: i64, b: i64, tpe: expr::Type) -> bool {
-    match tpe {
-        expr::Type::BV(width) => {
-            if width <= THIN_BV_MAX_WIDTH {
-                a != b
-            } else {
-                unsafe {
-                    runtime::bv_value_ref!(a as *const Word, width)
-                        .ne(&runtime::bv_value_ref!(b as *const Word, width))
-                }
-            }
-        }
+fn check_slot_dirtiness(a: SlotDataRef<'_>, b: SlotDataRef<'_>) -> bool {
+    if matches!(a.tpe, expr::Type::BV(_)) {
+        a.ne(&b)
+    } else {
         // TODO: Currently for input array, compiler might steal the previous input array.
         // We always conservatively assume that array symbol is always dirty
-        expr::Type::Array(_) => true,
-    }
-}
-
-impl std::ops::Drop for JITEngine<'_> {
-    fn drop(&mut self) {
-        // SAFETY: invoked in drop, those states will no longer be accessed
-        unsafe {
-            current_state_buffer_mut!(self).reclaim_all();
-            next_state_buffer_mut!(self).reclaim_all();
-        }
-    }
-}
-
-impl<B> StateBuffer<'_, B>
-where
-    B: std::borrow::BorrowMut<[i64]>,
-    Self: StateBufferViewMut<i64>,
-{
-    fn try_replace_with_heap_reclaim(&mut self, expr: ExprRef, value: i64) {
-        // SAFETY: old value is consumed here and not bookkept anywhere else, therefore can no longer be accessed
-        unsafe {
-            self.reclaim_heap_allocated_expr(expr);
-        }
-        *self.get_state_mut(expr) = value
-    }
-
-    /// # Safety
-    /// the caller should guaranteed that the reclaimed expr is no longer accessed
-    unsafe fn reclaim_heap_allocated_expr(&self, expr: ExprRef) {
-        unsafe {
-            let value = *self.get_state_ref(expr);
-            match expr.get_type(self.ctx) {
-                expr::Type::BV(width) => {
-                    if width > THIN_BV_MAX_WIDTH {
-                        runtime::__dealloc_bv(value as *mut Word, width as u64);
-                    }
-                }
-                expr::Type::Array(array_ty) => {
-                    array_ty.dealloc(value as *mut ());
-                }
-            }
-        }
-    }
-
-    /// # Safety
-    /// the caller should guaranteed that the reclaimed expr is no longer accessed
-    unsafe fn reclaim_all(&self) {
-        unsafe {
-            for &state in self.states_to_offset.keys() {
-                self.reclaim_heap_allocated_expr(state);
-            }
-        }
+        true
     }
 }
 
@@ -745,70 +402,19 @@ impl Simulator for JITEngine<'_> {
     type SnapshotId = u32;
     fn init(&mut self, kind: InitKind) {
         let mut generator = InitValueGenerator::from_kind(kind);
-
-        for &state in self.states_to_offset.keys() {
-            let tpe = state.get_type(self.ctx);
-            let init_value = generator.generate(tpe);
-            match init_value {
-                baa::Value::BitVec(bv) => {
-                    let width = bv.width();
-                    if width <= THIN_BV_MAX_WIDTH {
-                        *current_state_buffer_mut!(self).get_state_mut(state) =
-                            bv.to_u64().unwrap() as i64;
-                    } else {
-                        let dst = *current_state_buffer_mut!(self).get_state_mut(state);
-                        // SAFETY: &bv is a valid pointer to `BitVecValue`
-                        unsafe {
-                            runtime::__copy_from_bv(
-                                dst as *mut Word,
-                                bv.words() as *const [Word] as *const Word,
-                                width as u64,
-                            );
-                        }
-                    }
-                }
-                baa::Value::Array(array) => {
-                    let expr::Type::Array(expr::ArrayType {
-                        index_width,
-                        data_width,
-                    }) = tpe
-                    else {
-                        unreachable!()
-                    };
-                    debug_assert_eq!(1 << index_width, array.num_elements());
-                    let ptr = *current_state_buffer!(self).get_state_ref(state);
-                    if data_width <= THIN_BV_MAX_WIDTH {
-                        runtime::reinterp_array_ptr_by_data_width!(ptr, data_width, {
-                            let dst =
-                                unsafe { std::slice::from_raw_parts_mut(ptr, 1 << index_width) };
-                            for (idx, dst_element) in dst.iter_mut().enumerate() {
-                                let src_element =
-                                    array.select(&BitVecValue::from_u64(idx as u64, index_width));
-                                *dst_element = src_element.to_u64().unwrap() as _;
-                            }
-                        });
-                    } else {
-                        let dst = unsafe {
-                            std::slice::from_raw_parts(ptr as *const *mut Word, 1 << index_width)
-                        };
-                        for (idx, &dst) in dst.iter().enumerate() {
-                            let src_element =
-                                array.select(&BitVecValue::from_u64(idx as u64, index_width));
-                            unsafe {
-                                runtime::bv_value_mut!(dst, data_width)
-                                    .words_mut()
-                                    .copy_from_slice(src_element.words())
-                            }
-                        }
-                    }
-                }
-            }
+        for mut data in &mut self.input_state_buffer.ledge {
+            let init_value = generator.generate(data.tpe);
+            data.reduce(converter::BaaValueSetter(&init_value));
         }
 
         for state in &self.sys.states {
             if let Some(init) = state.init {
                 let ret = self.eval_non_state_expr(init);
-                current_state_buffer_mut!(self).try_replace_with_heap_reclaim(state.symbol, ret);
+                self.input_state_buffer
+                    .ledge
+                    .entry(state.symbol)
+                    .unwrap()
+                    .insert(ret);
             }
         }
         self.cached_states_shootdown();
@@ -823,39 +429,35 @@ impl Simulator for JITEngine<'_> {
         {
             self.step_transition_sys();
         } else {
-            self.dirty_registry
-                .states
-                .ones()
-                .for_each(|offset| self.eval_expr_at_slot(offset));
+            for offset in self.dirty_registry.states.ones() {
+                let next = self.sys.states[offset].next.unwrap();
+                let entry = self
+                    .output_state_buffer
+                    .ledge
+                    .entry(self.sys.states[offset].symbol)
+                    .unwrap();
+                self.backend.borrow_mut().eval_expr_at_slot(
+                    next,
+                    self.ctx,
+                    &self.input_state_buffer,
+                    entry,
+                );
+            }
         }
         self.swap_state_buffer();
         self.step_count += 1;
     }
 
     fn set<'b>(&mut self, expr: ExprRef, value: BitVecValueRef<'b>) {
-        let expr::Type::BV(width) = expr.get_type(self.ctx) else {
-            unreachable!()
-        };
-        let offset = current_state_buffer!(self).get_state_offset(expr);
-        if width <= THIN_BV_MAX_WIDTH {
-            let value = value.to_u64().unwrap();
-            current_state_buffer_mut!(self).as_mut_slice()[offset] = value as i64;
-            next_state_buffer_mut!(self).as_mut_slice()[offset] = value as i64;
-        } else {
-            // XXX: currently `runtime::__clone_bv` only supports raw pointer to `BitVecValue` as parameter
-            let value = value.words() as *const [Word] as *const Word;
-            unsafe {
-                runtime::__copy_from_bv(
-                    current_state_buffer!(self).as_slice()[offset] as *mut Word,
-                    value,
-                    width as u64,
-                );
-                runtime::__copy_from_bv(
-                    next_state_buffer!(self).as_slice()[offset] as *mut Word,
-                    value,
-                    width as u64,
-                );
-            }
+        // reset both the input and output state buffer to make sure if `expr` is part of input,
+        // its change is reflected in both buffers.
+        for state_buffer in [&mut self.input_state_buffer, &mut self.output_state_buffer] {
+            state_buffer
+                .ledge
+                .get_slot_data_mut(expr)
+                .unwrap()
+                .expect_bit_vec()
+                .copy_from_slice(value.words());
         }
 
         if let Some(roots) = self.upstream_dependents.get(&expr) {
@@ -864,76 +466,14 @@ impl Simulator for JITEngine<'_> {
     }
 
     fn get(&self, expr: ExprRef) -> baa::Value {
-        let mut is_cached_symbol = true;
-        let tpe;
-        let value = if let Some(value) = self.try_fetch_from_latest_outputs(expr) {
-            tpe = expr.get_type(self.ctx);
-            value
-        } else if let Some(&offset) = self.states_to_offset.get(&expr) {
-            tpe = self
-                .mutable_slot_states
-                .get(offset)
-                .map_or_else(|| expr.get_type(self.ctx), |&(_, tpe)| tpe);
-            current_state_buffer!(self).as_slice()[offset]
+        if let Some(data) = self.try_fetch_from_latest_outputs(expr) {
+            data
+        } else if let Some(slot) = self.input_state_buffer.ledge.get_slot_data(expr) {
+            slot.reduce(converter::BaaValueConverter)
         } else {
-            is_cached_symbol = false;
-            tpe = expr.get_type(self.ctx);
             self.eval_non_state_expr(expr)
-        };
-        match tpe {
-            expr::Type::Array(
-                array_ty @ ArrayType {
-                    index_width,
-                    data_width,
-                },
-            ) => {
-                // SAFETY: jit compiler guarantees that `value` points to a valid array with correct type
-                unsafe {
-                    let ret = if index_width <= THIN_BV_MAX_WIDTH {
-                        runtime::reinterp_array_ptr_by_data_width!(value, data_width, {
-                            let data = std::slice::from_raw_parts(value, 1 << index_width);
-                            let words = Vec::from_iter(data.iter().map(|&item| item as u64));
-                            baa::Value::Array(words.as_slice().into())
-                        })
-                    } else {
-                        let mut array = baa::ArrayValue::new_dense(
-                            index_width,
-                            &baa::BitVecValue::zero(data_width),
-                        );
-                        std::slice::from_raw_parts(value as *const *const Word, 1 << index_width)
-                            .iter()
-                            .enumerate()
-                            .for_each(|(idx, &bv)| {
-                                array.store(
-                                    &BitVecValue::from_u64(idx as u64, index_width),
-                                    runtime::bv_value_ref!(bv, data_width),
-                                )
-                            });
-                        baa::Value::Array(array)
-                    };
-                    if !is_cached_symbol {
-                        array_ty.dealloc(value as *mut ());
-                    }
-                    ret
-                }
-            }
-            expr::Type::BV(width) => {
-                if width <= THIN_BV_MAX_WIDTH {
-                    baa::Value::BitVec(BitVecValue::from_u64(value as u64, width))
-                } else {
-                    // SAFETY: jit compiler guarantees that value is a pointer to wide bv allocated on heap
-                    unsafe {
-                        let ret = baa::Value::BitVec(
-                            runtime::bv_value_ref!(value as *const Word, width).into(),
-                        );
-                        // TODO: steal data
-                        if !is_cached_symbol {
-                            runtime::__dealloc_bv(value as *mut Word, width as u64);
-                        }
-                        ret
-                    }
-                }
-            }
+                .as_ref()
+                .reduce(converter::BaaValueConverter)
         }
     }
 
@@ -942,28 +482,12 @@ impl Simulator for JITEngine<'_> {
     }
 
     fn take_snapshot(&mut self) -> Self::SnapshotId {
-        let snapshot = self.clone_state_buffer(&current_state_buffer!(self));
         let id = self.snapshots.len() as u32;
-        self.snapshots.push(snapshot);
+        self.snapshots.push(self.input_state_buffer.clone());
         id
     }
 
     fn restore_snapshot(&mut self, id: Self::SnapshotId) {
-        std::mem::swap(
-            &mut self.buffers[CURRENT_STATE_INDEX],
-            &mut self.snapshots[id as usize],
-        );
-        let restored_snapshot = self.clone_state_buffer(&current_state_buffer!(self));
-        let dropped_snapshot =
-            std::mem::replace(&mut self.snapshots[id as usize], restored_snapshot);
-        // SAFETY: `dropped_snapshot` is taken from current state buffer, all its elements are guaranteed to point to a valid heap allocated object
-        unsafe {
-            StateBuffer {
-                buffer: dropped_snapshot,
-                states_to_offset: &self.states_to_offset,
-                ctx: self.ctx,
-            }
-            .reclaim_all();
-        }
+        self.input_state_buffer = self.snapshots[id as usize].clone();
     }
 }
