@@ -484,7 +484,7 @@ impl SlotEntry<'_> {
 
     /// SAFETY: the caller should guarantee that if the slot data is modified,
     /// it should still contain data of `tpe`
-    pub(super) unsafe fn raw_data(&mut self) -> &mut u64 {
+    pub(super) unsafe fn raw_data_mut(&mut self) -> &mut u64 {
         &mut self.slot.0
     }
 }
@@ -544,7 +544,7 @@ impl ExprLedge {
 
     pub(super) fn get_slot_data<'slot>(&'slot self, expr: ExprRef) -> Option<SlotDataRef<'slot>> {
         let offset = self.offset_query(expr)?;
-        self.get_slot_data_at_offset(offset)
+        Some(self.get_slot_data_at_offset(offset))
     }
 
     pub(super) fn get_slot_data_mut<'slot>(
@@ -552,29 +552,20 @@ impl ExprLedge {
         expr: ExprRef,
     ) -> Option<SlotDataRefMut<'slot>> {
         let offset = self.offset_query(expr)?;
-        self.get_slot_data_at_offset_mut(offset)
+        Some(self.get_slot_data_at_offset_mut(offset))
     }
 
     #[inline]
-    pub(super) fn get_slot_data_at_offset<'slot>(
-        &'slot self,
-        offset: usize,
-    ) -> Option<SlotDataRef<'slot>> {
-        Some(SlotDataRef::from_opaque_data(
-            &self.slots[offset],
-            self.dtypes[offset],
-        ))
+    pub(super) fn get_slot_data_at_offset<'slot>(&'slot self, offset: usize) -> SlotDataRef<'slot> {
+        SlotDataRef::from_opaque_data(&self.slots[offset], self.dtypes[offset])
     }
 
     #[inline]
     pub(super) fn get_slot_data_at_offset_mut<'slot>(
         &'slot mut self,
         offset: usize,
-    ) -> Option<SlotDataRefMut<'slot>> {
-        Some(SlotDataRefMut::from_opaque_data(
-            &mut self.slots[offset],
-            self.dtypes[offset],
-        ))
+    ) -> SlotDataRefMut<'slot> {
+        SlotDataRefMut::from_opaque_data(&mut self.slots[offset], self.dtypes[offset])
     }
 
     pub(super) fn offset_query(&self, expr: ExprRef) -> Option<usize> {

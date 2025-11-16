@@ -135,7 +135,7 @@ impl JITBackend {
         }
     }
 
-    fn eval_expr_at_slot(
+    fn eval_expr_with_output_slot(
         &mut self,
         expr: ExprRef,
         ctx: &expr::Context,
@@ -156,7 +156,7 @@ impl JITBackend {
         unsafe {
             eval_fn.call(
                 input_state_buffer.ledge.as_raw_data_slice(),
-                std::slice::from_mut(entry.raw_data()),
+                std::slice::from_mut(entry.raw_data_mut()),
             );
         }
     }
@@ -168,7 +168,7 @@ impl JITBackend {
         input_state_buffer: &StateBuffer<'_>,
     ) -> SlotData {
         let mut ledge = ExprLedge::new_singleton(ctx, expr);
-        self.eval_expr_at_slot(expr, ctx, input_state_buffer, ledge.entry_at_offset(0));
+        self.eval_expr_with_output_slot(expr, ctx, input_state_buffer, ledge.entry_at_offset(0));
         ledge.into_slot_data().into_iter().next().unwrap()
     }
 
@@ -306,7 +306,7 @@ impl<'expr> JITEngine<'expr> {
         }
     }
 
-    fn eval_non_state_expr(&self, expr: ExprRef) -> SlotData {
+    fn eval_expr(&self, expr: ExprRef) -> SlotData {
         self.backend
             .borrow_mut()
             .eval_expr(expr, self.ctx, &self.input_state_buffer)
@@ -330,7 +330,7 @@ impl<'expr> JITEngine<'expr> {
                 .ledge
                 .entry(self.sys.states[offset].symbol)
                 .unwrap();
-            self.backend.borrow_mut().eval_expr_at_slot(
+            self.backend.borrow_mut().eval_expr_with_output_slot(
                 next,
                 self.ctx,
                 &self.input_state_buffer,
@@ -388,13 +388,11 @@ impl<'expr> JITEngine<'expr> {
             let current = self
                 .input_state_buffer
                 .ledge
-                .get_slot_data_at_offset(offset)
-                .unwrap();
+                .get_slot_data_at_offset(offset);
             let next = self
                 .output_state_buffer
                 .ledge
-                .get_slot_data_at_offset(offset)
-                .unwrap();
+                .get_slot_data_at_offset(offset);
             if check_slot_dirtiness(current, next)
                 && let Some(roots) = self
                     .upstream_dependents
@@ -427,7 +425,7 @@ impl Simulator for JITEngine<'_> {
 
         for state in &self.sys.states {
             if let Some(init) = state.init {
-                let ret = self.eval_non_state_expr(init);
+                let ret = self.eval_expr(init);
                 self.input_state_buffer
                     .ledge
                     .entry(state.symbol)
@@ -476,7 +474,7 @@ impl Simulator for JITEngine<'_> {
         } else if let Some(slot) = self.input_state_buffer.ledge.get_slot_data(expr) {
             slot.reduce(converter::BaaValueConverter)
         } else {
-            self.eval_non_state_expr(expr)
+            self.eval_expr(expr)
                 .as_ref()
                 .reduce(converter::BaaValueConverter)
         }
