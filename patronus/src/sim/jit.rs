@@ -322,6 +322,24 @@ impl<'expr> JITEngine<'expr> {
         self.cached_states_shootdown();
     }
 
+    fn step_dirty_states(&mut self) {
+        for offset in self.dirty_registry.states.ones() {
+            let next = self.sys.states[offset].next.unwrap();
+            let entry = self
+                .output_state_buffer
+                .ledge
+                .entry(self.sys.states[offset].symbol)
+                .unwrap();
+            self.backend.borrow_mut().eval_expr_at_slot(
+                next,
+                self.ctx,
+                &self.input_state_buffer,
+                entry,
+            );
+        }
+        self.output_up_to_date.set(false);
+    }
+
     fn try_fetch_from_latest_outputs(&self, expr: ExprRef) -> Option<baa::Value> {
         if !self.output_up_to_date.get() {
             self.backend.borrow_mut().batched_eval_output_exprs(
@@ -429,20 +447,7 @@ impl Simulator for JITEngine<'_> {
         {
             self.step_transition_sys();
         } else {
-            for offset in self.dirty_registry.states.ones() {
-                let next = self.sys.states[offset].next.unwrap();
-                let entry = self
-                    .output_state_buffer
-                    .ledge
-                    .entry(self.sys.states[offset].symbol)
-                    .unwrap();
-                self.backend.borrow_mut().eval_expr_at_slot(
-                    next,
-                    self.ctx,
-                    &self.input_state_buffer,
-                    entry,
-                );
-            }
+            self.step_dirty_states();
         }
         self.swap_state_buffer();
         self.step_count += 1;
@@ -459,10 +464,10 @@ impl Simulator for JITEngine<'_> {
                 .expect_bit_vec()
                 .copy_from_slice(value.words());
         }
-
         if let Some(roots) = self.upstream_dependents.get(&expr) {
             self.dirty_registry.register(roots)
         }
+        self.output_up_to_date.set(false);
     }
 
     fn get(&self, expr: ExprRef) -> baa::Value {
