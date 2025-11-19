@@ -34,8 +34,6 @@ struct Driver {
 
 declare_module! {
     struct MockTestHarnessModule {
-        #[in<1> = "clock", c_type=c_uchar]
-        clock,
         #[in<1> = "reset", c_type = c_uchar]
         reset,
     }
@@ -149,13 +147,6 @@ pub extern "C" fn get_driver_debug_module_output() -> debug_module_output_payloa
 pub extern "C" fn set_driver_reset(signal: c_uchar) {
     with_driver_mut(|driver| {
         driver.with_mut(|fields| fields.test_harness_module.set_reset(fields.sim, signal))
-    })
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn set_driver_clock(signal: c_uchar) {
-    with_driver_mut(|driver| {
-        driver.with_mut(|fields| fields.test_harness_module.set_clock(fields.sim, signal))
     })
 }
 
