@@ -277,7 +277,7 @@ impl<'a> Parser<'a> {
         let actual_tpe = expr.get_type(self.ctx);
         if actual_tpe != expected_type {
             let _ =
-                self.add_error(line, line, format!("Expression has the type {actual_tpe}, but the declared btpr2 type is {expected_type}", ));
+                self.add_error(line, line, format!("Expression has the type {actual_tpe}, but the declared btor2 type is {expected_type}", ));
             Err(())
         } else {
             Ok(expr)
